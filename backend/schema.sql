@@ -1,16 +1,21 @@
+
 -- 1. ENUM 타입 생성
 CREATE TYPE emp_status AS ENUM ('ACTIVE', 'ON_LEAVE', 'RESIGNED');
 CREATE TYPE account_role AS ENUM ('CEO', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE');
 CREATE TYPE attendance_status AS ENUM ('미기록', '출근', '퇴근', '퇴근미기록', '휴가', '휴직');
 CREATE TYPE leave_req_status AS ENUM ('작성중', '승인대기', '승인완료', '반려', '취소요청', '취소완료');
 CREATE TYPE insurance_type AS ENUM ('국민연금', '건강보험', '장기요양보험', '고용보험');
-CREATE TYPE eval_cycle_status AS ENUM ('평가전', '작성중', '제출완료', '확정', '재오픈');
+
+-- [수정됨] 평가 사이클과 개별 평가의 상태 분리 및 발령 유형 신설
+CREATE TYPE evaluation_status AS ENUM ('평가전', '작성중', '제출완료', '확정', '재오픈'); 
+CREATE TYPE eval_cycle_state AS ENUM ('평가전', '진행중', '종료');
+CREATE TYPE assignment_type AS ENUM ('TRANSFER', 'PROMOTION', 'TITLE_CHANGE');
 
 
 -- 2. 마스터 테이블 (의존성 없음)
 CREATE TABLE DEPARTMENT (
     id BIGSERIAL PRIMARY KEY,
-    division_name VARCHAR(50),  -- 본부명 컬럼이 아예 처음부터 포함됨!
+    division_name VARCHAR(50),
     name VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INT NOT NULL,
@@ -32,35 +37,40 @@ CREATE TABLE JOBTITLE (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- [수정됨] deducts_balance 컬럼 추가 (연차 차감 여부)
 CREATE TABLE LEAVETYPE (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    deducts_balance BOOLEAN NOT NULL DEFAULT TRUE 
 );
 
+-- [수정됨] 퍼센트 숫자 저장을 위한 DECIMAL(6,4) 자릿수 확장
 CREATE TABLE INSURANCERATE (
     id BIGSERIAL PRIMARY KEY,
     insurance_type insurance_type NOT NULL,
-    employee_rate DECIMAL(5,4) NOT NULL,
-    company_rate DECIMAL(5,4) NOT NULL,
+    employee_rate DECIMAL(6,4) NOT NULL,
+    company_rate DECIMAL(6,4) NOT NULL,
     cap_amount DECIMAL(15,2),
     floor_amount DECIMAL(15,2)
 );
 
+-- [수정됨] 퍼센트 숫자 저장을 위한 DECIMAL(6,4) 자릿수 확장
 CREATE TABLE TAXBRACKET (
     id BIGSERIAL PRIMARY KEY,
     range_start DECIMAL(15,2) NOT NULL,
     range_end DECIMAL(15,2),
-    tax_rate DECIMAL(5,4) NOT NULL,
+    tax_rate DECIMAL(6,4) NOT NULL,
     deduction_amount DECIMAL(15,2) NOT NULL
 );
 
+-- [수정됨] 사이클 전용 상태 타입(eval_cycle_state) 적용
 CREATE TABLE EVALUATIONCYCLE (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    status eval_cycle_status NOT NULL
+    status eval_cycle_state NOT NULL
 );
 
 CREATE TABLE EVALUATIONCRITERIA (
@@ -94,6 +104,7 @@ CREATE TABLE EMPLOYEE (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 부서 테이블의 팀장 FK 지연 생성 (순환 참조 방지)
 ALTER TABLE DEPARTMENT ADD CONSTRAINT fk_dept_lead FOREIGN KEY (lead_employee_id) REFERENCES EMPLOYEE(id);
 
 
@@ -139,10 +150,11 @@ CREATE TABLE LEAVEREQUEST (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- [수정됨] 발령 유형(type)을 ENUM(assignment_type)으로 변경
 CREATE TABLE ASSIGNMENTHISTORY (
     id BIGSERIAL PRIMARY KEY,
     employee_id BIGINT NOT NULL REFERENCES EMPLOYEE(id),
-    type VARCHAR(50) NOT NULL,
+    type assignment_type NOT NULL,
     post_dept_id BIGINT NOT NULL REFERENCES DEPARTMENT(id),
     post_grade_id BIGINT NOT NULL REFERENCES JOBGRADE(id),
     post_title_id BIGINT REFERENCES JOBTITLE(id),
@@ -186,12 +198,13 @@ CREATE TABLE PAYSTUB (
     UNIQUE (employee_id, pay_month)
 );
 
+-- [수정됨] 개별 평가용 상태 타입(evaluation_status) 적용
 CREATE TABLE EVALUATION (
     id BIGSERIAL PRIMARY KEY,
     cycle_id BIGINT NOT NULL REFERENCES EVALUATIONCYCLE(id),
     target_employee_id BIGINT NOT NULL REFERENCES EMPLOYEE(id),
     evaluator_employee_id BIGINT NOT NULL REFERENCES EMPLOYEE(id),
-    status eval_cycle_status NOT NULL,
+    status evaluation_status NOT NULL,
     overall_comment TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (cycle_id, target_employee_id)
