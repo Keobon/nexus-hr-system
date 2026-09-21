@@ -6,12 +6,11 @@ CREATE TYPE leave_req_status AS ENUM ('작성중', '승인대기', '승인완료
 CREATE TYPE insurance_type AS ENUM ('국민연금', '건강보험', '장기요양보험', '고용보험');
 CREATE TYPE eval_cycle_status AS ENUM ('평가전', '작성중', '제출완료', '확정', '재오픈');
 
--- 이미 만들어진 DEPARTMENT 테이블에 division_name(본부명) 컬럼 추가
-ALTER TABLE DEPARTMENT ADD COLUMN division_name VARCHAR(50);
 
 -- 2. 마스터 테이블 (의존성 없음)
 CREATE TABLE DEPARTMENT (
     id BIGSERIAL PRIMARY KEY,
+    division_name VARCHAR(50),  -- 본부명 컬럼이 아예 처음부터 포함됨!
     name VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INT NOT NULL,
