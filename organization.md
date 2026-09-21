@@ -1,3 +1,4 @@
+```mermaid
 graph TD
     CEO[대표이사 CEO] --> VP[부사장 총괄]
     VP --> D1[경영지원본부]
@@ -22,3 +23,4 @@ graph TD
 
     D5 --> T5_1[품질보증팀 QA]
     D5 --> T5_2[고객지원팀 CS]
+```
