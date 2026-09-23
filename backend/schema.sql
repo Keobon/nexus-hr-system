@@ -1,21 +1,28 @@
-
 -- 1. ENUM 타입 생성
 CREATE TYPE emp_status AS ENUM ('ACTIVE', 'ON_LEAVE', 'RESIGNED');
-CREATE TYPE account_role AS ENUM ('CEO', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE');
+CREATE TYPE account_role AS ENUM ('CEO', 'VP', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE'); -- [수정] VP 추가
 CREATE TYPE attendance_status AS ENUM ('미기록', '출근', '퇴근', '퇴근미기록', '휴가', '휴직');
 CREATE TYPE leave_req_status AS ENUM ('작성중', '승인대기', '승인완료', '반려', '취소요청', '취소완료');
 CREATE TYPE insurance_type AS ENUM ('국민연금', '건강보험', '장기요양보험', '고용보험');
-
--- [수정됨] 평가 사이클과 개별 평가의 상태 분리 및 발령 유형 신설
 CREATE TYPE evaluation_status AS ENUM ('평가전', '작성중', '제출완료', '확정', '재오픈'); 
 CREATE TYPE eval_cycle_state AS ENUM ('평가전', '진행중', '종료');
 CREATE TYPE assignment_type AS ENUM ('TRANSFER', 'PROMOTION', 'TITLE_CHANGE');
 
 
 -- 2. 마스터 테이블 (의존성 없음)
+
+-- [신설] DIVISION (본부) 테이블
+CREATE TABLE DIVISION (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    sort_order INT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- [수정] division_name 제거, division_id(FK) 추가
 CREATE TABLE DEPARTMENT (
     id BIGSERIAL PRIMARY KEY,
-    division_name VARCHAR(50),
+    division_id BIGINT NOT NULL REFERENCES DIVISION(id),
     name VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     sort_order INT NOT NULL,
@@ -37,15 +44,13 @@ CREATE TABLE JOBTITLE (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- [수정됨] deducts_balance 컬럼 추가 (연차 차감 여부)
 CREATE TABLE LEAVETYPE (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    deducts_balance BOOLEAN NOT NULL DEFAULT TRUE 
+    deducts_balance BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- [수정됨] 퍼센트 숫자 저장을 위한 DECIMAL(6,4) 자릿수 확장
 CREATE TABLE INSURANCERATE (
     id BIGSERIAL PRIMARY KEY,
     insurance_type insurance_type NOT NULL,
@@ -55,7 +60,6 @@ CREATE TABLE INSURANCERATE (
     floor_amount DECIMAL(15,2)
 );
 
--- [수정됨] 퍼센트 숫자 저장을 위한 DECIMAL(6,4) 자릿수 확장
 CREATE TABLE TAXBRACKET (
     id BIGSERIAL PRIMARY KEY,
     range_start DECIMAL(15,2) NOT NULL,
@@ -64,7 +68,6 @@ CREATE TABLE TAXBRACKET (
     deduction_amount DECIMAL(15,2) NOT NULL
 );
 
--- [수정됨] 사이클 전용 상태 타입(eval_cycle_state) 적용
 CREATE TABLE EVALUATIONCYCLE (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -104,7 +107,6 @@ CREATE TABLE EMPLOYEE (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 부서 테이블의 팀장 FK 지연 생성 (순환 참조 방지)
 ALTER TABLE DEPARTMENT ADD CONSTRAINT fk_dept_lead FOREIGN KEY (lead_employee_id) REFERENCES EMPLOYEE(id);
 
 
@@ -150,7 +152,6 @@ CREATE TABLE LEAVEREQUEST (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- [수정됨] 발령 유형(type)을 ENUM(assignment_type)으로 변경
 CREATE TABLE ASSIGNMENTHISTORY (
     id BIGSERIAL PRIMARY KEY,
     employee_id BIGINT NOT NULL REFERENCES EMPLOYEE(id),
@@ -198,7 +199,6 @@ CREATE TABLE PAYSTUB (
     UNIQUE (employee_id, pay_month)
 );
 
--- [수정됨] 개별 평가용 상태 타입(evaluation_status) 적용
 CREATE TABLE EVALUATION (
     id BIGSERIAL PRIMARY KEY,
     cycle_id BIGINT NOT NULL REFERENCES EVALUATIONCYCLE(id),
@@ -217,3 +217,81 @@ CREATE TABLE EVALUATIONANSWER (
     score INT NOT NULL CHECK (score >= 1 AND score <= 5),
     UNIQUE (evaluation_id, question_id)
 );
+
+## 데이터 삽입
+
+-- 1. DIVISION (5개 본부)
+INSERT INTO DIVISION (name, sort_order) VALUES
+('경영지원본부', 1), ('R&D본부', 2), ('서비스기획본부', 3), ('비즈니스본부', 4), ('운영본부', 5);
+
+-- 2. JOBGRADE (6개 직급) / JOBTITLE (3개 직책) / LEAVETYPE (3개 휴가)
+INSERT INTO JOBGRADE (name, sort_order) VALUES
+('사원', 1), ('주임', 2), ('대리', 3), ('과장', 4), ('부장', 5), ('임원', 6);
+
+INSERT INTO JOBTITLE (name, sort_order) VALUES
+('팀장', 1), ('부사장', 2), ('대표이사', 3);
+
+INSERT INTO LEAVETYPE (name, deducts_balance) VALUES
+('연차', TRUE), ('병가', FALSE), ('경조사', FALSE);
+
+-- 3. DEPARTMENT (12개 실무 부서, lead_employee_id는 일단 생략)
+INSERT INTO DEPARTMENT (division_id, name, sort_order, budget) VALUES
+(1, '인사총무팀', 1, 27000000), (1, '재무회계팀', 2, 22000000), (1, '법무감사팀', 3, 14000000),
+(2, '프론트엔드개발팀', 4, 37000000), (2, '백엔드개발팀', 5, 43000000), (2, '인프라보안팀', 6, 24000000),
+(3, '프로덕트기획팀', 7, 26000000), (3, 'UI/UX디자인팀', 8, 21000000),
+(4, 'B2B영업팀', 9, 34000000), (4, '마케팅홍보팀', 10, 21000000),
+(5, '품질보증팀', 11, 17000000), (5, '고객지원팀', 12, 12000000);
+
+
+-- 4. EMPLOYEE & ACCOUNT 필수 생성 (CEO, VP, 각 팀장 12명 = 총 14명)
+-- 4.1. CEO (인사총무팀 소속 / 임원 / 대표이사)
+INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id) 
+VALUES (1, '대표이사', 'ceo@nexuslabs.com', CURRENT_DATE, 1, 6, 3);
+INSERT INTO ACCOUNT (employee_id, password_hash, role) VALUES (1, 'hashed_pw', 'CEO');
+
+-- 4.2. VP (인사총무팀 소속 / 임원 / 부사장)
+INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id) 
+VALUES (2, '부사장', 'vp@nexuslabs.com', CURRENT_DATE, 1, 6, 2);
+INSERT INTO ACCOUNT (employee_id, password_hash, role) VALUES (2, 'hashed_pw', 'VP');
+
+-- 4.3. 12개 부서의 팀장 12명 (부장 / 팀장)
+INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id) VALUES 
+(3, '인사팀장', 'hr_lead@nexuslabs.com', CURRENT_DATE, 1, 5, 1),
+(4, '재무팀장', 'fin_lead@nexuslabs.com', CURRENT_DATE, 2, 5, 1),
+(5, '법무팀장', 'legal_lead@nexuslabs.com', CURRENT_DATE, 3, 5, 1),
+(6, 'FE팀장', 'fe_lead@nexuslabs.com', CURRENT_DATE, 4, 5, 1),
+(7, 'BE팀장', 'be_lead@nexuslabs.com', CURRENT_DATE, 5, 5, 1),
+(8, '인프라팀장', 'infra_lead@nexuslabs.com', CURRENT_DATE, 6, 5, 1),
+(9, '기획팀장', 'pm_lead@nexuslabs.com', CURRENT_DATE, 7, 5, 1),
+(10, '디자인팀장', 'design_lead@nexuslabs.com', CURRENT_DATE, 8, 5, 1),
+(11, '영업팀장', 'sales_lead@nexuslabs.com', CURRENT_DATE, 9, 5, 1),
+(12, '마케팅팀장', 'mkt_lead@nexuslabs.com', CURRENT_DATE, 10, 5, 1),
+(13, 'QA팀장', 'qa_lead@nexuslabs.com', CURRENT_DATE, 11, 5, 1),
+(14, 'CS팀장', 'cs_lead@nexuslabs.com', CURRENT_DATE, 12, 5, 1);
+
+INSERT INTO ACCOUNT (employee_id, password_hash, role) 
+SELECT id, 'hashed_pw', 'TEAM_LEAD' FROM EMPLOYEE WHERE id >= 3 AND id <= 14;
+
+-- 시퀀스 수동 동기화 (id 값을 직접 INSERT 했으므로 시퀀스를 맞춰줍니다)
+SELECT setval('employee_id_seq', 14);
+
+
+-- 5. DEPARTMENT 팀장 지정 (결재 라우팅 핵심!)
+UPDATE DEPARTMENT SET lead_employee_id = 3 WHERE id = 1;
+UPDATE DEPARTMENT SET lead_employee_id = 4 WHERE id = 2;
+UPDATE DEPARTMENT SET lead_employee_id = 5 WHERE id = 3;
+UPDATE DEPARTMENT SET lead_employee_id = 6 WHERE id = 4;
+UPDATE DEPARTMENT SET lead_employee_id = 7 WHERE id = 5;
+UPDATE DEPARTMENT SET lead_employee_id = 8 WHERE id = 6;
+UPDATE DEPARTMENT SET lead_employee_id = 9 WHERE id = 7;
+UPDATE DEPARTMENT SET lead_employee_id = 10 WHERE id = 8;
+UPDATE DEPARTMENT SET lead_employee_id = 11 WHERE id = 9;
+UPDATE DEPARTMENT SET lead_employee_id = 12 WHERE id = 10;
+UPDATE DEPARTMENT SET lead_employee_id = 13 WHERE id = 11;
+UPDATE DEPARTMENT SET lead_employee_id = 14 WHERE id = 12;
+
+
+-- 6. 보험 요율 및 세금 구간 (기본 포맷)
+INSERT INTO INSURANCERATE (insurance_type, employee_rate, company_rate) VALUES
+('국민연금', 4.5000, 4.5000), ('건강보험', 3.5450, 3.5450), 
+('장기요양보험', 12.9500, 12.9500), ('고용보험', 0.9000, 1.1500);
