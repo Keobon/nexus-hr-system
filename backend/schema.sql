@@ -1,6 +1,6 @@
 -- 1. ENUM 타입 생성
 CREATE TYPE emp_status AS ENUM ('ACTIVE', 'ON_LEAVE', 'RESIGNED');
-CREATE TYPE account_role AS ENUM ('CEO', 'VP', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE'); -- [수정] VP 추가
+CREATE TYPE account_role AS ENUM ('CEO', 'VP', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE');
 CREATE TYPE attendance_status AS ENUM ('미기록', '출근', '퇴근', '퇴근미기록', '휴가', '휴직');
 CREATE TYPE leave_req_status AS ENUM ('작성중', '승인대기', '승인완료', '반려', '취소요청', '취소완료');
 CREATE TYPE insurance_type AS ENUM ('국민연금', '건강보험', '장기요양보험', '고용보험');
@@ -10,8 +10,6 @@ CREATE TYPE assignment_type AS ENUM ('TRANSFER', 'PROMOTION', 'TITLE_CHANGE');
 
 
 -- 2. 마스터 테이블 (의존성 없음)
-
--- [신설] DIVISION (본부) 테이블
 CREATE TABLE DIVISION (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
@@ -19,7 +17,6 @@ CREATE TABLE DIVISION (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- [수정] division_name 제거, division_id(FK) 추가
 CREATE TABLE DEPARTMENT (
     id BIGSERIAL PRIMARY KEY,
     division_id BIGINT NOT NULL REFERENCES DIVISION(id),
@@ -51,20 +48,22 @@ CREATE TABLE LEAVETYPE (
     deducts_balance BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+-- [수정됨] 요율 단위 주석 추가 및 자릿수 유지
 CREATE TABLE INSURANCERATE (
     id BIGSERIAL PRIMARY KEY,
     insurance_type insurance_type NOT NULL,
-    employee_rate DECIMAL(6,4) NOT NULL,
-    company_rate DECIMAL(6,4) NOT NULL,
+    employee_rate DECIMAL(6,4) NOT NULL,   -- 단위: % (4.5000 = 4.5%). 계산 시 ÷100 필수
+    company_rate  DECIMAL(6,4) NOT NULL,   -- 단위: % (동일)
     cap_amount DECIMAL(15,2),
     floor_amount DECIMAL(15,2)
 );
 
+-- [수정됨] 요율 단위 주석 추가 및 자릿수 유지
 CREATE TABLE TAXBRACKET (
     id BIGSERIAL PRIMARY KEY,
     range_start DECIMAL(15,2) NOT NULL,
     range_end DECIMAL(15,2),
-    tax_rate DECIMAL(6,4) NOT NULL,
+    tax_rate DECIMAL(6,4) NOT NULL,        -- 단위: % (38.0000 = 38%). 계산 시 ÷100 필수
     deduction_amount DECIMAL(15,2) NOT NULL
 );
 
@@ -218,7 +217,11 @@ CREATE TABLE EVALUATIONANSWER (
     UNIQUE (evaluation_id, question_id)
 );
 
-## 데이터 삽입
+
+
+-- ==========================================
+-- 💡 기초 시드 데이터 (INSERT 스크립트)
+-- ==========================================
 
 -- 1. DIVISION (5개 본부)
 INSERT INTO DIVISION (name, sort_order) VALUES
@@ -243,7 +246,7 @@ INSERT INTO DEPARTMENT (division_id, name, sort_order, budget) VALUES
 (5, '품질보증팀', 11, 17000000), (5, '고객지원팀', 12, 12000000);
 
 
--- 4. EMPLOYEE & ACCOUNT 필수 생성 (CEO, VP, 각 팀장 12명 = 총 14명)
+-- 4. EMPLOYEE & ACCOUNT 필수 생성 (CEO, VP, 각 팀장 12명 + HR_ADMIN = 총 15명)
 -- 4.1. CEO (인사총무팀 소속 / 임원 / 대표이사)
 INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id) 
 VALUES (1, '대표이사', 'ceo@nexuslabs.com', CURRENT_DATE, 1, 6, 3);
@@ -272,8 +275,13 @@ INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade
 INSERT INTO ACCOUNT (employee_id, password_hash, role) 
 SELECT id, 'hashed_pw', 'TEAM_LEAD' FROM EMPLOYEE WHERE id >= 3 AND id <= 14;
 
--- 시퀀스 수동 동기화 (id 값을 직접 INSERT 했으므로 시퀀스를 맞춰줍니다)
-SELECT setval('employee_id_seq', 14);
+-- [추가됨] 4.4. HR_ADMIN (인사총무팀 소속 / 과장 / 직책 없음)
+INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id)
+VALUES (15, '인사담당자', 'hr_admin@nexuslabs.com', CURRENT_DATE, 1, 4, NULL);
+INSERT INTO ACCOUNT (employee_id, password_hash, role) VALUES (15, 'hashed_pw', 'HR_ADMIN');
+
+-- [수정됨] 시퀀스 수동 동기화 (14 → 15)
+SELECT setval('employee_id_seq', 15); 
 
 
 -- 5. DEPARTMENT 팀장 지정 (결재 라우팅 핵심!)
@@ -291,7 +299,17 @@ UPDATE DEPARTMENT SET lead_employee_id = 13 WHERE id = 11;
 UPDATE DEPARTMENT SET lead_employee_id = 14 WHERE id = 12;
 
 
--- 6. 보험 요율 및 세금 구간 (기본 포맷)
+-- [수정됨] 6. 보험 요율 (장기요양은 Gross 대비 환산 0.4591% 적용)
 INSERT INTO INSURANCERATE (insurance_type, employee_rate, company_rate) VALUES
-('국민연금', 4.5000, 4.5000), ('건강보험', 3.5450, 3.5450), 
-('장기요양보험', 12.9500, 12.9500), ('고용보험', 0.9000, 1.1500);
+('국민연금',     4.5000, 4.5000),
+('건강보험',     3.5450, 3.5450),
+('장기요양보험', 0.4591, 0.4591),   -- 3.545% × 12.95%, Gross 기준으로 환산
+('고용보험',     0.9000, 1.1500);
+
+-- [추가됨] 7. TAXBRACKET (월 과세표준 기준, 단순화 누진세율 5구간)
+INSERT INTO TAXBRACKET (range_start, range_end, tax_rate, deduction_amount) VALUES
+(0,          1200000,   6.0000,  0),
+(1200000,    4200000,  15.0000,  108000),
+(4200000,    7400000,  24.0000,  486000),
+(7400000,   12500000,  35.0000,  1300000),
+(12500000,  NULL,      38.0000,  1675000);
