@@ -1,11 +1,11 @@
--- 1. ENUM 타입 생성
+-- 1. ENUM 타입 생성 (한글 -> 영문 코드로 변경됨)
 CREATE TYPE emp_status AS ENUM ('ACTIVE', 'ON_LEAVE', 'RESIGNED');
 CREATE TYPE account_role AS ENUM ('CEO', 'VP', 'HR_ADMIN', 'TEAM_LEAD', 'EMPLOYEE');
-CREATE TYPE attendance_status AS ENUM ('미기록', '출근', '퇴근', '퇴근미기록', '휴가', '휴직');
-CREATE TYPE leave_req_status AS ENUM ('작성중', '승인대기', '승인완료', '반려', '취소요청', '취소완료');
-CREATE TYPE insurance_type AS ENUM ('국민연금', '건강보험', '장기요양보험', '고용보험');
-CREATE TYPE evaluation_status AS ENUM ('평가전', '작성중', '제출완료', '확정', '재오픈'); 
-CREATE TYPE eval_cycle_state AS ENUM ('평가전', '진행중', '종료');
+CREATE TYPE attendance_status AS ENUM ('NOT_RECORDED', 'CHECKED_IN', 'CHECKED_OUT', 'MISSING_CHECKOUT', 'ON_VACATION', 'ON_LEAVE');
+CREATE TYPE leave_req_status AS ENUM ('DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'CANCEL_REQUESTED', 'CANCELLED');
+CREATE TYPE insurance_type AS ENUM ('NATIONAL_PENSION', 'HEALTH', 'LONG_TERM_CARE', 'EMPLOYMENT');
+CREATE TYPE evaluation_status AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'SUBMITTED', 'CONFIRMED', 'REOPENED');
+CREATE TYPE eval_cycle_state AS ENUM ('SCHEDULED', 'IN_PROGRESS', 'CLOSED');
 CREATE TYPE assignment_type AS ENUM ('TRANSFER', 'PROMOTION', 'TITLE_CHANGE');
 
 
@@ -48,7 +48,6 @@ CREATE TABLE LEAVETYPE (
     deducts_balance BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- [수정됨] 요율 단위 주석 추가 및 자릿수 유지
 CREATE TABLE INSURANCERATE (
     id BIGSERIAL PRIMARY KEY,
     insurance_type insurance_type NOT NULL,
@@ -58,7 +57,6 @@ CREATE TABLE INSURANCERATE (
     floor_amount DECIMAL(15,2)
 );
 
--- [수정됨] 요율 단위 주석 추가 및 자릿수 유지
 CREATE TABLE TAXBRACKET (
     id BIGSERIAL PRIMARY KEY,
     range_start DECIMAL(15,2) NOT NULL,
@@ -275,12 +273,12 @@ INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade
 INSERT INTO ACCOUNT (employee_id, password_hash, role) 
 SELECT id, 'hashed_pw', 'TEAM_LEAD' FROM EMPLOYEE WHERE id >= 3 AND id <= 14;
 
--- [추가됨] 4.4. HR_ADMIN (인사총무팀 소속 / 과장 / 직책 없음)
+-- 4.4. HR_ADMIN (인사총무팀 소속 / 과장 / 직책 없음)
 INSERT INTO EMPLOYEE (id, name, email, hire_date, current_dept_id, current_grade_id, current_title_id)
 VALUES (15, '인사담당자', 'hr_admin@nexuslabs.com', CURRENT_DATE, 1, 4, NULL);
 INSERT INTO ACCOUNT (employee_id, password_hash, role) VALUES (15, 'hashed_pw', 'HR_ADMIN');
 
--- [수정됨] 시퀀스 수동 동기화 (14 → 15)
+-- 시퀀스 수동 동기화
 SELECT setval('employee_id_seq', 15); 
 
 
@@ -299,14 +297,14 @@ UPDATE DEPARTMENT SET lead_employee_id = 13 WHERE id = 11;
 UPDATE DEPARTMENT SET lead_employee_id = 14 WHERE id = 12;
 
 
--- [수정됨] 6. 보험 요율 (장기요양은 Gross 대비 환산 0.4591% 적용)
+-- 6. 보험 요율 (영문 ENUM 코드로 변경됨)
 INSERT INTO INSURANCERATE (insurance_type, employee_rate, company_rate) VALUES
-('국민연금',     4.5000, 4.5000),
-('건강보험',     3.5450, 3.5450),
-('장기요양보험', 0.4591, 0.4591),   -- 3.545% × 12.95%, Gross 기준으로 환산
-('고용보험',     0.9000, 1.1500);
+('NATIONAL_PENSION', 4.5000, 4.5000),
+('HEALTH',           3.5450, 3.5450),
+('LONG_TERM_CARE',   0.4591, 0.4591),   -- 3.545% × 12.95%, Gross 기준으로 환산
+('EMPLOYMENT',       0.9000, 1.1500);
 
--- [추가됨] 7. TAXBRACKET (월 과세표준 기준, 단순화 누진세율 5구간)
+-- 7. TAXBRACKET (월 과세표준 기준, 단순화 누진세율 5구간)
 INSERT INTO TAXBRACKET (range_start, range_end, tax_rate, deduction_amount) VALUES
 (0,          1200000,   6.0000,  0),
 (1200000,    4200000,  15.0000,  108000),
