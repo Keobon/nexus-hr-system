@@ -1,0 +1,35 @@
+# ---- 공통 ----
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+
+# ---- IDE ----
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated
+.sts4-cache
+bin/
+
+# ---- backend (Gradle / Spring) ----
+backend/.gradle/
+backend/build/
+!backend/gradle/wrapper/gradle-wrapper.jar
+backend/HELP.md
+backend/uploads/
+
+# ---- frontend (Node) ----
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
