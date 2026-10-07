@@ -273,6 +273,16 @@ public class OrgUnitService {
                 Long.class, companyId, employeeId);
     }
 
+    /** 직원을 배치·발령할 조직을 가져온다. 없으면 NOT_FOUND, 비활성이면 INACTIVE_REFERENCE(F-ORG-01). */
+    @Transactional(readOnly = true)
+    public OrgUnit requireActive(long orgUnitId) {
+        OrgUnit orgUnit = get(orgUnitId);
+        if (!orgUnit.isActive()) {
+            throw new BusinessException(ErrorCode.INACTIVE_REFERENCE);
+        }
+        return orgUnit;
+    }
+
     private OrgUnit get(long orgUnitId) {
         return orgUnitRepository.findById(orgUnitId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }

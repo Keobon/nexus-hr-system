@@ -97,4 +97,39 @@ public class Employee extends BaseTimeEntity {
         this.jobTitle = jobTitle;
         this.employmentType = employmentType;
     }
+
+    public void changeContact(String phone, String address) {
+        this.phone = phone;
+        this.address = address;
+    }
+
+    public void changePersonal(String nameEn, LocalDate birthDate, Gender gender) {
+        this.nameEn = nameEn;
+        this.birthDate = birthDate;
+        this.gender = gender;
+    }
+
+    public void changeEmergencyContact(String name, String relation, String phone) {
+        this.emergencyName = name;
+        this.emergencyRelation = relation;
+        this.emergencyPhone = phone;
+    }
+
+    public void changeContractDates(LocalDate contractEndDate, LocalDate probationEndDate) {
+        this.contractEndDate = contractEndDate;
+        this.probationEndDate = probationEndDate;
+    }
+
+    public void changeProfileFile(Long profileFileId) {
+        this.profileFileId = profileFileId;
+    }
+
+    public void changePayrollEligible(boolean payrollEligible) {
+        this.payrollEligible = payrollEligible;
+    }
+
+    /** 인사 메모는 EMPLOYEE_MANAGE 에게만 보인다. 본인 응답에는 넣지 않는다. */
+    public void changeHrMemo(String hrMemo) {
+        this.hrMemo = hrMemo;
+    }
 }
