@@ -97,17 +97,17 @@ class CommonBaseIntegrationTest {
         mvc.perform(as(get("/api/test/me"), E5, A))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("AUTH_PASSWORD_CHANGE_REQUIRED"));
-        // 허용 목록(GET /api/me)은 필터를 통과한다 — 아직 컨트롤러가 없으므로 404
+        // 허용 목록(GET /api/me)은 필터를 통과한다
         mvc.perform(as(get("/api/me"), E5, A))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
     }
 
     @Test
     void 공개_엔드포인트는_토큰_없이_통과한다() throws Exception {
-        // 컨트롤러는 B-02에서 만든다. 필터를 통과하면 401이 아닌 404
+        // 필터를 통과하면 401이 아니라 입력값 검증(400)까지 간다
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{}"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     // ---- 권한 · 범위 ----
