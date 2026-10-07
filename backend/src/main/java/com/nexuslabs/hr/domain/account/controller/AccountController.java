@@ -1,7 +1,6 @@
 package com.nexuslabs.hr.domain.account.controller;
 
 import com.nexuslabs.hr.domain.account.dto.AccountRow;
-import com.nexuslabs.hr.domain.account.dto.AccountUpdateRequest;
 import com.nexuslabs.hr.domain.account.dto.TemporaryPasswordResponse;
 import com.nexuslabs.hr.domain.account.service.AccountService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -20,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /** API 설계서 4장 — 계정 관리. 경로의 ID는 직원 ID다. */
 @RestController
@@ -46,8 +47,8 @@ public class AccountController {
 
     @PatchMapping("/{employeeId}")
     public ApiResponse<AccountRow> update(@CurrentUser LoginUser user, @PathVariable long employeeId,
-                                          @RequestBody AccountUpdateRequest request) {
-        return ApiResponse.ok(accountService.update(user, employeeId, request));
+                                          @RequestBody Map<String, Object> patch) {
+        return ApiResponse.ok(accountService.update(user, employeeId, patch));
     }
 
     @PostMapping("/{employeeId}/unlock")

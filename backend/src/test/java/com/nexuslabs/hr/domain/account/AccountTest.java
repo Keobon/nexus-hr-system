@@ -110,6 +110,21 @@ class AccountTest {
     }
 
     @Test
+    void 수정은_보낸_필드만_null이나_모르는_필드는_거부() throws Exception {
+        patchAccount(staff.id(), "{\"active\": null}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.active").value("비울 수 없습니다"));
+        patchAccount(staff.id(), "{\"isActive\": false}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.isActive").value("알 수 없는 항목입니다"));
+        patchAccount(staff.id(), "{\"roleId\": \"직원\"}")
+                .andExpect(status().isBadRequest());
+        patchAccount(staff.id(), "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.active").value(true));
+    }
+
+    @Test
     void 비활성화하면_로그인할_수_없다() throws Exception {
         patchAccount(staff.id(), "{\"active\": false}").andExpect(jsonPath("$.data.active").value(false));
         login(staff.email(), TestFixture.PASSWORD).andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_INACTIVE"));

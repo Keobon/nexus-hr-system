@@ -64,6 +64,8 @@ class RoleTest {
                 .andExpect(jsonPath("$.data.length()").value(18))
                 .andExpect(jsonPath("$.data[0].code").value("COMPANY_MANAGE"))
                 .andExpect(jsonPath("$.data[0].allowedScopes").value(contains("ALL")))
+                .andExpect(jsonPath("$.data[0].description").value("회사 정보와 변경 이력 · 근무시간 · 휴일 · 초기 설정 · 회사 서류"))
+                .andExpect(jsonPath("$.data[0].relatedFeatures").value("F-COMP-02–05 · 07"))
                 .andExpect(jsonPath("$.data[5].code").value("EMPLOYEE_READ"))
                 .andExpect(jsonPath("$.data[5].allowedScopes").value(contains("TEAM", "ALL")));
     }
