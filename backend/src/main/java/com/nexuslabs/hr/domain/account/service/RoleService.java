@@ -42,7 +42,7 @@ public class RoleService {
     public List<PermissionInfo> permissions() {
         return Arrays.stream(PermissionCode.values())
                 .map(c -> new PermissionInfo(c, c.description(),
-                        c.allowedScopes().stream().sorted().toList()))
+                        c.allowedScopes().stream().sorted().toList(), c.relatedFeatures()))
                 .toList();
     }
 

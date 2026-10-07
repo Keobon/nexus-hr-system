@@ -10,6 +10,7 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import com.nexuslabs.hr.global.request.PatchRequest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -18,6 +19,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
@@ -25,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 계정(F-AUTH-04 · F-AUTH-06). 계정 ID 대신 직원 ID로 다룬다(직원 1명 = 계정 1개).
@@ -56,22 +60,26 @@ public class AccountService {
             rs.getLong("role_id"), rs.getString("role_name"), rs.getBoolean("is_active"), rs.getBoolean("locked"),
             rs.getObject("locked_until", OffsetDateTime.class), rs.getObject("last_login_at", OffsetDateTime.class));
 
+    private static final Set<String> PATCH_FIELDS = Set.of("roleId", "active");
+
     private final JdbcTemplate jdbc;
     private final PasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator passwordGenerator;
     private final AuditLogger auditLogger;
     private final ApprovalService approvalService;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     public AccountService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder,
                           TemporaryPasswordGenerator passwordGenerator, AuditLogger auditLogger,
-                          ApprovalService approvalService, Clock clock) {
+                          ApprovalService approvalService, Clock clock, ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.passwordGenerator = passwordGenerator;
         this.auditLogger = auditLogger;
         this.approvalService = approvalService;
         this.clock = clock;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -127,9 +135,23 @@ public class AccountService {
         return new PageImpl<>(rows, pageable, total);
     }
 
-    /** 역할 변경 · 활성/비활성. 마지막 활성 최고 관리자를 잃게 되면 LAST_SUPER_ADMIN. */
+    /**
+     * 역할 변경 · 활성/비활성(PATCH — 보낸 필드만 바꾼다). 두 필드 모두 비울 수 없어 null 이면 VALIDATION_ERROR.
+     * 마지막 활성 최고 관리자를 잃게 되면 LAST_SUPER_ADMIN.
+     */
     @Transactional
-    public AccountRow update(LoginUser user, long employeeId, AccountUpdateRequest request) {
+    public AccountRow update(LoginUser user, long employeeId, Map<String, Object> patch) {
+        PatchRequest.check(patch, PATCH_FIELDS, PATCH_FIELDS);
+        AccountUpdateRequest request;
+        try {
+            request = objectMapper.convertValue(patch, AccountUpdateRequest.class);
+        } catch (JacksonException e) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        return update(user, employeeId, request);
+    }
+
+    private AccountRow update(LoginUser user, long employeeId, AccountUpdateRequest request) {
         AccountState before = lock(user.companyId(), employeeId);
         long newRoleId = request.roleId() != null ? requireRole(user.companyId(), request.roleId()) : before.roleId();
         boolean newActive = request.active() != null ? request.active() : before.active();

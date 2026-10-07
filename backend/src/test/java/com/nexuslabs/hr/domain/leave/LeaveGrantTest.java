@@ -151,12 +151,14 @@ class LeaveGrantTest {
         asAdmin(json(post("/api/leave-grants/adjustments"), body.formatted(e.id(), annualType, -12, "\"정정\"")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("LEAVE_INSUFFICIENT_BALANCE"))
-                .andExpect(jsonPath("$.error.details.remaining").value(11));
+                .andExpect(jsonPath("$.error.details.remaining").value(11))
+                .andExpect(jsonPath("$.error.details.requested").value(-12));
         asAdmin(json(post("/api/leave-grants/adjustments"), body.formatted(e.id(), annualType, -11, "\"정정\"")))
                 .andExpect(status().isCreated());
 
         asAdmin(json(post("/api/leave-grants/adjustments"), body.formatted(e.id(), annualType, 1, "null")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.reason").value("필수 항목입니다"));
         asAdmin(json(post("/api/leave-grants/adjustments"), body.formatted(e.id(), annualType, 0, "\"영\"")))
                 .andExpect(status().isBadRequest());
 

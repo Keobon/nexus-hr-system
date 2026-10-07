@@ -7,12 +7,13 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import com.nexuslabs.hr.global.request.PatchRequest;
 import com.nexuslabs.hr.global.response.DeleteResult;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validator;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
@@ -129,17 +130,7 @@ public class LeaveTypeService {
     }
 
     private LeaveTypeRequest merge(LeaveTypeResponse current, Map<String, Object> patch) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        patch.forEach((field, value) -> {
-            if (!FIELDS.contains(field)) {
-                errors.put(field, "알 수 없는 항목입니다");
-            } else if (value == null && NOT_NULL.contains(field)) {
-                errors.put(field, "비울 수 없습니다");
-            }
-        });
-        if (!errors.isEmpty()) {
-            throw BusinessException.invalidFields(errors);
-        }
+        PatchRequest.check(patch, FIELDS, NOT_NULL);
         LeaveTypeRequest base = new LeaveTypeRequest(current.name(), current.annualDays(), current.deductsBalance(),
                 current.paid(), current.prorateFirstYear(), current.seniorityStartYears(),
                 current.seniorityIntervalYears(), current.seniorityAddDays(), current.seniorityMaxDays(),

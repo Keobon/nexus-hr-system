@@ -150,7 +150,7 @@ public class LeaveGrantService {
                     request.leaveYear());
             if (balance.remaining() + request.days() < 0) {
                 throw new BusinessException(ErrorCode.LEAVE_INSUFFICIENT_BALANCE,
-                        Map.of("remaining", balance.remaining(), "days", request.days()));
+                        Map.of("remaining", balance.remaining(), "requested", request.days()));
             }
         }
         long id = jdbc.queryForObject("""
