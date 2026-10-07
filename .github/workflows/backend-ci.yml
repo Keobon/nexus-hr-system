@@ -1,0 +1,93 @@
+# 백엔드 CI — develop·main 으로 가는 PR 과 develop 에 들어온 커밋마다 돈다.
+# 1) schema.sql·seed_demo.sql 이 깨지지 않았는지  2) 테스트 전체(규칙 검사 포함)  3) Docker 이미지 빌드
+# DB 는 GitHub 가 띄우는 임시 PostgreSQL 이라 비밀번호가 필요 없다(trust).
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 백엔드 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      DB_USER: postgres
+      DB_NAME: nexus_hr_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: schema.sql 적용 (테스트 DB)
+        run: |
+          createdb nexus_hr_test
+          psql -d nexus_hr_test -v ON_ERROR_STOP=1 -q -f backend/schema.sql
+
+      - name: seed_demo.sql 이 스키마와 맞는지 확인 (별도 DB)
+        run: |
+          createdb nexus_hr_seed
+          psql -d nexus_hr_seed -v ON_ERROR_STOP=1 -q -f backend/schema.sql
+          psql -d nexus_hr_seed -v ON_ERROR_STOP=1 -q -f backend/seed_demo.sql
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '26'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 테스트
+        working-directory: backend
+        run: ./gradlew test --no-daemon
+
+      - name: 결과 요약
+        if: always()
+        working-directory: backend
+        run: python3 ../.github/scripts/test-summary.py build/test-results/test >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 테스트 리포트 올리기 (실패 시)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: backend/build/reports/tests/test
+          retention-days: 7
+
+  docker:
+    name: Docker 이미지 빌드
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: 백엔드 이미지 빌드
+        run: docker build -t nexus-hr-backend backend

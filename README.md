@@ -42,6 +42,16 @@ NEXUS LABS의 실무 인사 관리(근태, 휴가, 급여, 평가, 조직 발령
 ### 2. Mock 데이터 선행 개발
 백엔드 API 완성을 기다리지 마세요! API 명세서에 있는 JSON 응답 예시를 활용해 프론트엔드 내부에 가짜 데이터(Mock)를 두고 화면 UI와 액션을 먼저 개발합니다.
 
+### 3. 실제 백엔드에 붙여 보기 (Docker)
+Java·PostgreSQL을 설치하지 않아도 [Docker Desktop](https://www.docker.com/products/docker-desktop/)만 있으면 백엔드와 데모 데이터가 든 DB를 한 번에 띄울 수 있습니다.
+```bash
+docker compose up --build     # 저장소 최상위 폴더에서. 처음에는 몇 분 걸림
+# → http://localhost:8080/api/...   (데모 회사 2개: 넥서스랩스 · 한빛푸드)
+docker compose down -v        # 끄기 + DB 초기화(다음 실행 때 데모 데이터로 다시 시작)
+```
+- develop에 새 기능이 머지되면 `git pull` 후 다시 `docker compose up --build`
+- 백엔드에는 CORS 설정이 없으므로, 프론트 개발 서버(Vite)의 `server.proxy`로 `/api` 요청을 `http://localhost:8080`으로 넘겨서 호출합니다
+
 ---
 
 ## 🛠️ DB 접속 및 기초 데이터(Seed) 세팅 안내 (백엔드 팀 필수)
@@ -84,6 +94,12 @@ NEXUS LABS의 실무 인사 관리(근태, 휴가, 급여, 평가, 조직 발령
 4. 내 작업 브랜치에 올리기: `git push origin feat/작업명`
 5. 깃허브 웹사이트에 접속해 **Pull Request (PR)** 생성 (목적지: `develop` 브랜치)
 6. 팀원 1명 이상의 리뷰(또는 승인) 후 `develop`으로 Merge(병합) 합니다.
+
+### 2-1. PR 자동 검사 (CI)
+`backend/` 를 바꾼 PR을 올리면 GitHub Actions가 자동으로 검사합니다. PR 화면 아래 **Checks** 에 결과가 나옵니다.
+- **백엔드 테스트** — `schema.sql`·`seed_demo.sql`이 깨지지 않았는지, 전체 테스트, **팀 규칙 검사**(`ArchitectureRuleTest`: 모든 테이블 `company_id` · 엔티티는 `TenantEntity` 상속 · 컨트롤러는 `controller` 패키지와 `/api/` 주소 · 서비스는 `service` 패키지 · 컨트롤러는 DB 직접 접근 금지)
+- **Docker 이미지 빌드** — 프론트용 Docker 실행이 깨지지 않았는지
+- ❌ 이면 **Merge 하지 말고** Checks > Details > Summary 에서 실패한 테스트 이름과 메시지를 확인해 고친 뒤 다시 push 합니다
 
 ### 3. 커밋 메시지 규칙
 - `feat:` 새로운 기능 추가
