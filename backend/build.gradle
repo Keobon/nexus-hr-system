@@ -42,4 +42,6 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 테스트는 application-test.properties(테스트 DB)로 돈다
+	systemProperty 'spring.profiles.active', 'test'
 }
