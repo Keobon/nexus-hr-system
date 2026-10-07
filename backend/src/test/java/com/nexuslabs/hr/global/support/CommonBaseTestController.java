@@ -66,7 +66,7 @@ public class CommonBaseTestController {
 
     @GetMapping("/org-units")
     public ApiResponse<List<String>> orgUnits() {
-        return ApiResponse.ok(em.createQuery("SELECT o.name FROM TestOrgUnit o ORDER BY o.id", String.class)
+        return ApiResponse.ok(em.createQuery("SELECT o.name FROM OrgUnit o ORDER BY o.id", String.class)
                 .getResultList());
     }
 
