@@ -11,10 +11,21 @@ import com.nexuslabs.hr.global.response.DeleteResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
+import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -37,12 +48,23 @@ public class LeaveTypeService {
             rs.getObject("seniority_add_days", Integer.class), rs.getObject("seniority_max_days", Integer.class),
             rs.getInt("sort_order"), rs.getBoolean("is_active"));
 
+    /** PATCH 로 바꿀 수 있는 필드 = 등록 요청의 필드. */
+    private static final Set<String> FIELDS = Arrays.stream(LeaveTypeRequest.class.getRecordComponents())
+            .map(RecordComponent::getName).collect(Collectors.toUnmodifiableSet());
+    /** 비울 수 없는 필드. null 을 보낼 수 있는 것은 근속 가산 4개뿐이다. */
+    private static final Set<String> NOT_NULL = Set.of(
+            "name", "annualDays", "deductsBalance", "paid", "prorateFirstYear", "sortOrder", "isActive");
+
     private final JdbcTemplate jdbc;
     private final AuditLogger auditLogger;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    public LeaveTypeService(JdbcTemplate jdbc, AuditLogger auditLogger) {
+    public LeaveTypeService(JdbcTemplate jdbc, AuditLogger auditLogger, ObjectMapper objectMapper, Validator validator) {
         this.jdbc = jdbc;
         this.auditLogger = auditLogger;
+        this.objectMapper = objectMapper;
+        this.validator = validator;
     }
 
     @Transactional(readOnly = true)
@@ -75,15 +97,20 @@ public class LeaveTypeService {
                 Long.class, user.companyId(), name, request.annualDays(), request.deductsBalance(),
                 !Boolean.FALSE.equals(request.paid()), Boolean.TRUE.equals(request.prorateFirstYear()),
                 request.seniorityStartYears(), request.seniorityIntervalYears(), request.seniorityAddDays(),
-                request.seniorityMaxDays(), sortOrder, !Boolean.FALSE.equals(request.active()));
+                request.seniorityMaxDays(), sortOrder, !Boolean.FALSE.equals(request.isActive()));
         LeaveTypeResponse created = get(user.companyId(), id);
         auditLogger.log(user, AuditAction.CREATE, "LEAVE_TYPE", id, null, created);
         return created;
     }
 
+    /**
+     * API 설계서 1.1 PATCH — 보낸 필드만 바꾸고 null 은 비운다. 현재 값에 병합한 결과를 등록과 같은 규칙으로 검사한다.
+     * 모르는 필드나 비울 수 없는 필드에 null 을 보내면 VALIDATION_ERROR(error.fields).
+     */
     @Transactional
-    public LeaveTypeResponse update(LoginUser user, long leaveTypeId, LeaveTypeRequest request) {
+    public LeaveTypeResponse update(LoginUser user, long leaveTypeId, Map<String, Object> patch) {
         LeaveTypeResponse before = get(user.companyId(), leaveTypeId);
+        LeaveTypeRequest request = merge(before, patch);
         validate(request);
         String name = request.name().trim();
         checkNameUnique(user.companyId(), name, leaveTypeId);
@@ -93,14 +120,45 @@ public class LeaveTypeService {
                                seniority_add_days = ?, seniority_max_days = ?, sort_order = ?, is_active = ?
                         WHERE id = ? AND company_id = ?
                         """,
-                name, request.annualDays(), request.deductsBalance(), !Boolean.FALSE.equals(request.paid()),
-                Boolean.TRUE.equals(request.prorateFirstYear()), request.seniorityStartYears(),
-                request.seniorityIntervalYears(), request.seniorityAddDays(), request.seniorityMaxDays(),
-                Objects.requireNonNullElse(request.sortOrder(), before.sortOrder()),
-                Objects.requireNonNullElse(request.active(), before.active()), leaveTypeId, user.companyId());
+                name, request.annualDays(), request.deductsBalance(), request.paid(), request.prorateFirstYear(),
+                request.seniorityStartYears(), request.seniorityIntervalYears(), request.seniorityAddDays(),
+                request.seniorityMaxDays(), request.sortOrder(), request.isActive(), leaveTypeId, user.companyId());
         LeaveTypeResponse after = get(user.companyId(), leaveTypeId);
         auditLogger.log(user, AuditAction.UPDATE, "LEAVE_TYPE", leaveTypeId, before, after);
         return after;
+    }
+
+    private LeaveTypeRequest merge(LeaveTypeResponse current, Map<String, Object> patch) {
+        Map<String, String> errors = new LinkedHashMap<>();
+        patch.forEach((field, value) -> {
+            if (!FIELDS.contains(field)) {
+                errors.put(field, "알 수 없는 항목입니다");
+            } else if (value == null && NOT_NULL.contains(field)) {
+                errors.put(field, "비울 수 없습니다");
+            }
+        });
+        if (!errors.isEmpty()) {
+            throw BusinessException.invalidFields(errors);
+        }
+        LeaveTypeRequest base = new LeaveTypeRequest(current.name(), current.annualDays(), current.deductsBalance(),
+                current.paid(), current.prorateFirstYear(), current.seniorityStartYears(),
+                current.seniorityIntervalYears(), current.seniorityAddDays(), current.seniorityMaxDays(),
+                current.sortOrder(), current.isActive());
+        Map<String, Object> merged = new LinkedHashMap<>(objectMapper.convertValue(base, new TypeReference<Map<String, Object>>() {}));
+        merged.putAll(patch);
+        LeaveTypeRequest request;
+        try {
+            request = objectMapper.convertValue(merged, LeaveTypeRequest.class);
+        } catch (JacksonException e) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+        Set<ConstraintViolation<LeaveTypeRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> fields = new LinkedHashMap<>();
+            violations.forEach(v -> fields.putIfAbsent(v.getPropertyPath().toString(), v.getMessage()));
+            throw BusinessException.invalidFields(fields);
+        }
+        return request;
     }
 
     /** 부여·신청 내역이 있으면 비활성화(DEACTIVATED), 없으면 삭제(DELETED). */

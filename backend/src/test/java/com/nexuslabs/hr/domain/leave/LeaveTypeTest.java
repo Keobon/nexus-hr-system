@@ -75,7 +75,7 @@ class LeaveTypeTest {
                 .andExpect(jsonPath("$.data.paid").value(true))
                 .andExpect(jsonPath("$.data.prorateFirstYear").value(false))
                 .andExpect(jsonPath("$.data.sortOrder").value(4))
-                .andExpect(jsonPath("$.data.active").value(true));
+                .andExpect(jsonPath("$.data.isActive").value(true));
 
         asAdmin(json(post("/api/leave-types"), REFRESH))
                 .andExpect(status().isConflict())
@@ -97,16 +97,62 @@ class LeaveTypeTest {
     }
 
     @Test
-    void 수정은_전체_값을_보내고_정렬_활성은_빼면_그대로() throws Exception {
+    void 수정은_보낸_필드만_바꾸고_나머지는_그대로() throws Exception {
+        long id = typeId("연차");
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"annualDays\": 20}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("연차"))
+                .andExpect(jsonPath("$.data.annualDays").value(20))
+                .andExpect(jsonPath("$.data.seniorityStartYears").value(3))
+                .andExpect(jsonPath("$.data.seniorityMaxDays").value(25))
+                .andExpect(jsonPath("$.data.sortOrder").value(1))
+                .andExpect(jsonPath("$.data.isActive").value(true));
+
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"isActive\": false}"))
+                .andExpect(jsonPath("$.data.isActive").value(false))
+                .andExpect(jsonPath("$.data.annualDays").value(20));
+    }
+
+    @Test
+    void 수정에서_null은_비우기_근속_가산만_비울_수_있다() throws Exception {
         long id = typeId("연차");
         asAdmin(json(patch("/api/leave-types/" + id), """
-                {"name": "연차", "annualDays": 20, "deductsBalance": true, "prorateFirstYear": true}
+                {"seniorityStartYears": null, "seniorityIntervalYears": null,
+                 "seniorityAddDays": null, "seniorityMaxDays": null}
                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.annualDays").value(20))
                 .andExpect(jsonPath("$.data.seniorityStartYears").doesNotExist())
-                .andExpect(jsonPath("$.data.sortOrder").value(1))
-                .andExpect(jsonPath("$.data.active").value(true));
+                .andExpect(jsonPath("$.data.seniorityMaxDays").doesNotExist())
+                .andExpect(jsonPath("$.data.annualDays").value(15));
+
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"name\": null}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.name").value("비울 수 없습니다"));
+    }
+
+    @Test
+    void 수정_결과가_규칙에_어긋나거나_모르는_필드면_거부() throws Exception {
+        long id = typeId("연차");
+        // 근속 가산 하나만 비움 → 4개 모두 또는 모두 비움 규칙 위반
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"seniorityStartYears\": null}"))
+                .andExpect(status().isBadRequest());
+        // 최대 일수(25)보다 큰 연간 부여일수
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"annualDays\": 30}"))
+                .andExpect(status().isBadRequest());
+        // 형식 검사(@Size)도 병합 결과에 적용
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"name\": \"%s\"}".formatted("가".repeat(51))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.name").exists());
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"annualDays\": \"많이\"}"))
+                .andExpect(status().isBadRequest());
+        // 예전 키 active 는 모르는 필드
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"active\": false}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.active").value("알 수 없는 항목입니다"));
+        // 같은 회사의 다른 종류 이름으로 바꾸기
+        asAdmin(json(patch("/api/leave-types/" + id), "{\"name\": \"병가\"}"))
+                .andExpect(status().isConflict());
     }
 
     @Test

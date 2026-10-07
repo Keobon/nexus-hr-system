@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
-        return respond(e.code(), new ErrorBody(e.code().name(), e.getMessage(), e.details(), null));
+        return respond(e.code(), new ErrorBody(e.code().name(), e.getMessage(), e.details(), e.fields()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

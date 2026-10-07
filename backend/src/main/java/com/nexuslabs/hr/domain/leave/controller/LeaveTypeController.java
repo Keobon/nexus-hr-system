@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /** API 설계서 8장 — 휴가 종류(F-LEAVE-01). */
 @RestController
@@ -50,11 +51,12 @@ public class LeaveTypeController {
         return ApiResponse.ok(leaveTypeService.create(user, request));
     }
 
+    /** 보낸 필드만 바꾼다. null 은 비운다(근속 가산 4개만 비울 수 있다). */
     @PatchMapping("/{id}")
     @RequirePermission(PermissionCode.LEAVE_MANAGE)
     public ApiResponse<LeaveTypeResponse> update(@CurrentUser LoginUser user, @PathVariable long id,
-                                                 @Valid @RequestBody LeaveTypeRequest request) {
-        return ApiResponse.ok(leaveTypeService.update(user, id, request));
+                                                 @RequestBody Map<String, Object> patch) {
+        return ApiResponse.ok(leaveTypeService.update(user, id, patch));
     }
 
     @DeleteMapping("/{id}")
