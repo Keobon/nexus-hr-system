@@ -59,4 +59,39 @@ public class Company {
         this.phone = phone;
         this.email = email;
     }
+
+    /** 회사명 · 사업자등록번호 · 대표자명 · 주소 — 바꿀 때마다 변경 이력을 남기는 네 항목(BR-TEN-004). */
+    public void changeIdentity(String name, String businessRegNo, String ceoName, String address) {
+        this.name = name;
+        this.businessRegNo = businessRegNo;
+        this.ceoName = ceoName;
+        this.address = address;
+    }
+
+    public void changeContact(String phone, String fax, String email, String website) {
+        this.phone = phone;
+        this.fax = fax;
+        this.email = email;
+        this.website = website;
+    }
+
+    public void changeDetails(String nameEn, String corpRegNo, String businessType, String businessItem,
+                              LocalDate foundedDate) {
+        this.nameEn = nameEn;
+        this.corpRegNo = corpRegNo;
+        this.businessType = businessType;
+        this.businessItem = businessItem;
+        this.foundedDate = foundedDate;
+    }
+
+    public void changeLogo(Long logoFileId) {
+        this.logoFileId = logoFileId;
+    }
+
+    /** 회계연도 시작월은 휴가가 부여된 뒤에는 바꿀 수 없다 — 서비스가 먼저 확인한다(F-COMP-02). */
+    public void changeSettings(short payDay, String employeeNoPrefix, short fiscalYearStartMonth) {
+        this.payDay = payDay;
+        this.employeeNoPrefix = employeeNoPrefix;
+        this.fiscalYearStartMonth = fiscalYearStartMonth;
+    }
 }

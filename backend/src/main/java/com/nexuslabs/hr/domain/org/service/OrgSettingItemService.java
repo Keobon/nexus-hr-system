@@ -78,6 +78,16 @@ public abstract class OrgSettingItemService<T extends OrgSettingItem> {
         return DeleteResult.deleted();
     }
 
+    /** 직원 등록·발령처럼 이 항목을 새로 고를 때 쓴다. 없으면 NOT_FOUND, 비활성이면 INACTIVE_REFERENCE. */
+    @Transactional(readOnly = true)
+    public T requireActive(long id) {
+        T item = get(id);
+        if (!item.isActive()) {
+            throw new BusinessException(ErrorCode.INACTIVE_REFERENCE);
+        }
+        return item;
+    }
+
     private T get(long id) {
         return repository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
