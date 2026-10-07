@@ -3,6 +3,7 @@ package com.nexuslabs.hr.domain.account.service;
 import com.nexuslabs.hr.domain.account.dto.AccountRow;
 import com.nexuslabs.hr.domain.account.dto.AccountUpdateRequest;
 import com.nexuslabs.hr.domain.account.dto.TemporaryPasswordResponse;
+import com.nexuslabs.hr.domain.approval.service.ApprovalService;
 import com.nexuslabs.hr.domain.company.service.CompanyBootstrapService;
 import com.nexuslabs.hr.global.audit.AuditAction;
 import com.nexuslabs.hr.global.audit.AuditLogger;
@@ -59,14 +60,17 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator passwordGenerator;
     private final AuditLogger auditLogger;
+    private final ApprovalService approvalService;
     private final Clock clock;
 
     public AccountService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder,
-                          TemporaryPasswordGenerator passwordGenerator, AuditLogger auditLogger, Clock clock) {
+                          TemporaryPasswordGenerator passwordGenerator, AuditLogger auditLogger,
+                          ApprovalService approvalService, Clock clock) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.passwordGenerator = passwordGenerator;
         this.auditLogger = auditLogger;
+        this.approvalService = approvalService;
         this.clock = clock;
     }
 
@@ -141,6 +145,10 @@ public class AccountService {
 
         jdbc.update("UPDATE account SET role_id = ?, is_active = ?, updated_at = now() WHERE employee_id = ? AND company_id = ?",
                 newRoleId, newActive, employeeId, user.companyId());
+        if (before.active() && !newActive) {
+            // 비활성 계정은 승인자 후보가 아니다 — 대기 중인 승인 단계를 재지정 필요로(F-APPR-02)
+            approvalService.markReassignNeeded(user.companyId(), employeeId);
+        }
         auditLogger.log(user, AuditAction.UPDATE, "ACCOUNT", employeeId,
                 Map.of("roleId", before.roleId(), "active", before.active()),
                 Map.of("roleId", newRoleId, "active", newActive));
