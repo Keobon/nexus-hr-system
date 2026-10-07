@@ -84,6 +84,11 @@ public class Company {
         this.foundedDate = foundedDate;
     }
 
+    /** 초기 설정 마법사 완료(F-COMP-03). 다시 미완료로 되돌리는 기능은 없다. */
+    public void completeSetup() {
+        this.setupCompleted = true;
+    }
+
     public void changeLogo(Long logoFileId) {
         this.logoFileId = logoFileId;
     }

@@ -43,4 +43,11 @@ public class Holiday extends CreatedAtEntity {
         this.holidayType = holidayType;
         this.recurring = recurring;
     }
+
+    public void update(LocalDate holidayDate, String name, HolidayType holidayType, boolean recurring) {
+        this.holidayDate = holidayDate;
+        this.name = name;
+        this.holidayType = holidayType;
+        this.recurring = recurring;
+    }
 }
