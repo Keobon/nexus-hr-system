@@ -157,9 +157,11 @@ public class PayrollService {
         return view;
     }
 
-    /** 확정 → 지급완료(처리자 · 일시). 이미 지급완료 → INVALID_STATE. 감사 로그. */
+    /** 확정 → 지급완료(처리자 · 일시). 이미 지급완료 → INVALID_STATE. 감사 로그. 동시 요청은 행 잠금으로 줄 세운다. */
     @Transactional
     public PayrollRunView markPaid(LoginUser user, long runId) {
+        jdbc.query("SELECT id FROM payroll_run WHERE id = ? AND company_id = ? FOR UPDATE", (rs, i) -> rs.getLong(1),
+                runId, user.companyId());
         PayrollRun run = runRepository.findById(runId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (run.getStatus() != PayrollStatus.CONFIRMED) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "이미 지급완료 처리된 정산입니다");

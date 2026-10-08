@@ -320,4 +320,44 @@ class PayrollTest {
         as(executive.id(), get("/api/payroll-runs")).andExpect(status().isOk());
         as(kim.id(), get("/api/statistics/labor-cost?payMonth=2030-03")).andExpect(status().isForbidden());
     }
+
+    @Test
+    void 지급완료를_동시에_눌러도_한_번만_처리된다() throws Exception {
+        long runId = jdbc.queryForObject("""
+                        INSERT INTO payroll_run (company_id, pay_month, pay_date, company_name_snap, ceo_name_snap,
+                                                 business_reg_no_snap, company_address_snap, confirmed_by)
+                        VALUES (?, '2030-01', DATE '2030-02-10', '회사', '대표', '000-00-00000', '서울', ?) RETURNING id
+                        """,
+                Long.class, company.id(), company.adminId());
+        java.util.List<Integer> statuses = together(6, () -> admin(post("/api/payroll-runs/" + runId + "/paid")));
+
+        assertThat(statuses).containsOnlyOnce(200);
+        assertThat(statuses.stream().filter(s -> s == 409).count()).isEqualTo(5);
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE company_id = ? AND target_type = 'PAYROLL_RUN' AND action = 'UPDATE'",
+                Long.class, company.id())).isEqualTo(1);
+    }
+
+    /** 같은 요청을 동시에 여러 번 보내고 HTTP 상태만 모은다. */
+    private java.util.List<Integer> together(int times, java.util.concurrent.Callable<ResultActions> call) throws Exception {
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(times);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.List<java.util.concurrent.Future<Integer>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < times; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return call.call().andReturn().getResponse().getStatus();
+                }));
+            }
+            start.countDown();
+            java.util.List<Integer> statuses = new java.util.ArrayList<>();
+            for (java.util.concurrent.Future<Integer> f : futures) {
+                statuses.add(f.get());
+            }
+            return statuses;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }
