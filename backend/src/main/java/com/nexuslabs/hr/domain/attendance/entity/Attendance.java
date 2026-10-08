@@ -113,4 +113,44 @@ public class Attendance extends BaseTimeEntity {
         this.workType = workType;
         this.placeMemo = placeMemo;
     }
+
+    /** 관리자가 기록이 없는 날에 근태를 만든다(F-ATT-04). 값은 {@link #correct} 로 채운다. */
+    public static Attendance forCorrection(Employee employee, LocalDate workDate, AttendanceStatus status) {
+        return new Attendance(employee, workDate, status);
+    }
+
+    /**
+     * 관리자 정정(F-ATT-04). 값을 바꾸고 기록 방식을 관리자 정정(ADMIN)으로 남긴다.
+     * 휴가 · 출장으로 정정하면 그 휴가 · 출장에 연결하고 출퇴근 기록을 비운다. 출퇴근 기록으로 정정하면 연결을 끊는다.
+     * 어떤 상태로 바꿀 수 있는지는 서비스가 먼저 확인한다.
+     */
+    public void correct(AttendanceStatus status, WorkType workType, OffsetDateTime checkInAt, OffsetDateTime checkOutAt,
+                        LeaveRequest leaveRequest, BusinessTrip businessTrip, String reason, long correctedBy,
+                        OffsetDateTime correctedAt) {
+        this.status = status;
+        this.workType = workType;
+        this.checkInAt = checkInAt;
+        this.checkOutAt = checkOutAt;
+        this.checkInMethod = RecordMethod.ADMIN;
+        this.checkOutMethod = checkOutAt != null ? RecordMethod.ADMIN : null;
+        this.leaveRequest = leaveRequest;
+        this.businessTrip = businessTrip;
+        if (checkInAt == null) {
+            this.checkInLat = null;
+            this.checkInLng = null;
+            this.placeMemo = null;
+        }
+        if (checkOutAt == null) {
+            this.checkOutLat = null;
+            this.checkOutLng = null;
+        }
+        confirm(reason, correctedBy, correctedAt);
+    }
+
+    /** 값은 그대로 두고 사유만 남긴다 — 휴가 · 출장과 겹친 날에 "실제로 일했다"고 확인하는 정정(F-ATT-04). */
+    public void confirm(String reason, long correctedBy, OffsetDateTime correctedAt) {
+        this.correctionReason = reason;
+        this.correctedBy = correctedBy;
+        this.correctedAt = correctedAt;
+    }
 }
