@@ -8,4 +8,10 @@ import java.util.List;
 public interface EmployeeFieldDefRepository extends JpaRepository<EmployeeFieldDef, Long> {
 
     List<EmployeeFieldDef> findByActiveTrueOrderBySortOrderAscIdAsc();
+
+    List<EmployeeFieldDef> findAllByOrderBySortOrderAscIdAsc();
+
+    boolean existsByName(String name);
+
+    boolean existsByNameAndIdNot(String name, Long id);
 }

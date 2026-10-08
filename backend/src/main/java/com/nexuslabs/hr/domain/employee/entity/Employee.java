@@ -133,6 +133,14 @@ public class Employee extends BaseTimeEntity {
         this.hrMemo = hrMemo;
     }
 
+    /** 급여 계좌(F-PAY-03). 계좌번호는 암호문과 뒤 4자리만 받는다 — 원문은 엔티티에 두지 않는다. */
+    public void changeBankAccount(String bankName, String accountEnc, String accountLast4, String holder) {
+        this.bankName = bankName;
+        this.bankAccountEnc = accountEnc;
+        this.bankAccountLast4 = accountLast4;
+        this.bankAccountHolder = holder;
+    }
+
     /** 재직상태 변경(F-EMP-04). 이력 추가와 퇴직 연쇄 처리는 EmploymentStatusService 가 한다. */
     public void changeStatus(EmpStatus status) {
         this.status = status;

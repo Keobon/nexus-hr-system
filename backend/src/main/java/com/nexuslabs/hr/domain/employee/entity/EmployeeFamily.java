@@ -61,4 +61,14 @@ public class EmployeeFamily extends BaseTimeEntity {
         this.disabled = disabled;
         this.cohabiting = cohabiting;
     }
+
+    public void update(String name, FamilyRelation relation, LocalDate birthDate, boolean taxDependent,
+                       boolean disabled, boolean cohabiting) {
+        this.name = name;
+        this.relation = relation;
+        this.birthDate = birthDate;
+        this.taxDependent = taxDependent;
+        this.disabled = disabled;
+        this.cohabiting = cohabiting;
+    }
 }
