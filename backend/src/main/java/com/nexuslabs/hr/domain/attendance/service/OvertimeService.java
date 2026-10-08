@@ -35,7 +35,6 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * 연장근무 신청(F-ATT-06, BR-ATT-004). 승인은 승인 엔진이 하고, 확정·반려는 {@link OvertimeApprovalTarget}이 한다.
@@ -49,14 +48,16 @@ public class OvertimeService {
     private final OvertimeRequestRepository repository;
     private final ApprovalService approvalService;
     private final ScopeResolver scopeResolver;
+    private final RequestAccess access;
     private final JdbcTemplate jdbc;
     private final EntityManager em;
 
     public OvertimeService(OvertimeRequestRepository repository, ApprovalService approvalService,
-                           ScopeResolver scopeResolver, JdbcTemplate jdbc, EntityManager em) {
+                           ScopeResolver scopeResolver, RequestAccess access, JdbcTemplate jdbc, EntityManager em) {
         this.repository = repository;
         this.approvalService = approvalService;
         this.scopeResolver = scopeResolver;
+        this.access = access;
         this.jdbc = jdbc;
         this.em = em;
     }
@@ -68,7 +69,7 @@ public class OvertimeService {
     @Transactional
     public OvertimeResponse create(LoginUser user, OvertimeCreateRequest request) {
         long cid = user.companyId();
-        requireActive(cid, user.employeeId());
+        access.requireActive(cid, user.employeeId());
         LocalDate workDate = request.workDate();
         if (settled(cid, YearMonth.from(workDate))) {
             throw new BusinessException(ErrorCode.PAY_MONTH_SETTLED);
@@ -98,13 +99,7 @@ public class OvertimeService {
     @Transactional(readOnly = true)
     public OvertimeResponse get(LoginUser user, long id) {
         OvertimeResponse overtime = detail(user.companyId(), id, user.employeeId());
-        boolean approver = overtime.approvalSteps().stream()
-                .anyMatch(s -> s.approverId() != null && s.approverId() == user.employeeId());
-        if (overtime.employeeId() != user.employeeId() && !approver) {
-            Scope scope = scopeResolver.findScope(user, PermissionCode.ATTENDANCE_READ)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
-            scope.assertContains(overtime.employeeId());
-        }
+        access.checkViewer(user, overtime.employeeId(), overtime.approvalSteps());
         return overtime;
     }
 
@@ -213,11 +208,11 @@ public class OvertimeService {
                         + " ORDER BY o.work_date DESC, o.id DESC LIMIT ? OFFSET ?",
                 (rs, i) -> new OvertimeRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
                         rs.getString("org_unit_name"), rs.getObject("work_date", LocalDate.class),
-                        seoul(rs.getObject("planned_start", OffsetDateTime.class)),
-                        seoul(rs.getObject("planned_end", OffsetDateTime.class)), rs.getInt("requested_minutes"),
+                        RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class)),
+                        RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class)), rs.getInt("requested_minutes"),
                         rs.getObject("approved_minutes", Integer.class), rs.getString("reason"),
                         RequestStatus.valueOf(rs.getString("status")),
-                        seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
+                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(companyId, ApprovalWorkType.OVERTIME,
                 rows.stream().map(OvertimeRow::id).toList());
@@ -250,24 +245,15 @@ public class OvertimeService {
                         (rs, i) -> new OvertimeResponse(rs.getLong("id"), rs.getLong("employee_id"),
                                 rs.getString("employee_name"), rs.getString("org_unit_name"),
                                 rs.getObject("work_date", LocalDate.class),
-                                seoul(rs.getObject("planned_start", OffsetDateTime.class)),
-                                seoul(rs.getObject("planned_end", OffsetDateTime.class)),
+                                RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class)),
+                                RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class)),
                                 rs.getInt("requested_minutes"), rs.getObject("approved_minutes", Integer.class),
                                 rs.getString("reason"), RequestStatus.valueOf(rs.getString("status")),
-                                rs.getString("cancel_reason"), seoul(rs.getObject("created_at", OffsetDateTime.class)),
+                                rs.getString("cancel_reason"), RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)),
                                 steps),
                         id, companyId)
                 .stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
-    }
-
-    /** 재직중만 신청한다(API 설계서 1.7). 퇴직자는 로그인 단계에서 막힌다. */
-    private void requireActive(long companyId, long employeeId) {
-        Optional<String> status = jdbc.queryForList("SELECT status::text FROM employee WHERE id = ? AND company_id = ?",
-                String.class, employeeId, companyId).stream().findFirst();
-        if (!"ACTIVE".equals(status.orElse(null))) {
-            throw new BusinessException(ErrorCode.EMPLOYEE_NOT_ACTIVE);
-        }
     }
 
     private boolean settled(long companyId, YearMonth month) {
@@ -297,9 +283,5 @@ public class OvertimeService {
 
     private static OffsetDateTime at(LocalDate date, LocalTime time) {
         return date.atTime(time).atZone(ClockConfig.ZONE).toOffsetDateTime();
-    }
-
-    private static OffsetDateTime seoul(OffsetDateTime t) {
-        return t == null ? null : t.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime();
     }
 }

@@ -65,4 +65,34 @@ public class BusinessTrip extends BaseTimeEntity {
         this.endDate = endDate;
         this.estimatedCost = estimatedCost;
     }
+
+    /** 최종 승인. 근태(ON_BUSINESS_TRIP)는 승인 대상이 같은 트랜잭션에서 만든다. */
+    public void approve() {
+        requirePending();
+        this.status = RequestStatus.APPROVED;
+    }
+
+    public void reject() {
+        requirePending();
+        this.status = RequestStatus.REJECTED;
+    }
+
+    /** 신청자 철회 · 퇴직 자동 취소. 승인된 출장의 취소는 없다(F-ATT-07). */
+    public void cancel(String cancelReason) {
+        requirePending();
+        this.status = RequestStatus.CANCELLED;
+        this.cancelReason = cancelReason;
+    }
+
+    /** 결과 보고 작성·수정 — 승인은 받지 않는다. */
+    public void writeReport(String reportText, OffsetDateTime at) {
+        this.reportText = reportText;
+        this.reportedAt = at;
+    }
+
+    private void requirePending() {
+        if (status != RequestStatus.PENDING) {
+            throw new IllegalStateException("승인대기가 아닌 출장: " + id);
+        }
+    }
 }

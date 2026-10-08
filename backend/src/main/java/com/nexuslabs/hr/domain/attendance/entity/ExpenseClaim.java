@@ -66,4 +66,28 @@ public class ExpenseClaim extends BaseTimeEntity {
     public void addLine(ExpenseClaimLine line) {
         lines.add(line);
     }
+
+    /** 최종 승인 → 정산 대기(paystub 없음). 다음 급여 정산이 명세서를 연결한다(BR-PAY-012). */
+    public void approve() {
+        requirePending();
+        this.status = RequestStatus.APPROVED;
+    }
+
+    public void reject() {
+        requirePending();
+        this.status = RequestStatus.REJECTED;
+    }
+
+    /** 신청자 철회 · 퇴직 자동 취소. */
+    public void cancel(String cancelReason) {
+        requirePending();
+        this.status = RequestStatus.CANCELLED;
+        this.cancelReason = cancelReason;
+    }
+
+    private void requirePending() {
+        if (status != RequestStatus.PENDING) {
+            throw new IllegalStateException("승인대기가 아닌 경비 청구: " + id);
+        }
+    }
 }
