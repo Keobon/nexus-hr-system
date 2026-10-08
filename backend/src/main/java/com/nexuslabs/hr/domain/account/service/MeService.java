@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.account.service;
 
 import com.nexuslabs.hr.domain.account.dto.MeResponse;
+import com.nexuslabs.hr.domain.attendance.service.AttendanceCorrectionService;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.permission.PermissionReader;
@@ -23,11 +24,14 @@ public class MeService {
     private final JdbcTemplate jdbc;
     private final PermissionReader permissionReader;
     private final ScopeResolver scopeResolver;
+    private final AttendanceCorrectionService attendanceCorrectionService;
 
-    public MeService(JdbcTemplate jdbc, PermissionReader permissionReader, ScopeResolver scopeResolver) {
+    public MeService(JdbcTemplate jdbc, PermissionReader permissionReader, ScopeResolver scopeResolver,
+                     AttendanceCorrectionService attendanceCorrectionService) {
         this.jdbc = jdbc;
         this.permissionReader = permissionReader;
         this.scopeResolver = scopeResolver;
+        this.attendanceCorrectionService = attendanceCorrectionService;
     }
 
     @Transactional(readOnly = true)
@@ -84,21 +88,9 @@ public class MeService {
                 ? count("SELECT count(*) FROM approval_step WHERE company_id = ? AND status = 'PENDING' AND needs_reassign", cid)
                 : null;
         // 정정 대상(F-ATT-04): 퇴근미기록 + 출근 기록이 있는 날에 휴가·출장이 승인된 충돌
+        // 정정 목록(GET /api/attendances/corrections)과 같은 조건 — 한 곳(B-11)에서 센다
         Long attendanceCorrections = granted.containsKey(PermissionCode.ATTENDANCE_MANAGE)
-                ? count("""
-                SELECT count(*) FROM attendance a
-                WHERE a.company_id = ?
-                  AND (a.status = 'MISSING_CHECKOUT'
-                       OR (a.check_in_at IS NOT NULL AND (
-                            EXISTS (SELECT 1 FROM leave_request l
-                                    WHERE l.company_id = a.company_id AND l.employee_id = a.employee_id
-                                      AND l.status IN ('APPROVED', 'CANCEL_REQUESTED')
-                                      AND a.work_date BETWEEN l.start_date AND l.end_date)
-                         OR EXISTS (SELECT 1 FROM business_trip b
-                                    WHERE b.company_id = a.company_id AND b.employee_id = a.employee_id
-                                      AND b.status = 'APPROVED'
-                                      AND a.work_date BETWEEN b.start_date AND b.end_date))))
-                """, cid)
+                ? attendanceCorrectionService.countCorrections(cid)
                 : null;
         return new MeResponse.Todos(approvalsPending, evaluationsToSubmit, reassignNeeded, attendanceCorrections);
     }
