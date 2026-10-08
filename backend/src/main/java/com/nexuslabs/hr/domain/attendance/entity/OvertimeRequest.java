@@ -58,4 +58,29 @@ public class OvertimeRequest extends BaseTimeEntity {
         this.requestedMinutes = requestedMinutes;
         this.reason = reason;
     }
+
+    /** 최종 승인 — 마지막 단계가 인정한 시간(즉시 승인이면 신청 시간)으로 확정한다. */
+    public void approve(int approvedMinutes) {
+        requirePending();
+        this.status = RequestStatus.APPROVED;
+        this.approvedMinutes = approvedMinutes;
+    }
+
+    public void reject() {
+        requirePending();
+        this.status = RequestStatus.REJECTED;
+    }
+
+    /** 신청자 철회 · 퇴직 자동 취소. 퇴직이면 사유를 남긴다. */
+    public void cancel(String cancelReason) {
+        requirePending();
+        this.status = RequestStatus.CANCELLED;
+        this.cancelReason = cancelReason;
+    }
+
+    private void requirePending() {
+        if (status != RequestStatus.PENDING) {
+            throw new IllegalStateException("승인대기가 아닌 연장근무 신청: " + id);
+        }
+    }
 }
