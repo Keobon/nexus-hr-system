@@ -32,4 +32,16 @@ public class ExpenseType extends TenantEntity {
         this.receiptRequired = receiptRequired;
         this.sortOrder = sortOrder;
     }
+
+    public void update(String name, boolean receiptRequired, int sortOrder, boolean active) {
+        this.name = name;
+        this.receiptRequired = receiptRequired;
+        this.sortOrder = sortOrder;
+        this.active = active;
+    }
+
+    /** 청구에 쓰인 종류는 지우지 않고 선택지에서만 뺀다(F-ATT-09). */
+    public void deactivate() {
+        this.active = false;
+    }
 }
