@@ -39,6 +39,7 @@ public class GlobalExceptionHandler {
             Map.entry("ux_expense_claim_active", ErrorCode.EXPENSE_CLAIM_DUPLICATE),
             Map.entry("ux_pay_item_attendance", ErrorCode.BUSINESS_RULE_VIOLATION),
             Map.entry("ux_pay_item_trip_expense", ErrorCode.BUSINESS_RULE_VIOLATION),
+            Map.entry("payroll_run_company_id_pay_month_key", ErrorCode.PAY_MONTH_SETTLED),
             Map.entry("attendance_employee_id_work_date_key", ErrorCode.ATT_ALREADY_CHECKED_IN),
             Map.entry("_daterange_excl", ErrorCode.PERIOD_OVERLAP),
             Map.entry("_name_key", ErrorCode.DUPLICATE_NAME),
