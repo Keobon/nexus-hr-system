@@ -132,4 +132,9 @@ public class Employee extends BaseTimeEntity {
     public void changeHrMemo(String hrMemo) {
         this.hrMemo = hrMemo;
     }
+
+    /** 재직상태 변경(F-EMP-04). 이력 추가와 퇴직 연쇄 처리는 EmploymentStatusService 가 한다. */
+    public void changeStatus(EmpStatus status) {
+        this.status = status;
+    }
 }
