@@ -6,6 +6,7 @@ import com.nexuslabs.hr.domain.approval.service.ApprovalWorkType;
 import com.nexuslabs.hr.domain.approval.service.TargetSummary;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +17,9 @@ import java.util.Map;
  * 승인 엔진 테스트용 가짜 업무(@Import 한 테스트에서만 쓰인다). 신청 테이블 없이 메모리에 신청자·신청 시간을 두고
  * 확정·반려 콜백이 불렸는지 기록한다.
  *
- * <p>⚠️ B-08(휴가) · B-12(연장근무·출장·경비)에서 실제 ApprovalTarget 을 만들면 이 테스트 컨텍스트에서
- * "ApprovalTarget 이 두 개다" 로 실패한다. 그때 해당 종류를 아래 TYPES 에서 빼고 실제 신청 흐름으로 테스트한다.
+ * <p>가짜 빈은 모두 @Primary 다 — 실제 ApprovalTarget(B-08 휴가 · B-12 연장근무·출장·경비)이 생겨도
+ * 이 설정을 @Import 한 테스트에서는 가짜가 쓰인다(ApprovalTargetRegistry 가 @Primary 를 고른다).
+ * 실제 업무 흐름은 각 영역 테스트에서 이 설정 없이 확인한다.
  */
 @TestConfiguration
 public class FakeApprovalTargets {
@@ -31,11 +33,11 @@ public class FakeApprovalTargets {
         return new Registry(fakes);
     }
 
-    @Bean public ApprovalTarget fakeLeave() { return fake(ApprovalWorkType.LEAVE); }
-    @Bean public ApprovalTarget fakeLeaveCancel() { return fake(ApprovalWorkType.LEAVE_CANCEL); }
-    @Bean public ApprovalTarget fakeOvertime() { return fake(ApprovalWorkType.OVERTIME); }
-    @Bean public ApprovalTarget fakeBusinessTrip() { return fake(ApprovalWorkType.BUSINESS_TRIP); }
-    @Bean public ApprovalTarget fakeTripExpense() { return fake(ApprovalWorkType.TRIP_EXPENSE); }
+    @Bean @Primary public ApprovalTarget fakeLeave() { return fake(ApprovalWorkType.LEAVE); }
+    @Bean @Primary public ApprovalTarget fakeLeaveCancel() { return fake(ApprovalWorkType.LEAVE_CANCEL); }
+    @Bean @Primary public ApprovalTarget fakeOvertime() { return fake(ApprovalWorkType.OVERTIME); }
+    @Bean @Primary public ApprovalTarget fakeBusinessTrip() { return fake(ApprovalWorkType.BUSINESS_TRIP); }
+    @Bean @Primary public ApprovalTarget fakeTripExpense() { return fake(ApprovalWorkType.TRIP_EXPENSE); }
 
     private Fake fake(ApprovalWorkType type) {
         return fakes.computeIfAbsent(type, Fake::new);
