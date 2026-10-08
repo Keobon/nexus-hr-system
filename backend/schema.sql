@@ -215,7 +215,7 @@ CREATE TABLE role_permission (
   permission_code permission_code NOT NULL,
   scope           perm_scope NOT NULL,
   UNIQUE (role_id, permission_code),
-  -- 팀 범위를 고를 수 있는 코드는 6개뿐(부록 A)
+  -- 팀 범위를 고를 수 있는 코드는 5개뿐(부록 A)
   CHECK (scope = 'ALL' OR permission_code IN
         ('EMPLOYEE_READ','ATTENDANCE_READ','LEAVE_READ','ASSIGNMENT_READ','EVAL_READ'))
 );
