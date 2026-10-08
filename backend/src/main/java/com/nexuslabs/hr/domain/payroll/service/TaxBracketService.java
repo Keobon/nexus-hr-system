@@ -48,6 +48,8 @@ public class TaxBracketService {
         List<TaxBrackets.Bracket> brackets = request.brackets().stream()
                 .sorted(Comparator.comparingLong(TaxBrackets.Bracket::lowerBound)).toList();
         check(brackets);
+        // 동시에 저장하면 뒤 요청의 DELETE 가 앞 요청의 새 행을 못 보고 INSERT 가 유일 제약에 걸린다 — 회사 행으로 줄 세운다
+        jdbc.query("SELECT id FROM company WHERE id = ? FOR UPDATE", (rs, i) -> rs.getLong(1), user.companyId());
         TaxBrackets before = get(user.companyId());
         jdbc.update("DELETE FROM tax_bracket WHERE company_id = ?", user.companyId());
         jdbc.batchUpdate("""

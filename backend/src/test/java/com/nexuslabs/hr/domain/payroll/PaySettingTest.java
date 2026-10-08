@@ -312,4 +312,39 @@ class PaySettingTest {
         }
         admin(get("/api/tax-brackets")).andExpect(jsonPath("$.data.brackets.length()").value(2));
     }
+
+    @Test
+    void 세율_구간을_동시에_저장해도_모두_성공한다() throws Exception {
+        String body = """
+                {"brackets": [{"lowerBound": 0, "upperBound": 3000000, "rate": 5, "progressiveDeduction": 0},
+                              {"lowerBound": 3000000, "upperBound": null, "rate": 20, "progressiveDeduction": 450000}]}""";
+        java.util.List<Integer> statuses = together(6, () -> admin(json(put("/api/tax-brackets"), body)));
+
+        assertThat(statuses).containsOnly(200);                                  // 유일 제약에 걸려 500 이 나지 않는다
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tax_bracket WHERE company_id = ?", Long.class,
+                company.id())).isEqualTo(2);
+    }
+
+    /** 같은 요청을 동시에 여러 번 보내고 HTTP 상태만 모은다. */
+    private java.util.List<Integer> together(int times, java.util.concurrent.Callable<ResultActions> call) throws Exception {
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(times);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.List<java.util.concurrent.Future<Integer>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < times; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return call.call().andReturn().getResponse().getStatus();
+                }));
+            }
+            start.countDown();
+            java.util.List<Integer> statuses = new java.util.ArrayList<>();
+            for (java.util.concurrent.Future<Integer> f : futures) {
+                statuses.add(f.get());
+            }
+            return statuses;
+        } finally {
+            pool.shutdownNow();
+        }
+    }
 }

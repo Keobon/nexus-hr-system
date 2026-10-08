@@ -19,6 +19,7 @@ import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
 import com.nexuslabs.hr.global.request.PatchRequest;
 import jakarta.persistence.EntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,8 @@ public class AttendanceCorrectionService {
     private static final Set<WorkType> SELECTABLE_WORK_TYPES = Set.of(WorkType.OFFICE, WorkType.REMOTE, WorkType.FIELD);
     private static final int REASON_MAX_LENGTH = 255;
     private static final String SETTLED_WARNING = "PAY_MONTH_SETTLED";
+    /** 직원 · 날짜 유일 제약(schema.sql). */
+    private static final String ATTENDANCE_UNIQUE = "attendance_employee_id_work_date_key";
 
     private final AttendanceRepository attendanceRepository;
     private final TodayStatusReader todayStatusReader;
@@ -145,7 +148,15 @@ public class AttendanceCorrectionService {
         Attendance attendance = Attendance.forCorrection(em.getReference(Employee.class, request.employeeId()),
                 request.workDate(), values.status());
         apply(attendance, values, request.reason().trim(), user);
-        attendanceRepository.saveAndFlush(attendance);
+        try {
+            attendanceRepository.saveAndFlush(attendance);
+        } catch (DataIntegrityViolationException e) {
+            // 사전 검사와 저장 사이에 그날 근태가 생긴 경우(동시 요청 · 본인 출근) — 출근 API 의 에러 코드가 아니라 문서대로
+            if (String.valueOf(e.getMostSpecificCause().getMessage()).contains(ATTENDANCE_UNIQUE)) {
+                throw new BusinessException(ErrorCode.INVALID_STATE, "그날 근태가 이미 있습니다. 그 기록을 정정하세요");
+            }
+            throw e;
+        }
         auditLogger.log(user, AuditAction.CREATE, "ATTENDANCE", attendance.getId(), null, snapshot(attendance));
         return response(user.companyId(), attendance);
     }
@@ -165,6 +176,7 @@ public class AttendanceCorrectionService {
         WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
         List<CorrectionItem> items = new ArrayList<>();
         jdbc.query("""
+                        SELECT * FROM (
                         SELECT a.id, a.employee_id, e.employee_no, e.name, o.name AS org_unit_name, a.work_date,
                                a.status::text AS status, a.work_type::text AS work_type, a.check_in_at, a.check_out_at,
                                a.corrected_at,
@@ -188,7 +200,14 @@ public class AttendanceCorrectionService {
                         WHERE a.company_id = ? AND a.check_in_at IS NOT NULL
                           AND (a.status = 'MISSING_CHECKOUT' OR (a.status = 'CHECKED_IN' AND a.work_date < ?)
                                OR l.id IS NOT NULL OR b.id IS NOT NULL)
-                        ORDER BY a.work_date, a.id
+                        ) x
+                        -- 승인 뒤에 정정(확인)한 충돌은 여기서 뺀다 — 확인이 쌓여도 읽는 행이 늘지 않는다
+                        WHERE x.status = 'MISSING_CHECKOUT' OR (x.status = 'CHECKED_IN' AND x.work_date < ?)
+                           OR (x.leave_id IS NOT NULL
+                               AND (x.corrected_at IS NULL OR x.corrected_at <= x.leave_approved_at))
+                           OR (x.trip_id IS NOT NULL
+                               AND (x.corrected_at IS NULL OR x.corrected_at <= x.trip_approved_at))
+                        ORDER BY x.work_date, x.id
                         """,
                 rs -> {
                     LocalDate workDate = rs.getObject("work_date", LocalDate.class);
@@ -221,7 +240,7 @@ public class AttendanceCorrectionService {
                                 seoul(rs.getObject("check_out_at", OffsetDateTime.class)), conflict));
                     }
                 },
-                companyId, Date.valueOf(openBefore));
+                companyId, Date.valueOf(openBefore), Date.valueOf(openBefore));
         return items;
     }
 
