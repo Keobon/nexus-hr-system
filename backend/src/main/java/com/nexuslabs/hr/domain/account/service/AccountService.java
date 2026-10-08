@@ -18,6 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -175,6 +176,26 @@ public class AccountService {
                 Map.of("roleId", before.roleId(), "active", before.active()),
                 Map.of("roleId", newRoleId, "active", newActive));
         return row(user, employeeId);
+    }
+
+    /**
+     * 퇴직 처리(B-10)가 같은 트랜잭션에서 부른다 — 계정 비활성(BR-AUTH-002) + 감사 로그(BR-AUDIT-001).
+     * 마지막 활성 최고 관리자면 LAST_SUPER_ADMIN. 승인자 재지정 표시는 퇴직 처리가 순서대로 따로 부른다.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void deactivateForResignation(LoginUser user, long employeeId) {
+        AccountState before = lock(user.companyId(), employeeId);
+        if (!before.active()) {
+            return;
+        }
+        if (before.superAdmin() && otherActiveSuperAdmins(user.companyId(), employeeId) == 0) {
+            throw new BusinessException(ErrorCode.LAST_SUPER_ADMIN);
+        }
+        jdbc.update("UPDATE account SET is_active = FALSE, updated_at = now() WHERE employee_id = ? AND company_id = ?",
+                employeeId, user.companyId());
+        auditLogger.log(user, AuditAction.UPDATE, "ACCOUNT", employeeId,
+                Map.of("roleId", before.roleId(), "active", true),
+                Map.of("roleId", before.roleId(), "active", false));
     }
 
     @Transactional
