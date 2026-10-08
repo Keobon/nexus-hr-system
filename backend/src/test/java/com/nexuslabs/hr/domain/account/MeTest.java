@@ -100,6 +100,38 @@ class MeTest {
     }
 
     @Test
+    void 정정_배지는_정정_목록과_같은_조건으로_센다() throws Exception {
+        TestFixture.Employee staff = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", false);
+        // 9월에도 월–금 근무가 되도록 지난 근무시간 행을 넣는다(회사 등록 때 행은 등록일부터라서)
+        jdbc.update("""
+                INSERT INTO work_schedule (company_id, effective_from, start_time, end_time, break_minutes,
+                                           late_grace_minutes, night_start, night_end, overtime_approval_required, work_days)
+                VALUES (?, DATE '2026-01-01', '09:00', '18:00', 60, 0, '22:00', '06:00', TRUE, 31)""", company.id());
+        long annual = jdbc.queryForObject("SELECT id FROM leave_type WHERE company_id = ? AND name = '연차'",
+                Long.class, company.id());
+        // 승인된 휴가 9/4(금)–9/7(월)
+        jdbc.update("""
+                INSERT INTO leave_request (company_id, employee_id, leave_type_id, leave_year, start_date, end_date, days, status)
+                VALUES (?, ?, ?, 2026, DATE '2026-09-04', DATE '2026-09-07', 2, 'APPROVED')""",
+                company.id(), staff.id(), annual);
+        jdbc.update("""
+                INSERT INTO attendance (company_id, employee_id, work_date, status, check_in_at, check_out_at, corrected_at)
+                VALUES (?, ?, DATE '2026-09-04', 'CHECKED_OUT', TIMESTAMPTZ '2026-09-04 09:00+09', TIMESTAMPTZ '2026-09-04 18:00+09', NULL),
+                       (?, ?, DATE '2026-09-05', 'CHECKED_OUT', TIMESTAMPTZ '2026-09-05 09:00+09', TIMESTAMPTZ '2026-09-05 18:00+09', NULL),
+                       (?, ?, DATE '2026-09-07', 'CHECKED_OUT', TIMESTAMPTZ '2026-09-07 09:00+09', TIMESTAMPTZ '2026-09-07 18:00+09',
+                        now() + INTERVAL '1 minute'),
+                       (?, ?, DATE '2026-09-10', 'CHECKED_IN',  TIMESTAMPTZ '2026-09-10 09:00+09', NULL, NULL)""",
+                company.id(), staff.id(), company.id(), staff.id(), company.id(), staff.id(), company.id(), staff.id());
+        // 센다: 9/4 휴가 근무일 충돌 · 9/10 지난 날짜인데 아직 출근 상태
+        // 안 센다: 9/5 휴가 기간 안 토요일 출근 · 9/7 관리자가 휴가 승인 뒤 "확인"한 충돌
+        me(company.adminId())
+                .andExpect(jsonPath("$.data.todos.attendanceCorrections").value(2));
+        mvc.perform(get("/api/attendances/corrections")
+                        .header("Authorization", fixture.token(company.adminId(), company.id())))
+                .andExpect(jsonPath("$.data.length()").value(2));
+    }
+
+    @Test
     void 비밀번호_변경_전에도_부를_수_있다() throws Exception {
         TestFixture.Employee temp = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", true);
         me(temp.id())
