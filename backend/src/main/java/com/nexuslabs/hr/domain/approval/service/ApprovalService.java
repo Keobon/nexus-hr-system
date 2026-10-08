@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -121,6 +123,48 @@ public class ApprovalService {
                          ORDER BY s.round, s.step_order
                         """,
                 stepMapper(viewerId), companyId, workType.name(), targetId);
+    }
+
+    /**
+     * 목록 행마다 붙일 현재 승인 진행을 쿼리 한 번으로 모은다(API 설계서 8장 "휴가 신청 목록 행", 역할 분담 v2 2.1).
+     * 가장 최근 회차에서 — 승인대기 단계가 있으면 그 단계, 없으면 마지막으로 처리(승인·반려)된 단계.
+     * 휴가(LEAVE)는 취소 요청 단계(LEAVE_CANCEL)가 있으면 그쪽이 최근 회차다.
+     * 처리된 단계가 하나도 없으면(모든 단계 생략 = 즉시 승인, 아무도 처리하기 전 철회) 맵에 넣지 않는다 → 화면은 null.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, CurrentStep> currentSteps(long companyId, ApprovalWorkType workType, Collection<Long> targetIds) {
+        Map<Long, CurrentStep> result = new HashMap<>();
+        if (targetIds.isEmpty()) {
+            return result;
+        }
+        String[] workTypes = workType == ApprovalWorkType.LEAVE
+                ? new String[]{ApprovalWorkType.LEAVE.name(), ApprovalWorkType.LEAVE_CANCEL.name()}
+                : new String[]{workType.name()};
+        jdbc.query("""
+                        WITH steps AS (
+                            SELECT s.target_id, s.step_order, s.status, s.approver_id,
+                                   count(*) OVER (PARTITION BY s.target_id, s.work_type, s.round) AS total_steps,
+                                   dense_rank() OVER (PARTITION BY s.target_id
+                                                      ORDER BY (s.work_type = 'LEAVE_CANCEL') DESC, s.round DESC) AS attempt
+                            FROM approval_step s
+                            WHERE s.company_id = ? AND s.work_type = ANY(?::approval_work_type[]) AND s.target_id = ANY(?)
+                        ), picked AS (
+                            SELECT DISTINCT ON (target_id) target_id, step_order, status, approver_id, total_steps
+                            FROM steps
+                            WHERE attempt = 1 AND status IN ('PENDING', 'APPROVED', 'REJECTED')
+                            ORDER BY target_id, (status = 'PENDING') DESC, step_order DESC
+                        )
+                        SELECT p.target_id, p.step_order, p.total_steps, p.status::text AS status, e.name AS approver_name
+                        FROM picked p
+                        LEFT JOIN employee e ON e.id = p.approver_id AND e.company_id = ?
+                        """,
+                rs -> {
+                    result.put(rs.getLong("target_id"), new CurrentStep(rs.getInt("step_order"),
+                            rs.getInt("total_steps"), rs.getString("approver_name"),
+                            ApprovalStepStatus.valueOf(rs.getString("status"))));
+                },
+                companyId, workTypes, targetIds.toArray(Long[]::new), companyId);
+        return result;
     }
 
     /** 승인자가 퇴직·비활성이 됐을 때(B-10 퇴직 처리, 계정 비활성화) — 대기 중인 단계를 재지정 필요로 표시. */
