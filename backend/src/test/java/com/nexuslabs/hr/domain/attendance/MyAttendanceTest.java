@@ -1,15 +1,13 @@
 package com.nexuslabs.hr.domain.attendance;
 
-import com.nexuslabs.hr.global.config.ClockConfig;
+import com.nexuslabs.hr.support.TestClock;
 import com.nexuslabs.hr.support.TestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,12 +15,9 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.sql.Date;
-import java.time.Clock;
 import java.time.DayOfWeek;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,47 +35,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestClock.class)
 class MyAttendanceTest {
 
-    /** 2030-03-04 는 월요일이다. 회사를 이날 등록하므로 기본 근무시간(09:00–18:00, 월–금, 야간 22:00–06:00)이 이날부터다. */
-    static final LocalDate MONDAY = LocalDate.of(2030, 3, 4);
-
-    @TestConfiguration
-    static class ClockOverride {
-        @Bean
-        @Primary
-        MutableClock testClock() {
-            return new MutableClock();
-        }
-    }
-
-    static final class MutableClock extends Clock {
-        private volatile Instant instant = MONDAY.atTime(9, 0).atZone(ClockConfig.ZONE).toInstant();
-
-        void set(LocalDateTime time) {
-            instant = time.atZone(ClockConfig.ZONE).toInstant();
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ClockConfig.ZONE;
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public Instant instant() {
-            return instant;
-        }
-    }
+    /** 회사를 이날(월요일) 등록하므로 기본 근무시간(09:00–18:00, 월–금, 야간 22:00–06:00)이 이날부터다. */
+    static final LocalDate MONDAY = TestClock.MONDAY;
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired TestFixture fixture;
-    @Autowired MutableClock clock;
+    @Autowired TestClock.MutableClock clock;
 
     TestFixture.Company company;
     TestFixture.Employee employee;
