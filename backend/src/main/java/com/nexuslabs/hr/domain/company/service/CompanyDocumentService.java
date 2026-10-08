@@ -44,7 +44,7 @@ public class CompanyDocumentService {
         this.clock = clock;
     }
 
-    /** 종류 순(기타는 이름 순) — 현재본과 이전 버전(최신순). */
+    /** 종류 순(기타는 이름 순 — DB 정렬 설정과 관계없이 글자 코드 순, 한글은 가나다) — 현재본과 이전 버전(최신순). */
     @Transactional(readOnly = true)
     public List<CompanyDocumentGroup> list(long companyId) {
         LocalDate today = LocalDate.now(clock);
@@ -56,7 +56,7 @@ public class CompanyDocumentService {
                          JOIN file f ON f.id = d.file_id AND f.company_id = d.company_id
                          JOIN employee u ON u.id = d.uploaded_by AND u.company_id = d.company_id
                         WHERE d.company_id = ?
-                        ORDER BY d.doc_type, COALESCE(d.doc_name, ''), d.version_no DESC
+                        ORDER BY d.doc_type, COALESCE(d.doc_name, '') COLLATE "C", d.version_no DESC
                         """,
                 (rs, i) -> new Row(CompanyDocType.valueOf(rs.getString("doc_type")), rs.getString("doc_name"),
                         rs.getBoolean("is_current"), DocumentFiles.version(rs, today)),

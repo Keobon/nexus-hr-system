@@ -45,7 +45,7 @@ public class EmployeeDocumentService {
         this.clock = clock;
     }
 
-    /** 종류 순(기타는 이름 순) — 현재본과 이전 버전(최신순). 다른 회사 직원은 404. */
+    /** 종류 순(기타는 이름 순 — DB 정렬 설정과 관계없이 글자 코드 순, 한글은 가나다) — 현재본과 이전 버전(최신순). 다른 회사 직원은 404. */
     @Transactional(readOnly = true)
     public List<EmployeeDocumentGroup> list(long companyId, long employeeId) {
         Boolean exists = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee WHERE id = ? AND company_id = ?)",
@@ -62,7 +62,7 @@ public class EmployeeDocumentService {
                          JOIN file f ON f.id = d.file_id AND f.company_id = d.company_id
                          JOIN employee u ON u.id = d.uploaded_by AND u.company_id = d.company_id
                         WHERE d.company_id = ? AND d.employee_id = ?
-                        ORDER BY d.doc_type, COALESCE(d.doc_name, ''), d.version_no DESC
+                        ORDER BY d.doc_type, COALESCE(d.doc_name, '') COLLATE "C", d.version_no DESC
                         """,
                 (rs, i) -> new Row(EmployeeDocType.valueOf(rs.getString("doc_type")), rs.getString("doc_name"),
                         rs.getBoolean("is_current"), DocumentFiles.version(rs, today)),
