@@ -181,7 +181,7 @@ class CompanyTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.fields.businessRegNo").exists());
 
-        String digits = "9" + "%09d".formatted(company.id() % 1_000_000_000L);
+        String digits = fixture.businessRegNo();
         String formatted = digits.substring(0, 3) + "-" + digits.substring(3, 5) + "-" + digits.substring(5);
         patchCompany("{\"businessRegNo\": \"" + digits + "\", " + CHANGE + "}")
                 .andExpect(status().isOk())

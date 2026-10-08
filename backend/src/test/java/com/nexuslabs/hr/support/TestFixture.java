@@ -46,7 +46,7 @@ public class TestFixture {
     /** 회사 등록. 관리자 비밀번호는 PASSWORD. */
     public Company company(String name) {
         long n = nextSeq();
-        String regNo = "%010d".formatted(n % 10_000_000_000L);
+        String regNo = regNo(n);
         String adminEmail = "admin" + n + "@test.example";
         CompanyRegisterResponse res = registrationService.register(new CompanyRegisterRequest(
                 new CompanyRegisterRequest.CompanyInfo(name, regNo, "대표", "서울", "02-000-0000", "c" + n + "@test.example"),
@@ -54,6 +54,18 @@ public class TestFixture {
         long rootOrgUnitId = jdbc.queryForObject(
                 "SELECT id FROM org_unit WHERE company_id = ? AND parent_id IS NULL", Long.class, res.companyId());
         return new Company(res.companyId(), res.employeeId(), adminEmail, rootOrgUnitId);
+    }
+
+    /**
+     * 아직 아무 회사도 쓰지 않은 사업자등록번호(숫자 10자리). 회사 정보 수정처럼 테스트가 번호를 직접 넣어야 할 때 쓴다 —
+     * 회사 ID 등으로 번호를 만들면 지우지 않고 남겨 둔 다른 회사의 번호와 겹칠 수 있다.
+     */
+    public String businessRegNo() {
+        return regNo(nextSeq());
+    }
+
+    private static String regNo(long n) {
+        return "%010d".formatted(n % 10_000_000_000L);
     }
 
     /** 하위 조직을 만든다. */
