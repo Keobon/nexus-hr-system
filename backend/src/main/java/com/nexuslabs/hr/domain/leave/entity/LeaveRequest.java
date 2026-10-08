@@ -61,4 +61,46 @@ public class LeaveRequest extends BaseTimeEntity {
         this.days = days;
         this.reason = reason;
     }
+
+    /** 최종 승인. 근태(ON_VACATION)는 승인 대상이 같은 트랜잭션에서 만든다(F-ATT-05). */
+    public void approve() {
+        require(LeaveStatus.PENDING);
+        this.status = LeaveStatus.APPROVED;
+    }
+
+    public void reject() {
+        require(LeaveStatus.PENDING);
+        this.status = LeaveStatus.REJECTED;
+    }
+
+    /** 승인대기 철회 · 퇴직 자동 취소(F-LEAVE-06). */
+    public void withdraw(String cancelReason) {
+        require(LeaveStatus.PENDING);
+        this.status = LeaveStatus.CANCELLED;
+        this.cancelReason = cancelReason;
+    }
+
+    /** 승인된 휴가의 취소 요청 — 취소 승인 전까지는 사용으로 친다(BR-LEAVE-004). */
+    public void requestCancel(String cancelReason) {
+        require(LeaveStatus.APPROVED);
+        this.status = LeaveStatus.CANCEL_REQUESTED;
+        this.cancelReason = cancelReason;
+    }
+
+    public void confirmCancel() {
+        require(LeaveStatus.CANCEL_REQUESTED);
+        this.status = LeaveStatus.CANCELLED;
+    }
+
+    /** 취소 요청 반려 → 다시 승인완료. 취소 사유는 이력으로 남겨 둔다. */
+    public void rejectCancel() {
+        require(LeaveStatus.CANCEL_REQUESTED);
+        this.status = LeaveStatus.APPROVED;
+    }
+
+    private void require(LeaveStatus expected) {
+        if (status != expected) {
+            throw new IllegalStateException("휴가 상태가 " + expected + " 가 아니다: " + id + " " + status);
+        }
+    }
 }
