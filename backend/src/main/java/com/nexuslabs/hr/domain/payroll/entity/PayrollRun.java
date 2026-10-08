@@ -59,4 +59,14 @@ public class PayrollRun extends TenantEntity {
         this.confirmedBy = confirmedBy;
         this.confirmedAt = confirmedAt;
     }
+
+    /** 확정 → 지급완료 한 방향뿐(BR-PAY-015). 명세서는 바뀌지 않는다. */
+    public void markPaid(long paidBy, OffsetDateTime paidAt) {
+        if (status != PayrollStatus.CONFIRMED) {
+            throw new IllegalStateException("확정 상태가 아닌 정산: " + id);
+        }
+        this.status = PayrollStatus.PAID;
+        this.paidBy = paidBy;
+        this.paidAt = paidAt;
+    }
 }
