@@ -279,6 +279,9 @@ public class AttendanceService {
     }
 
     private static WorkType parseWorkType(Object value) {
+        if (WorkType.BUSINESS_TRIP.name().equals(value)) {      // 있는 코드값이지만 본인이 고를 수 없다 — 출근과 같은 응답
+            throw BusinessException.invalidFields(Map.of("workType", "사내 · 재택 · 외근 중에서 고르세요"));
+        }
         return SELECTABLE_WORK_TYPES.stream().filter(t -> t.name().equals(value)).findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ENUM_VALUE,
                         Map.of("allowed", SELECTABLE_WORK_TYPES.stream().map(Enum::name).sorted().toList())));

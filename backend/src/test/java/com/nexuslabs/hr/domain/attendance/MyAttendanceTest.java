@@ -360,7 +360,9 @@ class MyAttendanceTest {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("ATT_NO_CHECK_IN"));
 
         checkIn();
-        me(json(patch("/api/me/attendance/today"), "{\"workType\": \"BUSINESS_TRIP\"}"))
+        me(json(patch("/api/me/attendance/today"), "{\"workType\": \"BUSINESS_TRIP\"}"))      // 출근과 같은 응답(API 7.1)
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.fields.workType").exists());
+        me(json(patch("/api/me/attendance/today"), "{\"workType\": \"HOME\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("INVALID_ENUM_VALUE"));
         me(json(patch("/api/me/attendance/today"), "{\"workType\": null}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.fields.workType").exists());

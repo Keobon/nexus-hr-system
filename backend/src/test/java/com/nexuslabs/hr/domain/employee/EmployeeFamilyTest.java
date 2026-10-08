@@ -94,7 +94,9 @@ class EmployeeFamilyTest {
         json(hr, patch("/api/employees/" + kim.id() + "/family/" + second), "{\"name\": null}")
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.fields.name").exists());
         json(hr, patch("/api/employees/" + kim.id() + "/family/" + second), "{\"relation\": \"COUSIN\"}")
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ENUM_VALUE"))
+                .andExpect(jsonPath("$.error.details.allowed").isArray());
         as(hr, delete("/api/employees/" + kim.id() + "/family/" + parent))
                 .andExpect(jsonPath("$.data.result").value("DELETED"));
 

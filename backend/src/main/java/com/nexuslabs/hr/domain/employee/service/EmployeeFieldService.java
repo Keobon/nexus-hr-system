@@ -19,6 +19,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -148,6 +149,11 @@ public class EmployeeFieldService {
 
     private EmployeeFieldRequest merge(EmployeeFieldResponse current, Map<String, Object> patch) {
         PatchRequest.check(patch, FIELDS, NOT_NULL);
+        Object fieldType = patch.get("fieldType");
+        if (fieldType != null && Arrays.stream(FieldType.values()).noneMatch(v -> v.name().equals(fieldType))) {
+            throw new BusinessException(ErrorCode.INVALID_ENUM_VALUE,
+                    Map.of("allowed", Arrays.stream(FieldType.values()).map(Enum::name).toList()));
+        }
         Map<String, Object> merged = new LinkedHashMap<>(
                 objectMapper.convertValue(current, new TypeReference<Map<String, Object>>() {}));
         merged.remove("id");

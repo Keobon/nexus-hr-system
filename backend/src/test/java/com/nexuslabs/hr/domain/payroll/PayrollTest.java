@@ -243,6 +243,10 @@ class PayrollTest {
 
         admin(get("/api/payroll-runs"))
                 .andExpect(jsonPath("$.data[0].payMonth").value("2030-03"))
+                .andExpect(jsonPath("$.data[0].confirmedAt").exists())                    // 상세에서 paystubs 를 뺀 모양
+                .andExpect(jsonPath("$.data[0].confirmedByName").exists())
+                .andExpect(jsonPath("$.data[0].paidAt").value(nullValue()))
+                .andExpect(jsonPath("$.data[0].paystubs").doesNotExist())
                 .andExpect(jsonPath("$.data[0].totals.headcount").value(3));
         admin(post("/api/payroll-runs/" + runId + "/paid"))
                 .andExpect(status().isOk())
