@@ -54,4 +54,9 @@ public class CompanyDocument extends CreatedAtEntity {
         this.memo = memo;
         this.uploadedBy = uploadedBy;
     }
+
+    /** 같은 종류의 새 버전이 올라오면 이전 버전이 된다. */
+    public void retire() {
+        this.current = false;
+    }
 }

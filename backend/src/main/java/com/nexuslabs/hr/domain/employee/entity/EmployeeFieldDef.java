@@ -60,4 +60,21 @@ public class EmployeeFieldDef extends TenantEntity {
         this.selfEditable = selfEditable;
         this.sortOrder = sortOrder;
     }
+
+    public void update(String name, FieldType fieldType, List<String> options, boolean required, boolean multiple,
+                       boolean selfEditable, int sortOrder, boolean active) {
+        this.name = name;
+        this.fieldType = fieldType;
+        this.options = options;
+        this.required = required;
+        this.multiple = multiple;
+        this.selfEditable = selfEditable;
+        this.sortOrder = sortOrder;
+        this.active = active;
+    }
+
+    /** 값이 있는 항목은 지우지 않고 숨긴다(F-EMP-07). */
+    public void deactivate() {
+        this.active = false;
+    }
 }

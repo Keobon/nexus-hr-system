@@ -5,7 +5,6 @@ import com.nexuslabs.hr.domain.attendance.service.TodayStatusReader;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeRow;
 import com.nexuslabs.hr.domain.employee.dto.MyProfileResponse;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
-import com.nexuslabs.hr.domain.employee.entity.FieldType;
 import com.nexuslabs.hr.domain.employee.entity.Gender;
 import com.nexuslabs.hr.domain.leave.service.LeaveBalanceService;
 import com.nexuslabs.hr.global.auth.LoginUser;
@@ -69,16 +68,18 @@ public class EmployeeQueryService {
     private final PermissionReader permissionReader;
     private final TodayStatusReader todayStatusReader;
     private final LeaveBalanceService leaveBalanceService;
+    private final EmployeeFieldValueService fieldValueService;
     private final Clock clock;
 
     public EmployeeQueryService(JdbcTemplate jdbc, ScopeResolver scopeResolver, PermissionReader permissionReader,
                                 TodayStatusReader todayStatusReader, LeaveBalanceService leaveBalanceService,
-                                Clock clock) {
+                                EmployeeFieldValueService fieldValueService, Clock clock) {
         this.jdbc = jdbc;
         this.scopeResolver = scopeResolver;
         this.permissionReader = permissionReader;
         this.todayStatusReader = todayStatusReader;
         this.leaveBalanceService = leaveBalanceService;
+        this.fieldValueService = fieldValueService;
         this.clock = clock;
     }
 
@@ -161,16 +162,7 @@ public class EmployeeQueryService {
     /** 개인 페이지. 토큰의 직원 ID 로만 조회한다 — 주소에 다른 직원 ID 를 넣을 자리가 없다(BR-AUTH-001). */
     @Transactional(readOnly = true)
     public MyProfileResponse myProfile(LoginUser user) {
-        List<MyProfileResponse.FieldValue> fieldValues = jdbc.query("""
-                        SELECT v.field_def_id, d.name, d.field_type::text AS field_type, v.seq, v.value
-                        FROM employee_field_value v
-                             JOIN employee_field_def d ON d.id = v.field_def_id AND d.company_id = v.company_id
-                        WHERE v.company_id = ? AND v.employee_id = ? AND d.is_active
-                        ORDER BY d.sort_order, d.id, v.seq
-                        """,
-                (rs, i) -> new MyProfileResponse.FieldValue(rs.getLong("field_def_id"), rs.getString("name"),
-                        FieldType.valueOf(rs.getString("field_type")), rs.getInt("seq"), rs.getString("value")),
-                user.companyId(), user.employeeId());
+        List<MyProfileResponse.FieldValue> fieldValues = fieldValueService.values(user.companyId(), user.employeeId());
         List<MyProfileResponse.LeaveBalance> leaveBalances = leaveBalanceService.mine(user, null).balances().stream()
                 .map(b -> new MyProfileResponse.LeaveBalance(b.leaveTypeName(), b.remaining()))
                 .toList();
