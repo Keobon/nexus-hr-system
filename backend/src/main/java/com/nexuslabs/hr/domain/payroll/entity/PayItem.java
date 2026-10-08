@@ -73,4 +73,33 @@ public class PayItem extends BaseTimeEntity {
         this.calcMethod = calcMethod;
         this.sortOrder = sortOrder;
     }
+
+    /** 등록 · 수정 — 계산 방식별로 맞춘 값(PayItemService)을 통째로 넣는다. 수정은 다음 정산부터 쓰인다. */
+    public void apply(String name, PayItemKind itemKind, boolean taxable, Long nonTaxableLimit, PayCalcMethod calcMethod,
+                      PayApplyTo applyTo, Long defaultAmount, BigDecimal baseRate, BigDecimal employeeRate,
+                      BigDecimal companyRate, Long baseUpperLimit, Long baseLowerLimit, AttendanceBasis attendanceBasis,
+                      BigDecimal multiplier, boolean inOrdinaryWage, int sortOrder, boolean active) {
+        this.name = name;
+        this.itemKind = itemKind;
+        this.taxable = taxable;
+        this.nonTaxableLimit = nonTaxableLimit;
+        this.calcMethod = calcMethod;
+        this.applyTo = applyTo;
+        this.defaultAmount = defaultAmount;
+        this.baseRate = baseRate;
+        this.employeeRate = employeeRate;
+        this.companyRate = companyRate;
+        this.baseUpperLimit = baseUpperLimit;
+        this.baseLowerLimit = baseLowerLimit;
+        this.attendanceBasis = attendanceBasis;
+        this.multiplier = multiplier;
+        this.inOrdinaryWage = inOrdinaryWage;
+        this.sortOrder = sortOrder;
+        this.active = active;
+    }
+
+    /** 쓰인 항목은 지우지 않고 다음 정산부터 빠지게 한다(BR-ORG-001). */
+    public void deactivate() {
+        this.active = false;
+    }
 }

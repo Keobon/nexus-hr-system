@@ -110,9 +110,11 @@ public class TestFixture {
     private long nextSeq() {
         synchronized (SEQ) {
             if (SEQ.get() < 0) {
-                // 지난 실행에서 남은 회사·직원의 사업자번호와 test.example 이메일 번호 중 가장 큰 값
+                // 지난 실행에서 남은 회사·직원의 사업자번호와 test.example 이메일 번호 중 가장 큰 값.
+                // 빈 DB(CI · 다시 만든 로컬 DB)에서도 공통 기반 고정 데이터(fixture/common-base.sql 의 e1–e7 등)와
+                // 겹치지 않게 100만부터 시작한다
                 SEQ.set(jdbc.queryForObject("""
-                        SELECT GREATEST(
+                        SELECT GREATEST(1000000,
                             (SELECT COALESCE(max(replace(business_reg_no, '-', '')::bigint), 0) FROM company),
                             (SELECT COALESCE(max(substring(email FROM '^[a-z]+([0-9]+)@test\\.example$')::bigint), 0)
                              FROM employee),

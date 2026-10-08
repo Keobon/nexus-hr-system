@@ -688,9 +688,10 @@ CREATE TABLE pay_variable (
   value          DECIMAL(15,4) NOT NULL CHECK (value >= 0),
   effective_from DATE NOT NULL,
   created_by     BIGINT REFERENCES employee(id),
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (company_id, var_code, effective_from)
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 같은 적용 시작일 행이 여러 개면 나중에 만든 행이 정정본(effective_from DESC, created_at DESC, id DESC) — employee_salary 와 같다
+CREATE INDEX ix_pay_variable ON pay_variable (company_id, var_code, effective_from, created_at);
 
 CREATE TABLE tax_bracket (
   id                    BIGSERIAL PRIMARY KEY,
