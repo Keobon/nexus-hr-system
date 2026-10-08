@@ -176,6 +176,35 @@ public class AttendanceService {
     }
 
     /**
+     * 출장이 최종 승인될 때 같은 트랜잭션에서 부른다(역할 분담 v2 2.1, BR-ATT-005). createLeaveDays 와 같은 방식 —
+     * 출장 기간의 근무일마다 출장 근태(ON_BUSINESS_TRIP)를 만들고, 이미 근태가 있는 날은 건너뛴다(정정 대상의 충돌).
+     * 근무일은 승인하는 지금의 근무시간·휴일로 판정한다. 출장일 근무시간은 1일 소정근로시간으로 본다(근태 계산).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void createTripDays(long companyId, long businessTripId) {
+        LeavePeriod trip = jdbc.query("""
+                        SELECT employee_id, start_date, end_date FROM business_trip WHERE id = ? AND company_id = ?
+                        """,
+                (rs, i) -> new LeavePeriod(rs.getLong("employee_id"), rs.getObject("start_date", LocalDate.class),
+                        rs.getObject("end_date", LocalDate.class)),
+                businessTripId, companyId).stream().findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
+        List<Object[]> rows = new ArrayList<>();
+        for (LocalDate date = trip.startDate(); !date.isAfter(trip.endDate()); date = date.plusDays(1)) {
+            if (calendar.isWorkday(date)) {
+                rows.add(new Object[]{companyId, trip.employeeId(), Date.valueOf(date), businessTripId});
+            }
+        }
+        jdbc.batchUpdate("""
+                INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, check_in_method,
+                                        business_trip_id)
+                VALUES (?, ?, ?, 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', 'SYSTEM', ?)
+                ON CONFLICT (employee_id, work_date) DO NOTHING
+                """, rows);
+    }
+
+    /**
      * 휴가 취소가 승인될 때 같은 트랜잭션에서 부른다. 그 휴가로 만든 휴가 근태만 지운다 —
      * 건너뛴 날의 출근 기록이나, 정정으로 휴가 연결을 끊은 근태는 그대로 남는다.
      */
@@ -288,6 +317,7 @@ public class AttendanceService {
         return text == null || text.isBlank() ? null : text.trim();
     }
 
+    /** 휴가 · 출장 기간(근태 생성용). */
     private record LeavePeriod(long employeeId, LocalDate startDate, LocalDate endDate) {
     }
 }
