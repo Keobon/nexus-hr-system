@@ -27,6 +27,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +155,11 @@ public class EmployeeFamilyService {
 
     private FamilyRequest merge(FamilyMember current, Map<String, Object> patch) {
         PatchRequest.check(patch, FIELDS, NOT_NULL);
+        Object relation = patch.get("relation");
+        if (relation != null && Arrays.stream(FamilyRelation.values()).noneMatch(v -> v.name().equals(relation))) {
+            throw new BusinessException(ErrorCode.INVALID_ENUM_VALUE,
+                    Map.of("allowed", Arrays.stream(FamilyRelation.values()).map(Enum::name).toList()));
+        }
         Map<String, Object> merged = new LinkedHashMap<>(
                 objectMapper.convertValue(current, new TypeReference<Map<String, Object>>() {}));
         merged.remove("id");

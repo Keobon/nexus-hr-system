@@ -174,9 +174,12 @@ public class PayrollService {
     /** 정산 월 목록 — 최근 귀속 월부터, 합계는 명세서를 더한 값. */
     @Transactional(readOnly = true)
     public List<PayrollRunRow> list(long companyId) {
-        return jdbc.query(RUN_SELECT + " WHERE r.company_id = ? GROUP BY r.id ORDER BY r.pay_month DESC",
+        return jdbc.query(RUN_VIEW_SELECT
+                        + " WHERE r.company_id = ? GROUP BY r.id, cb.name, pb.name ORDER BY r.pay_month DESC",
                 (rs, i) -> new PayrollRunRow(rs.getLong("id"), rs.getString("pay_month"),
                         rs.getObject("pay_date", LocalDate.class), PayrollStatus.valueOf(rs.getString("status")),
+                        seoul(rs.getObject("confirmed_at", OffsetDateTime.class)), rs.getString("confirmed_by_name"),
+                        seoul(rs.getObject("paid_at", OffsetDateTime.class)), rs.getString("paid_by_name"),
                         totalsOf(rs)),
                 companyId);
     }
@@ -486,13 +489,6 @@ public class PayrollService {
     private static OffsetDateTime seoul(OffsetDateTime t) {
         return t == null ? null : t.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime();
     }
-
-    private static final String RUN_SELECT = """
-            SELECT r.id, r.pay_month, r.pay_date, r.status::text AS status, count(p.id) AS headcount,
-                   COALESCE(sum(p.gross_pay), 0) AS gross_pay, COALESCE(sum(p.total_deduction), 0) AS total_deduction,
-                   COALESCE(sum(p.net_pay), 0) AS net_pay, COALESCE(sum(p.company_burden_total), 0) AS company_burden_total
-            FROM payroll_run r LEFT JOIN paystub p ON p.payroll_run_id = r.id AND p.company_id = r.company_id
-            """;
 
     private static final String RUN_VIEW_SELECT = """
             SELECT r.id, r.pay_month, r.pay_date, r.status::text AS status, r.confirmed_at, r.paid_at,

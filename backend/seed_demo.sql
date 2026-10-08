@@ -271,11 +271,11 @@ INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, non_taxable_l
                       default_amount, in_ordinary_wage, sort_order) VALUES
  (11, 1, '식대',     'EARNING', FALSE, 200000, 'FIXED', 'ALL',      200000, TRUE,  10),
  (12, 1, '직책수당', 'EARNING', TRUE,  NULL,   'FIXED', 'SELECTED', NULL,   TRUE,  11),
- (13, 1, '성과급',   'EARNING', TRUE,  NULL,   'MANUAL','SELECTED', NULL,   FALSE, 20),
- (14, 1, '소급 조정','EARNING', TRUE,  NULL,   'MANUAL','SELECTED', NULL,   FALSE, 21),
+ (13, 1, '성과급',   'EARNING', TRUE,  NULL,   'MANUAL','ALL',      NULL,   FALSE, 20),
+ (14, 1, '소급 조정','EARNING', TRUE,  NULL,   'MANUAL','ALL',      NULL,   FALSE, 21),
  (31, 2, '식대',     'EARNING', FALSE, 200000, 'FIXED', 'ALL',      250000, TRUE,  10),  -- 한도 초과 5만원은 과세
  (32, 2, '생산수당', 'EARNING', TRUE,  NULL,   'FIXED', 'SELECTED', NULL,   TRUE,  11),
- (33, 2, '소급 조정','EARNING', TRUE,  NULL,   'MANUAL','SELECTED', NULL,   FALSE, 21);
+ (33, 2, '소급 조정','EARNING', TRUE,  NULL,   'MANUAL','ALL',      NULL,   FALSE, 21);
 
 -- 한빛푸드는 다자녀 추가 공제를 2만원으로 쓴다(기본값 0원)
 INSERT INTO pay_variable (company_id, var_code, value, effective_from)

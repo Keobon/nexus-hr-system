@@ -103,6 +103,10 @@ class EmployeeFieldTest {
                 .andExpect(jsonPath("$.data.sortOrder").value(9));
         json(hr, patch("/api/employee-fields/" + blood), "{\"name\": \"학력\"}")
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_NAME"));
+        json(hr, patch("/api/employee-fields/" + blood), "{\"fieldType\": \"BOOLEAN\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ENUM_VALUE"))
+                .andExpect(jsonPath("$.error.details.allowed").isArray());
         json(hr, patch("/api/employee-fields/" + blood), "{\"isRequired\": null, \"color\": 1}")
                 .andExpect(jsonPath("$.error.fields.isRequired").exists())
                 .andExpect(jsonPath("$.error.fields.color").exists());

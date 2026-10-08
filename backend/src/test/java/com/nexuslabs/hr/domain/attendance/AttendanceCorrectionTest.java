@@ -343,6 +343,13 @@ class AttendanceCorrectionTest {
         correct(past, "{\"status\": \"CHECKED_IN\", \"reason\": \"퇴근을 잘못 누름\"}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.fields.status").exists());
+
+        // 지난 날짜의 출근 상태 기록은 상태를 보내지 않아도 출근 상태로 남길 수 없다
+        long stale = attendance(MONDAY.plusDays(1), "CHECKED_IN", null);
+        correct(stale, "{\"reason\": \"사유만\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.status").exists());
+        assertThat(row(stale)).containsEntry("status", "CHECKED_IN").containsEntry("corrected_at", null);
     }
 
     @Test

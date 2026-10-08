@@ -105,6 +105,10 @@ public class AttendanceCorrectionService {
         Map<String, Object> before = snapshot(attendance);
         boolean valuesSent = PATCH_FIELDS.stream().anyMatch(f -> !f.equals("reason") && patch.containsKey(f));
         if (!valuesSent) {
+            if (attendance.getStatus() == AttendanceStatus.CHECKED_IN
+                    && !attendance.getWorkDate().equals(LocalDate.now(clock))) {
+                throw BusinessException.invalidFields(Map.of("status", "지난 날짜의 출근 기록은 상태를 퇴근으로 정정하세요"));
+            }
             attendance.confirm(reason, user.employeeId(), now());
         } else {
             Values values = resolve(user.companyId(), attendance.getEmployee().getId(), attendance.getWorkDate(),
@@ -262,8 +266,10 @@ public class AttendanceCorrectionService {
         if (statusChosen && status == AttendanceStatus.MISSING_CHECKOUT) {
             errors.put("status", "퇴근미기록으로는 정정할 수 없습니다");
         }
-        if (statusChosen && status == AttendanceStatus.CHECKED_IN && !workDate.equals(LocalDate.now(clock))) {
-            errors.put("status", "출근 상태로는 오늘 기록만 정정할 수 있습니다");
+        if (status == AttendanceStatus.CHECKED_IN && !workDate.equals(LocalDate.now(clock))) {
+            // 보낸 값이든 그대로 둔 값이든 — 지난 날짜가 출근 상태로 남으면 월 조회와 정정 목록의 표시가 갈린다
+            errors.put("status", statusChosen ? "출근 상태로는 오늘 기록만 정정할 수 있습니다"
+                    : "지난 날짜의 출근 기록은 상태를 퇴근으로 정정하세요");
         }
         if (checkInAt == null) {
             errors.put("checkInAt", "출근 시각을 입력하세요");
