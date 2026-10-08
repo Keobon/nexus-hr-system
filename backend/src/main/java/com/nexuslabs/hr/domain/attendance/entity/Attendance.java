@@ -85,4 +85,32 @@ public class Attendance extends BaseTimeEntity {
         this.workDate = workDate;
         this.status = status;
     }
+
+    /** 출근(F-ATT-01). 위치는 브라우저가 허용했을 때만 있다. */
+    public static Attendance checkIn(Employee employee, LocalDate workDate, WorkType workType, String placeMemo,
+                                     OffsetDateTime at, RecordMethod method, BigDecimal lat, BigDecimal lng) {
+        Attendance attendance = new Attendance(employee, workDate, AttendanceStatus.CHECKED_IN);
+        attendance.workType = workType;
+        attendance.placeMemo = placeMemo;
+        attendance.checkInAt = at;
+        attendance.checkInMethod = method;
+        attendance.checkInLat = lat;
+        attendance.checkInLng = lng;
+        return attendance;
+    }
+
+    /** 퇴근(F-ATT-02). 출근 상태인지는 서비스가 먼저 확인한다. */
+    public void checkOut(OffsetDateTime at, RecordMethod method, BigDecimal lat, BigDecimal lng) {
+        this.status = AttendanceStatus.CHECKED_OUT;
+        this.checkOutAt = at;
+        this.checkOutMethod = method;
+        this.checkOutLat = lat;
+        this.checkOutLng = lng;
+    }
+
+    /** 퇴근 전까지 본인이 근무 형태를 바꾼다 — 마지막 값이 그날 근무 형태다(F-ATT-01). */
+    public void changeWorkType(WorkType workType, String placeMemo) {
+        this.workType = workType;
+        this.placeMemo = placeMemo;
+    }
 }
