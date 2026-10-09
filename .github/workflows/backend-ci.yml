@@ -4,12 +4,10 @@
 name: Backend CI
 
 on:
+  # PR 은 바뀐 폴더와 상관없이 항상 돈다 — develop 규칙이 이 체크 통과를 요구해서,
+  # 문서만 바꾼 PR 도 체크가 생겨야 머지할 수 있다
   pull_request:
     branches: [develop, main]
-    paths:
-      - 'backend/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/backend-ci.yml'
   push:
     branches: [develop]
     paths:

@@ -57,21 +57,28 @@ docker compose down -v        # 끄기 + DB 초기화(다음 실행 때 데모 �
 ## 🛠️ DB 접속 및 기초 데이터(Seed) 세팅 안내 (백엔드 팀 필수)
 
 ### 1. 로컬 환경 DB 연결 정보 세팅
-백엔드 프로젝트 구동 시 PostgreSQL 데이터베이스에 접근하기 위해 다음 정보를 환경변수(또는 `application.yml`, `.env`)에 설정해야 합니다.
+백엔드는 `application.properties`의 기본값을 쓰고, 사람마다 다른 값은 환경변수 `DB_NAME` · `DB_USER` · `DB_PASSWORD`로 덮어씁니다.
 
-- **DB URL (주소):** `jdbc:postgresql://localhost:5432/nexus_labs_hr`
-  - 기본 포트는 `5432`이며, 생성한 데이터베이스 이름은 `nexus_labs_hr`입니다.
+- **개발 DB:** `jdbc:postgresql://localhost:5432/nexus_hr` (데이터베이스 이름 `nexus_hr`)
+- **테스트 DB:** `nexus_hr_test` — 테스트(`./gradlew test`)는 이 DB를 씁니다
 - **Username (사용자 계정):** `postgres` (기본 최고 관리자 계정)
 - **Password (비밀번호):** `040416` (팀원 간 공유 필요)
 
-### 2. 기초 데이터(Seed Data) 세팅 순서
-시스템이 정상적으로 굴러가기 위해 DB 연결 후 가장 먼저 아래 순서대로 기초 데이터를 `INSERT` 해주세요. *(순서가 틀리면 외래키(FK) 제약조건 에러가 발생합니다.)*
+### 2. DB 만들기 (schema.sql → seed_demo.sql)
+테이블과 데모 데이터는 직접 INSERT하지 않고 `backend/` 폴더의 SQL 두 개로 만듭니다. CI도 같은 순서로 확인합니다.
 
-- **마스터 데이터 생성:** 4대 보험 요율 4건(`INSURANCERATE`), 소득세 구간 5건(`TAXBRACKET`), 직급/직책(`JOBGRADE`, `JOBTITLE`), 부서(`DEPARTMENT`)
-- **최고 관리자 계정 생성:** 
-  1. 부서장 및 관리자 역할을 할 직원(`EMPLOYEE`)을 먼저 1명 생성합니다.
-  2. 해당 직원의 `id`를 부서(`DEPARTMENT`)의 `lead_employee_id`로 업데이트(UPDATE) 합니다.
-  3. 해당 직원과 연결된 계정(`ACCOUNT`)을 생성하고 `role`을 `HR_ADMIN` 또는 `CEO`로 부여합니다.
+```bash
+createdb -h localhost -U postgres nexus_hr
+psql -h localhost -U postgres -d nexus_hr -v ON_ERROR_STOP=1 -f backend/schema.sql
+psql -h localhost -U postgres -d nexus_hr -v ON_ERROR_STOP=1 -f backend/seed_demo.sql
+
+# 테스트 DB는 스키마만 (데모 데이터 없이)
+createdb -h localhost -U postgres nexus_hr_test
+psql -h localhost -U postgres -d nexus_hr_test -v ON_ERROR_STOP=1 -f backend/schema.sql
+```
+
+- 데모 회사 2개(넥서스랩스 · 한빛푸드)와 직원 · 계정이 들어갑니다. 로그인 이메일과 비밀번호는 `seed_demo.sql` 맨 위 주석과 직원 행을 보세요.
+- **`schema.sql`이 바뀌면** 기존 DB에 맞춰 고치기보다 DB를 지우고 위 순서로 다시 만드는 게 안전합니다. 앱이 시작할 때 엔티티와 테이블이 다르면 `validate`에서 멈춥니다.
 
 ---
 
