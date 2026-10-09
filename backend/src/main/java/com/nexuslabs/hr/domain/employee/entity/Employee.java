@@ -98,6 +98,13 @@ public class Employee extends BaseTimeEntity {
         this.employmentType = employmentType;
     }
 
+    /** 이름 · 이메일(로그인 ID) · 고용형태 — 관리자 수정(F-EMP-03)에서만 바뀐다. */
+    public void changeBasic(String name, String email, EmploymentType employmentType) {
+        this.name = name;
+        this.email = email;
+        this.employmentType = employmentType;
+    }
+
     public void changeContact(String phone, String address) {
         this.phone = phone;
         this.address = address;

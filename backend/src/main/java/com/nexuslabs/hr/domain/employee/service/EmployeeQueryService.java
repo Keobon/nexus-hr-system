@@ -1,7 +1,10 @@
 package com.nexuslabs.hr.domain.employee.service;
 
+import com.nexuslabs.hr.domain.attendance.dto.AttendanceSummary;
+import com.nexuslabs.hr.domain.attendance.service.AttendanceCalculator;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatus;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatusReader;
+import com.nexuslabs.hr.domain.employee.dto.EmployeeDetail;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeRow;
 import com.nexuslabs.hr.domain.employee.dto.MyProfileResponse;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
@@ -24,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Date;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 직원 목록(F-EMP-02)과 개인 페이지(F-EMP-05) 조회. 여러 테이블을 묶는 조회라 JDBC 로 하고,
+ * 직원 목록(F-EMP-02) · 상세(F-EMP-06)와 개인 페이지(F-EMP-05) 조회. 여러 테이블을 묶는 조회라 JDBC 로 하고,
  * JDBC 는 @TenantId 자동 필터가 없으므로 모든 쿼리에 company_id 조건을 직접 넣는다.
  */
 @Service
@@ -69,17 +73,20 @@ public class EmployeeQueryService {
     private final TodayStatusReader todayStatusReader;
     private final LeaveBalanceService leaveBalanceService;
     private final EmployeeFieldValueService fieldValueService;
+    private final AttendanceCalculator attendanceCalculator;
     private final Clock clock;
 
     public EmployeeQueryService(JdbcTemplate jdbc, ScopeResolver scopeResolver, PermissionReader permissionReader,
                                 TodayStatusReader todayStatusReader, LeaveBalanceService leaveBalanceService,
-                                EmployeeFieldValueService fieldValueService, Clock clock) {
+                                EmployeeFieldValueService fieldValueService, AttendanceCalculator attendanceCalculator,
+                                Clock clock) {
         this.jdbc = jdbc;
         this.scopeResolver = scopeResolver;
         this.permissionReader = permissionReader;
         this.todayStatusReader = todayStatusReader;
         this.leaveBalanceService = leaveBalanceService;
         this.fieldValueService = fieldValueService;
+        this.attendanceCalculator = attendanceCalculator;
         this.clock = clock;
     }
 
@@ -188,6 +195,57 @@ public class EmployeeQueryService {
                         rs.getObject("profile_file_id", Long.class), fieldValues, leaveBalances),
                 user.companyId(), user.employeeId()).stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 직원 상세. 다른 회사 직원이면 404, 팀 범위 밖이면 OUT_OF_SCOPE. 팀 범위면 제한 필드만(BR-EMP-003),
+     * 인사 메모는 EMPLOYEE_MANAGE 만. 두 범위 모두 오늘 상태와 이번 달 근태 요약을 붙인다.
+     */
+    @Transactional(readOnly = true)
+    public EmployeeDetail detail(LoginUser user, long employeeId) {
+        Scope scope = scopeResolver.scopeOf(user, PermissionCode.EMPLOYEE_READ);
+        long companyId = user.companyId();
+        Boolean exists = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee WHERE id = ? AND company_id = ?)",
+                Boolean.class, employeeId, companyId);
+        if (!Boolean.TRUE.equals(exists)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        scope.assertContains(employeeId);
+        boolean manage = permissionReader.permissionsOf(user).containsKey(PermissionCode.EMPLOYEE_MANAGE);
+
+        YearMonth month = YearMonth.now(clock);
+        AttendanceSummary s = attendanceCalculator.month(companyId, employeeId, month).summary();
+        EmployeeDetail.MonthSummary monthSummary = new EmployeeDetail.MonthSummary(month.toString(), s.lateCount(),
+                s.earlyLeaveCount(), s.absentDays(), s.remoteDays(), s.fieldDays());
+        TodayStatus todayStatus = todayStatusReader.today(companyId, List.of(employeeId)).get(employeeId);
+        List<MyProfileResponse.FieldValue> fieldValues =
+                scope.all() ? fieldValueService.values(companyId, employeeId) : null;
+
+        return jdbc.query("""
+                        SELECT e.id, e.employee_no, e.name, e.name_en, e.email, e.phone, e.address, e.birth_date,
+                               e.gender::text AS gender, e.emergency_name, e.emergency_relation, e.emergency_phone,
+                               e.hire_date, e.org_unit_id, o.name AS org_unit_name, e.job_grade_id,
+                               g.name AS job_grade_name, e.job_title_id, t.name AS job_title_name,
+                               e.employment_type_id, et.name AS employment_type_name, e.status::text AS status,
+                               e.payroll_eligible, e.contract_end_date, e.probation_end_date, e.profile_file_id,
+                               e.hr_memo
+                        """ + FROM + " WHERE e.company_id = ? AND e.id = ?",
+                (rs, i) -> new EmployeeDetail(rs.getLong("id"), rs.getString("employee_no"), rs.getString("name"),
+                        rs.getString("org_unit_name"), rs.getString("job_grade_name"), rs.getString("job_title_name"),
+                        rs.getString("employment_type_name"), EmpStatus.valueOf(rs.getString("status")),
+                        rs.getString("email"), rs.getString("phone"), rs.getObject("profile_file_id", Long.class),
+                        todayStatus, monthSummary,
+                        !scope.all() ? null : new EmployeeDetail.Full(rs.getString("name_en"), rs.getString("address"),
+                                rs.getObject("birth_date", LocalDate.class),
+                                rs.getString("gender") == null ? null : Gender.valueOf(rs.getString("gender")),
+                                rs.getString("emergency_name"), rs.getString("emergency_relation"),
+                                rs.getString("emergency_phone"), rs.getObject("hire_date", LocalDate.class),
+                                rs.getLong("org_unit_id"), rs.getObject("job_grade_id", Long.class),
+                                rs.getObject("job_title_id", Long.class), rs.getLong("employment_type_id"),
+                                rs.getBoolean("payroll_eligible"), rs.getObject("contract_end_date", LocalDate.class),
+                                rs.getObject("probation_end_date", LocalDate.class), fieldValues),
+                        manage ? Optional.ofNullable(rs.getString("hr_memo")) : null),
+                companyId, employeeId).getFirst();
     }
 
     /** 재직상태 필터. 비우면 재직 · 휴직. 없는 코드값은 INVALID_ENUM_VALUE(API 설계서 1.1). */
