@@ -110,13 +110,13 @@ public class ApprovalLineService {
 
     private void validate(long companyId, ApprovalLineRequest r, Long exceptLineId, boolean isDefault) {
         if (r.workType() == ApprovalWorkType.LEAVE_CANCEL) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "휴가 취소는 승인선이 없습니다(원래 휴가의 마지막 승인자가 승인)");
+            throw BusinessException.invalidFields(Map.of("workType", "휴가 취소는 승인선이 없습니다(원래 휴가의 마지막 승인자가 승인)"));
         }
         if (r.condJobTitleId() != null && r.condRoleId() != null) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "적용 조건은 직책과 역할 중 하나만 고릅니다");
+            throw BusinessException.invalidFields(Map.of("condRoleId", "적용 조건은 직책과 역할 중 하나만 고릅니다"));
         }
         if (!isDefault && r.condJobTitleId() == null && r.condRoleId() == null) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "적용 조건(신청자의 직책 또는 역할)을 고르세요. 조건 없는 승인선은 기본 승인선뿐입니다");
+            throw BusinessException.invalidFields(Map.of("condJobTitleId", "적용 조건(신청자의 직책 또는 역할)을 고르세요. 조건 없는 승인선은 기본 승인선뿐입니다"));
         }
         requireExists(companyId, "job_title", r.condJobTitleId(), "직책");
         requireExists(companyId, "role", r.condRoleId(), "역할");
@@ -132,7 +132,8 @@ public class ApprovalLineService {
                             """,
                     Boolean.class, companyId, r.workType().name(), exceptLineId, r.condJobTitleId(), r.condRoleId());
             if (Boolean.TRUE.equals(duplicate)) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "같은 조건의 활성 승인선이 이미 있습니다");
+                throw BusinessException.invalidFields(Map.of(r.condJobTitleId() != null ? "condJobTitleId" : "condRoleId",
+                        "같은 조건의 활성 승인선이 이미 있습니다"));
             }
         }
 

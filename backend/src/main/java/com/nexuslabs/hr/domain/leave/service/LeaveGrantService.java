@@ -135,7 +135,7 @@ public class LeaveGrantService {
     @Transactional
     public LeaveGrantItem adjust(LoginUser user, GrantAdjustmentRequest request) {
         if (request.days() == 0) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "조정 일수는 0일 수 없습니다");
+            throw BusinessException.invalidFields(Map.of("days", "조정 일수는 0일 수 없습니다"));
         }
         lockEmployee(user.companyId(), request.employeeId());
         Boolean active = jdbc.query("SELECT is_active FROM leave_type WHERE id = ? AND company_id = ?",

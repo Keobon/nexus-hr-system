@@ -95,7 +95,9 @@ class ApprovalLineTest {
     void 입력_검증() throws Exception {
         String orgLead = "[{\"stepOrder\": 1, \"approverType\": \"ORG_LEAD\"}]";
         // 조건 없음(기본 승인선만 가능) · 조건 두 개 · 휴가 취소
-        send(post("/api/approval-lines"), line("\"condRoleId\": null", orgLead)).andExpect(status().isBadRequest());
+        send(post("/api/approval-lines"), line("\"condRoleId\": null", orgLead))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.condJobTitleId").exists());
         send(post("/api/approval-lines"), line("\"condRoleId\": " + roleId("직원") + ", \"condJobTitleId\": " + org.ceoTitle, orgLead))
                 .andExpect(status().isBadRequest());
         send(post("/api/approval-lines"), line("\"condRoleId\": " + roleId("직원"), orgLead).replace("BUSINESS_TRIP", "LEAVE_CANCEL"))
@@ -118,7 +120,7 @@ class ApprovalLineTest {
         send(post("/api/approval-lines"), line("\"condJobTitleId\": " + org.ceoTitle, orgLead)).andExpect(status().isCreated());
         send(post("/api/approval-lines"), line("\"condJobTitleId\": " + org.ceoTitle, orgLead))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.message").value("같은 조건의 활성 승인선이 이미 있습니다"));
+                .andExpect(jsonPath("$.error.fields.condJobTitleId").value("같은 조건의 활성 승인선이 이미 있습니다"));
     }
 
     @Test

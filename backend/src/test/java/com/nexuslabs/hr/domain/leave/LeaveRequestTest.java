@@ -17,9 +17,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +57,7 @@ class LeaveRequestTest {
     @Autowired TestClock.MutableClock clock;
     @Autowired LeaveRequestService leaveRequestService;
     @Autowired TransactionTemplate tx;
+    @Autowired DataSource dataSource;
 
     DemoOrg org;
     long cid;
@@ -115,6 +124,43 @@ class LeaveRequestTest {
                         WHERE company_id = ? AND leave_request_id = ? AND status = 'ON_VACATION' ORDER BY work_date
                         """,
                 String.class, cid, leaveId);
+    }
+
+    /** 다른 트랜잭션이 커밋 전인 상황을 만들려고 별도 연결에서 SQL 을 실행한다. */
+    private static void exec(Connection c, String sql, Object... args) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            for (int i = 0; i < args.length; i++) {
+                ps.setObject(i + 1, args[i]);
+            }
+            ps.execute();
+        }
+    }
+
+    private CompletableFuture<MvcResult> async(TestFixture.Employee e, MockHttpServletRequestBuilder request) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return as(e, request).andReturn();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+    }
+
+    /** 요청이 행 잠금을 기다리기 시작할 때까지 기다린다. */
+    private void awaitLockWait(Connection c) throws Exception {
+        for (int i = 0; i < 250; i++) {
+            try (PreparedStatement ps = c.prepareStatement("""
+                    SELECT count(*) FROM pg_stat_activity
+                    WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()
+                    """); ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                if (rs.getLong(1) > 0) {
+                    return;
+                }
+            }
+            Thread.sleep(20);
+        }
+        throw new AssertionError("요청이 잠금 대기에 들어가지 않았다");
     }
 
     private String leaveStatus(long id) {
@@ -286,11 +332,61 @@ class LeaveRequestTest {
     @Test
     void 취소_요청이_반려되면_다시_승인완료이고_근태는_그대로() throws Exception {
         long id = approvedLeave("2030-03-11", "2030-03-11");
-        as(org.cho, post("/api/me/leave-requests/" + id + "/cancel-request")
-                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isOk());
+        // 사유는 선택이라 본문 없이 보내도 된다
+        as(org.cho, post("/api/me/leave-requests/" + id + "/cancel-request")).andExpect(status().isOk());
         decide(org.kang, "LEAVE_CANCEL", id, "reject", "{\"comment\": \"대체 인력 없음\"}").andExpect(status().isOk());
         assertThat(leaveStatus(id)).isEqualTo("APPROVED");
         assertThat(leaveDays(id)).containsExactly("2030-03-11");
+    }
+
+    @Test
+    void 철회와_최종_승인이_겹치면_승인이_먼저면_철회는_거부되고_승인이_유지된다() throws Exception {
+        long id = applyOk(org.cho, "2030-03-11", "2030-03-11");
+        decide(org.seo, "LEAVE", id, "approve", "{}").andExpect(status().isOk());
+        try (Connection c = dataSource.getConnection()) {
+            c.setAutoCommit(false);
+            // 강하늘의 최종 승인이 처리 중(단계 · 휴가 행을 바꾸고 아직 커밋 전)
+            exec(c, """
+                    UPDATE approval_step SET status = 'APPROVED', acted_at = now()
+                    WHERE company_id = ? AND work_type = 'LEAVE' AND target_id = ? AND status = 'PENDING'""", cid, id);
+            exec(c, "UPDATE leave_request SET status = 'APPROVED' WHERE id = ?", id);
+            CompletableFuture<MvcResult> withdraw = async(org.cho, post("/api/me/leave-requests/" + id + "/withdraw"));
+            awaitLockWait(c);
+            c.commit();
+            MvcResult result = withdraw.get(10, TimeUnit.SECONDS);
+            assertThat(result.getResponse().getStatus()).isEqualTo(409);
+            assertThat(result.getResponse().getContentAsString()).contains("INVALID_STATE");
+        }
+        assertThat(leaveStatus(id)).isEqualTo("APPROVED");
+    }
+
+    @Test
+    void 취소_요청이_동시에_두_번_오면_한_건만_생긴다() throws Exception {
+        long id = approvedLeave("2030-03-11", "2030-03-11");
+        try (Connection c = dataSource.getConnection()) {
+            c.setAutoCommit(false);
+            // 첫 번째 취소 요청이 처리 중(휴가 행을 바꾸고 취소 단계를 넣었고 아직 커밋 전)
+            exec(c, "UPDATE leave_request SET status = 'CANCEL_REQUESTED' WHERE id = ?", id);
+            exec(c, """
+                    INSERT INTO approval_step (company_id, work_type, target_id, round, step_order, approver_id, status)
+                    VALUES (?, 'LEAVE_CANCEL', ?, 1, 1, ?, 'PENDING')""", cid, id, org.kang.id());
+            CompletableFuture<MvcResult> second = async(org.cho, post("/api/me/leave-requests/" + id + "/cancel-request"));
+            awaitLockWait(c);
+            c.commit();
+            MvcResult result = second.get(10, TimeUnit.SECONDS);
+            assertThat(result.getResponse().getStatus()).isEqualTo(409);
+            assertThat(result.getResponse().getContentAsString()).contains("INVALID_STATE");
+        }
+        assertThat(jdbc.queryForObject("""
+                        SELECT count(*) FROM approval_step WHERE company_id = ? AND work_type = 'LEAVE_CANCEL' AND target_id = ?
+                        """, Long.class, cid, id)).isEqualTo(1);
+    }
+
+    @Test
+    void JSON_이_아닌_본문은_400() throws Exception {
+        as(org.cho, post("/api/me/leave-requests").contentType(MediaType.TEXT_PLAIN).content("휴가"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test

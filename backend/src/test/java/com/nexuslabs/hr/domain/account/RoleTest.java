@@ -75,7 +75,7 @@ class RoleTest {
         asAdmin(get("/api/roles"))
                 .andExpect(jsonPath("$.data.length()").value(4))
                 .andExpect(jsonPath("$.data[0].name").value("최고 관리자"))
-                .andExpect(jsonPath("$.data[0].system").value(true))
+                .andExpect(jsonPath("$.data[0].isSystem").value(true))
                 .andExpect(jsonPath("$.data[0].accountCount").value(1));
 
         TestFixture.Employee hr = fixture.employee(company.id(), company.rootOrgUnitId(), "인사 담당", false);
@@ -95,7 +95,7 @@ class RoleTest {
         String body = asAdmin(json(post("/api/roles"), HR_TEAM))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("인사팀"))
-                .andExpect(jsonPath("$.data.system").value(false))
+                .andExpect(jsonPath("$.data.isSystem").value(false))
                 .andExpect(jsonPath("$.data.permissions.length()").value(3))
                 .andExpect(jsonPath("$.data.permissions[0].code").value("ROLE_MANAGE"))
                 .andReturn().getResponse().getContentAsString();

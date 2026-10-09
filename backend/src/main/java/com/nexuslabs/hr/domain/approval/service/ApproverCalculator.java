@@ -129,7 +129,8 @@ public class ApproverCalculator {
                 (rs, i) -> rs.getLong("id"),
                 companyId, workType.name(), applicant.jobTitleId(), applicant.roleId()).stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("기본 승인선이 없다: " + workType)); // BR-APPR-001 위반
-        String name = jdbc.queryForObject("SELECT name FROM approval_line WHERE id = ?", String.class, lineId);
+        String name = jdbc.queryForObject("SELECT name FROM approval_line WHERE id = ? AND company_id = ?",
+                String.class, lineId, companyId);
         List<LineStep> steps = jdbc.query("""
                         SELECT step_order, approver_type::text AS approver_type, up_levels, job_title_id, employee_id
                         FROM approval_line_step WHERE approval_line_id = ? AND company_id = ?
