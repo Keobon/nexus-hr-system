@@ -125,8 +125,10 @@ public class EvalResultService {
         for (Base r : rows) {
             counts.merge(r.status(), 1L, Long::sum);
             BigDecimal total = scores.containsKey(r.id()) ? EvalScoreCalculator.total(scores.get(r.id())) : null;
+            boolean unsubmitted = r.status() == EvaluationStatus.NOT_STARTED || r.status() == EvaluationStatus.IN_PROGRESS
+                    || r.status() == EvaluationStatus.REOPENED;
             items.add(new EvalProgress.Item(r.id(), r.targetId(), r.targetName(), r.orgUnitName(), r.evaluatorName(),
-                    r.templateName(), r.status(), total));
+                    r.templateName(), r.status(), total, unsubmitted && !r.evaluatorActive()));
         }
         return new EvalProgress(counts, items);
     }
@@ -139,12 +141,13 @@ public class EvalResultService {
                 rs.getString("employee_no"), rs.getString("target_name"), rs.getString("org_unit_name"),
                 rs.getString("evaluator_name"), rs.getString("template_name"),
                 EvaluationStatus.valueOf(rs.getString("status")), rs.getString("overall_comment"),
-                confirmedAt == null ? null : confirmedAt.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime());
+                confirmedAt == null ? null : confirmedAt.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime(),
+                rs.getBoolean("evaluator_active"));
     }
 
     private record Base(long id, long cycleId, String cycleName, long targetId, String employeeNo, String targetName,
                         String orgUnitName, String evaluatorName, String templateName, EvaluationStatus status,
-                        String overallComment, OffsetDateTime confirmedAt) {
+                        String overallComment, OffsetDateTime confirmedAt, boolean evaluatorActive) {
     }
 
     private static final String FROM = """
@@ -159,6 +162,8 @@ public class EvalResultService {
     private static final String BASE_SELECT = """
             SELECT ev.id, c.id AS cycle_id, c.name AS cycle_name, e.id AS target_id, e.employee_no, e.name AS target_name,
                    o.name AS org_unit_name, ve.name AS evaluator_name, t.name AS template_name, ev.status::text AS status,
-                   ev.overall_comment, ev.confirmed_at
+                   ev.overall_comment, ev.confirmed_at,
+                   ve.status = 'ACTIVE' AND EXISTS (SELECT 1 FROM account a WHERE a.employee_id = ve.id
+                                                     AND a.company_id = ve.company_id AND a.is_active) AS evaluator_active
             """ + FROM;
 }

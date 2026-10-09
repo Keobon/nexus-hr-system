@@ -1,5 +1,6 @@
 package com.nexuslabs.hr.domain.evaluation.service;
 
+import com.nexuslabs.hr.domain.approval.service.ApproverCalculator;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalAnswersRequest;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalScore;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalTodoItem;
@@ -39,14 +40,17 @@ public class EvaluationService {
 
     private final EvaluationRepository repository;
     private final EvalScoreCalculator scoreCalculator;
+    private final ApproverCalculator approverCalculator;
     private final PermissionReader permissionReader;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
     public EvaluationService(EvaluationRepository repository, EvalScoreCalculator scoreCalculator,
-                             PermissionReader permissionReader, JdbcTemplate jdbc, Clock clock) {
+                             ApproverCalculator approverCalculator, PermissionReader permissionReader, JdbcTemplate jdbc,
+                             Clock clock) {
         this.repository = repository;
         this.scoreCalculator = scoreCalculator;
+        this.approverCalculator = approverCalculator;
         this.permissionReader = permissionReader;
         this.jdbc = jdbc;
         this.clock = clock;
@@ -149,6 +153,34 @@ public class EvaluationService {
             throw new BusinessException(ErrorCode.INVALID_STATE, "제출완료된 평가만 확정할 수 있습니다");
         }
         evaluation.confirm(user.employeeId(), OffsetDateTime.now(clock));
+        repository.flush();
+        return detail(user, row(user.companyId(), id));
+    }
+
+    /**
+     * 평가자 변경(F-EVAL-06, 2026-10-10 추가) — 제출 전(작성 전 · 작성중 · 재오픈)만, 아니면 INVALID_STATE.
+     * 새 평가자: 다른 회사 → 404, 재직 · 계정 활성이 아니거나 대상자 본인 → fields.evaluatorId(승인자 재지정과 같은 규칙).
+     * 쓰던 점수 · 의견은 그대로 두고 새 평가자가 이어서 쓴다. EVAL_MANAGE.
+     */
+    @Transactional
+    public EvaluationDetail changeEvaluator(LoginUser user, long id, long evaluatorId) {
+        Evaluation evaluation = lock(user.companyId(), id);
+        EvaluationStatus status = evaluation.getStatus();
+        if (status == EvaluationStatus.SUBMITTED || status == EvaluationStatus.CONFIRMED) {
+            throw new BusinessException(ErrorCode.INVALID_STATE, "제출한 평가는 평가자를 바꿀 수 없습니다");
+        }
+        Boolean exists = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee WHERE id = ? AND company_id = ?)",
+                Boolean.class, evaluatorId, user.companyId());
+        if (!Boolean.TRUE.equals(exists)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "평가자로 지정할 직원을 찾을 수 없습니다");
+        }
+        if (evaluatorId == evaluation.getTargetEmployee().getId()) {
+            throw BusinessException.invalidFields(Map.of("evaluatorId", "대상자 본인은 평가자가 될 수 없습니다"));
+        }
+        if (!approverCalculator.isCandidate(user.companyId(), evaluatorId)) {
+            throw BusinessException.invalidFields(Map.of("evaluatorId", "재직 중이고 계정이 활성인 직원만 평가자가 될 수 있습니다"));
+        }
+        evaluation.changeEvaluator(evaluatorId);
         repository.flush();
         return detail(user, row(user.companyId(), id));
     }

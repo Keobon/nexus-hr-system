@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -230,5 +231,46 @@ class EvaluationFlowTest {
         // 없는 · 다른 회사 ID
         as(hr, get("/api/evaluations/" + Long.MAX_VALUE)).andExpect(status().isNotFound());
         as(hr, get("/api/eval-cycles/" + Long.MAX_VALUE + "/progress")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 평가자가_퇴직하면_진행_현황에_표시되고_관리자가_바꾸면_새_평가자가_이어서_쓴다() throws Exception {
+        answer(org.seo, choEval, "{\"answers\": [{\"questionId\": %d, \"score\": 4}], \"overallComment\": \"초안\"}"
+                .formatted(q1)).andExpect(status().isOk());
+        // 서예린 퇴직 — 평가는 자동으로 넘어가지 않는다
+        send(post("/api/employees/" + org.seo.id() + "/status"),
+                "{\"status\": \"RESIGNED\", \"effectiveDate\": \"2030-03-04\", \"reason\": \"개인 사정\"}")
+                .andExpect(status().isOk());
+        String flag = "$.data.items[?(@.evaluationId == %d)].needsEvaluatorChange";
+        as(hr, get("/api/eval-cycles/" + cycle + "/progress"))
+                .andExpect(jsonPath(flag.formatted(choEval)).value(contains(true)))
+                .andExpect(jsonPath(flag.formatted(yoonEval)).value(contains(false)));
+
+        String path = "/api/evaluations/" + choEval + "/evaluator";
+        send(patch(path), "{\"evaluatorId\": " + org.cho.id() + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.evaluatorId").exists());           // 대상자 본인
+        send(patch(path), "{\"evaluatorId\": " + org.seo.id() + "}")
+                .andExpect(jsonPath("$.error.fields.evaluatorId").exists());           // 퇴직자
+        TestFixture.Company other = fixture.company("다른회사");
+        send(patch(path), "{\"evaluatorId\": " + other.adminId() + "}").andExpect(status().isNotFound());
+        send(org.cho, patch(path), "{\"evaluatorId\": " + org.kang.id() + "}").andExpect(status().isForbidden());
+
+        send(patch(path), "{\"evaluatorId\": " + org.kang.id() + "}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evaluatorId").value(org.kang.id()))
+                .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.data.criteria[0].questions[0].score").value(4))  // 쓰던 점수 · 의견 그대로
+                .andExpect(jsonPath("$.data.overallComment").value("초안"));
+        as(hr, get("/api/eval-cycles/" + cycle + "/progress"))
+                .andExpect(jsonPath(flag.formatted(choEval)).value(contains(false)));
+        as(org.kang, get("/api/me/evaluations/todo"))
+                .andExpect(jsonPath("$.data[*].evaluationId").value(hasItem(Math.toIntExact(choEval))));
+        answer(org.kang, choEval, full(4, 4, 4, "이어서 평가")).andExpect(status().isOk());
+        as(org.kang, post("/api/evaluations/" + choEval + "/submit")).andExpect(status().isOk());
+        // 제출한 평가는 바꿀 수 없다
+        send(patch(path), "{\"evaluatorId\": " + org.ceo.id() + "}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
     }
 }

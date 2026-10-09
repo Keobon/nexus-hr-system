@@ -81,6 +81,11 @@ public class Evaluation extends BaseTimeEntity {
         this.confirmedAt = now;
     }
 
+    /** 제출 전 평가의 평가자 변경(F-EVAL-06) — 쓰던 점수 · 의견은 그대로 둔다. */
+    public void changeEvaluator(long evaluatorId) {
+        this.evaluatorId = evaluatorId;
+    }
+
     public void reopen(String reason) {
         this.status = EvaluationStatus.REOPENED;
         this.reopenReason = reason;

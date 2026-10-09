@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.evaluation.controller;
 
 import com.nexuslabs.hr.domain.evaluation.dto.EvalAnswersRequest;
+import com.nexuslabs.hr.domain.evaluation.dto.EvalEvaluatorRequest;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalProgress;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalReopenRequest;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalResultItem;
@@ -19,6 +20,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -76,6 +78,14 @@ public class EvaluationController {
     public ApiResponse<EvaluationDetail> reopen(@CurrentUser LoginUser user, @PathVariable long id,
                                                 @Valid @RequestBody EvalReopenRequest request) {
         return ApiResponse.ok(evaluationService.reopen(user, id, request.reason()));
+    }
+
+    /** 제출 전 평가의 평가자 변경(평가자 퇴직 등). */
+    @PatchMapping("/api/evaluations/{id}/evaluator")
+    @RequirePermission(PermissionCode.EVAL_MANAGE)
+    public ApiResponse<EvaluationDetail> changeEvaluator(@CurrentUser LoginUser user, @PathVariable long id,
+                                                         @Valid @RequestBody EvalEvaluatorRequest request) {
+        return ApiResponse.ok(evaluationService.changeEvaluator(user, id, request.evaluatorId()));
     }
 
     /** 확정된 것만. */
