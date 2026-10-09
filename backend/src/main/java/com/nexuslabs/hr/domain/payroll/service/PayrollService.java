@@ -90,7 +90,7 @@ public class PayrollService {
         this.clock = clock;
     }
 
-    /** 저장하지 않는 계산. 정산된 월 → PAY_MONTH_SETTLED, 월이 끝나기 전이면 경고만. */
+    /** 저장하지 않는 계산. 정산된 월 → PAY_MONTH_SETTLED, 월이 끝나기 전 · 실지급액 음수는 알려만 준다. */
     @Transactional(readOnly = true)
     public PayrollPreview preview(LoginUser user, PayrollRunRequest request) {
         long cid = user.companyId();
@@ -99,12 +99,19 @@ public class PayrollService {
         Computation c = compute(cid, month, request.manualInputs());
         return new PayrollPreview(month.toString(), payDate(cid, month, request.payDate()),
                 ended(month) ? null : MONTH_NOT_ENDED, c.employees().stream().map(Calc::toView).toList(),
-                c.unregistered(), totals(c.employees().stream().map(Calc::result).toList()));
+                c.unregistered(), negativeNetPay(c), totals(c.employees().stream().map(Calc::result).toList()));
+    }
+
+    /** 공제가 지급보다 많아 실지급액이 음수인 직원. 미리보기는 알려 주고 확정은 거부한다(2.3 I 64). */
+    private static List<Long> negativeNetPay(Computation c) {
+        return c.employees().stream().filter(calc -> calc.result().netPay() < 0).map(calc -> calc.target().id())
+                .toList();
     }
 
     /**
      * 확정 — 미리보기와 같은 입력으로 다시 계산해 정산 1행 · 명세서 · 줄을 저장하고 반영한 출장 경비에 명세서를 연결한다.
-     * 귀속 월이 끝나기 전 → INVALID_STATE, 정산된 월 → PAY_MONTH_SETTLED, 대상 0명 → BUSINESS_RULE_VIOLATION. 감사 로그(EXECUTE).
+     * 귀속 월이 끝나기 전 → INVALID_STATE, 정산된 월 → PAY_MONTH_SETTLED, 대상 0명 · 실지급액이 음수인 직원이 있음 →
+     * BUSINESS_RULE_VIOLATION. 감사 로그(EXECUTE).
      */
     @Transactional
     public PayrollRunView confirm(LoginUser user, PayrollRunRequest request) {
@@ -124,6 +131,11 @@ public class PayrollService {
         Computation c = compute(cid, month, request.manualInputs());
         if (c.employees().isEmpty()) {
             throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "정산할 직원이 없습니다(급여 등록 확인)");
+        }
+        List<Long> negative = negativeNetPay(c);
+        if (!negative.isEmpty()) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION,
+                    "실지급액이 음수인 직원이 있습니다. 공제 금액을 확인하세요", Map.of("negativeNetPayEmployeeIds", negative));
         }
 
         PayrollRun run = runRepository.save(new PayrollRun(month.toString(), payDate(cid, month, request.payDate()),
@@ -444,9 +456,12 @@ public class PayrollService {
         }
     }
 
-    /** 귀속 월 다음 달의 회사 기본 급여 지급일, 그달 말일보다 크면 말일(2.3 G 44). */
+    /** 비우면 귀속 월 다음 달의 회사 기본 급여 지급일, 그달 말일보다 크면 말일(2.3 G 44). 귀속 월보다 앞선 날짜는 거부. */
     private LocalDate payDate(long companyId, YearMonth month, LocalDate requested) {
         if (requested != null) {
+            if (requested.isBefore(month.atDay(1))) {
+                throw BusinessException.invalidFields(Map.of("payDate", "지급일은 귀속 월보다 앞설 수 없습니다"));
+            }
             return requested;
         }
         int payDay = jdbc.queryForObject("SELECT pay_day FROM company WHERE id = ?", Integer.class, companyId);
