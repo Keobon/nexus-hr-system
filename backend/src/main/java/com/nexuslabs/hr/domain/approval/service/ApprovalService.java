@@ -21,10 +21,13 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 승인 엔진(F-APPR-02·03·04, BR-APPR-001–006). 휴가 · 휴가 취소 · 연장근무 · 출장 · 출장 경비가 모두 이것을 쓴다.
@@ -128,7 +131,8 @@ public class ApprovalService {
     /**
      * 목록 행마다 붙일 현재 승인 진행을 쿼리 한 번으로 모은다(API 설계서 8장 "휴가 신청 목록 행", 역할 분담 v2 2.1).
      * 가장 최근 회차에서 — 승인대기 단계가 있으면 그 단계, 없으면 마지막으로 처리(승인·반려)된 단계.
-     * 휴가(LEAVE)는 취소 요청 단계(LEAVE_CANCEL)가 있으면 그쪽이 최근 회차다.
+     * 휴가(LEAVE)는 취소 요청 단계(LEAVE_CANCEL)가 있으면 그쪽이 최근 회차다. 단 반려된 취소 요청은 건너뛴다 —
+     * 휴가가 다시 승인완료이므로 원래 휴가의 마지막 승인 단계를 보여 준다(API 8장, 10/10 합의).
      * 처리된 단계가 하나도 없으면(모든 단계 생략 = 즉시 승인, 아무도 처리하기 전 철회) 맵에 넣지 않는다 → 화면은 null.
      */
     @Transactional(readOnly = true)
@@ -148,6 +152,7 @@ public class ApprovalService {
                                                       ORDER BY (s.work_type = 'LEAVE_CANCEL') DESC, s.round DESC) AS attempt
                             FROM approval_step s
                             WHERE s.company_id = ? AND s.work_type = ANY(?::approval_work_type[]) AND s.target_id = ANY(?)
+                              AND NOT (s.work_type = 'LEAVE_CANCEL' AND s.status = 'REJECTED')
                         ), picked AS (
                             SELECT DISTINCT ON (target_id) target_id, step_order, status, approver_id, total_steps
                             FROM steps
@@ -264,7 +269,7 @@ public class ApprovalService {
         List<Step> steps = jdbc.query(RAW_STEP_SELECT + where + " ORDER BY s.created_at, s.id LIMIT ? OFFSET ?",
                 RAW_STEP_MAPPER, pageArgs.toArray());
 
-        // 신청자 · 회차 단계는 페이지 전체를 한 번씩 읽는다(N+1 방지). 요약은 업무마다 한 건씩 — 묶음 조회는 팀원 합의 후
+        // 요약 · 신청자 · 회차 단계는 페이지 전체를 한 번씩 읽는다(N+1 방지)
         Map<Step, TargetSummary> summaries = summaries(steps);
         Map<Long, Applicant> applicants = applicants(user.companyId(),
                 summaries.values().stream().map(TargetSummary::applicantId).toList());
@@ -305,14 +310,13 @@ public class ApprovalService {
         return new PageImpl<>(items, pageable, total);
     }
 
-    /** 승인자 재지정이 필요한 대기 단계(APPROVAL_MANAGE). */
+    /** 승인자 재지정이 필요한 대기 단계(APPROVAL_MANAGE). 오래된 단계부터, 페이징(10/10 합의 ⑥). */
     @Transactional(readOnly = true)
-    public List<ReassignItem> reassignNeeded(LoginUser user) {
-        List<Step> steps = jdbc.query(RAW_STEP_SELECT + """
-                         WHERE s.company_id = ? AND s.needs_reassign AND s.status IN ('PENDING', 'WAITING')
-                         ORDER BY s.created_at, s.id
-                        """,
-                RAW_STEP_MAPPER, user.companyId());
+    public PageImpl<ReassignItem> reassignNeeded(LoginUser user, Pageable pageable) {
+        String where = " WHERE s.company_id = ? AND s.needs_reassign AND s.status IN ('PENDING', 'WAITING')";
+        long total = jdbc.queryForObject("SELECT count(*) FROM approval_step s" + where, Long.class, user.companyId());
+        List<Step> steps = jdbc.query(RAW_STEP_SELECT + where + " ORDER BY s.created_at, s.id LIMIT ? OFFSET ?",
+                RAW_STEP_MAPPER, user.companyId(), pageable.getPageSize(), pageable.getOffset());
         Map<Step, TargetSummary> summaries = summaries(steps);
         Map<Long, Applicant> applicants = applicants(user.companyId(),
                 summaries.values().stream().map(TargetSummary::applicantId).toList());
@@ -325,7 +329,7 @@ public class ApprovalService {
             items.add(new ReassignItem(s.id(), s.workType(), s.targetId(), applicant.id(), applicant.name(),
                     summary.title(), s.stepOrder(), v.status(), v.approverId(), v.approverName()));
         }
-        return items;
+        return new PageImpl<>(items, pageable, total);
     }
 
     /** 승인자 재지정 — 재직·활성 직원으로, 신청자 본인은 안 된다. 재지정 필요 표시를 지운다. */
@@ -449,13 +453,15 @@ public class ApprovalService {
                 stepMapper(user.employeeId()), stepId, user.companyId());
     }
 
-    /** 목록 행마다의 신청 요약. 같은 신청이 두 번 나와도 한 번만 부른다. */
+    /** 목록 행마다의 신청 요약. 업무 종류마다 summaries 를 한 번 부른다(역할 분담 2.1, 10/10 합의 ⑤). */
     private Map<Step, TargetSummary> summaries(List<Step> steps) {
+        Map<ApprovalWorkType, Map<Long, TargetSummary>> byType = new EnumMap<>(ApprovalWorkType.class);
+        steps.stream().collect(Collectors.groupingBy(Step::workType,
+                        Collectors.mapping(Step::targetId, Collectors.toCollection(LinkedHashSet::new))))
+                .forEach((type, ids) -> byType.put(type, targets.get(type).summaries(ids)));
         Map<Step, TargetSummary> result = new HashMap<>();
-        Map<RoundKey, TargetSummary> byTarget = new HashMap<>();
         for (Step s : steps) {
-            result.put(s, byTarget.computeIfAbsent(RoundKey.of(s).withoutRound(),
-                    k -> targets.get(s.workType()).summary(s.targetId())));
+            result.put(s, byType.get(s.workType()).get(s.targetId()));
         }
         return result;
     }
@@ -500,7 +506,9 @@ public class ApprovalService {
         RowMapper<ApprovalStepView> mapper = stepMapper(user.employeeId());
         jdbc.query("""
                         SELECT s.work_type::text AS work_type, s.target_id, s.id, s.round, s.step_order, s.approver_id,
-                               e.name AS approver_name, s.status::text AS status, s.approved_minutes, s.comment, s.acted_at
+                               e.name AS approver_name, s.status::text AS status, s.approved_minutes, s.comment, s.acted_at,
+                        """ + DISPLAY_ROUND + """
+
                         FROM approval_step s
                         JOIN unnest(?::text[], ?::bigint[], ?::int[]) AS k(work_type, target_id, round)
                           ON s.work_type::text = k.work_type AND s.target_id = k.target_id AND s.round = k.round
@@ -520,9 +528,22 @@ public class ApprovalService {
         return result;
     }
 
+    /**
+     * 응답의 round. 휴가 취소 단계(LEAVE_CANCEL)는 DB에 취소 단계끼리 1부터 저장하고, 응답에서만 휴가의 마지막 round 를 더한다
+     * (ERD 5.7, API 9장 approvalSteps — 신청 상세 · 승인 · 반려 응답 · 승인함이 같은 값).
+     */
+    private static final String DISPLAY_ROUND = """
+            s.round + CASE WHEN s.work_type = 'LEAVE_CANCEL'
+                           THEN COALESCE((SELECT max(l.round) FROM approval_step l
+                                          WHERE l.company_id = s.company_id AND l.work_type = 'LEAVE'
+                                            AND l.target_id = s.target_id), 0)
+                           ELSE 0 END AS display_round""";
+
     private static final String STEP_SELECT = """
-            SELECT s.id, s.round, s.step_order, s.approver_id, e.name AS approver_name, s.status::text AS status,
-                   s.approved_minutes, s.comment, s.acted_at
+            SELECT s.id, s.step_order, s.approver_id, e.name AS approver_name, s.status::text AS status,
+                   s.approved_minutes, s.comment, s.acted_at,
+            """ + DISPLAY_ROUND + """
+
             FROM approval_step s
             LEFT JOIN employee e ON e.id = s.approver_id AND e.company_id = s.company_id
             """;
@@ -531,7 +552,7 @@ public class ApprovalService {
         return (rs, i) -> {
             Long approverId = rs.getObject("approver_id", Long.class);
             ApprovalStepStatus status = ApprovalStepStatus.valueOf(rs.getString("status"));
-            return new ApprovalStepView(rs.getLong("id"), rs.getInt("round"), rs.getInt("step_order"), approverId,
+            return new ApprovalStepView(rs.getLong("id"), rs.getInt("display_round"), rs.getInt("step_order"), approverId,
                     rs.getString("approver_name"), status, rs.getObject("approved_minutes", Integer.class),
                     rs.getString("comment"), rs.getObject("acted_at", OffsetDateTime.class),
                     status == ApprovalStepStatus.PENDING && approverId != null && approverId == viewerId);
@@ -563,10 +584,6 @@ public class ApprovalService {
     private record RoundKey(ApprovalWorkType workType, long targetId, int round) {
         static RoundKey of(Step s) {
             return new RoundKey(s.workType(), s.targetId(), s.round());
-        }
-
-        RoundKey withoutRound() {
-            return new RoundKey(workType, targetId, 0);
         }
     }
 }

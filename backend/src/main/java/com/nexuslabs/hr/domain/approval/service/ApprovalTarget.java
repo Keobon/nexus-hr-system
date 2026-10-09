@@ -1,5 +1,9 @@
 package com.nexuslabs.hr.domain.approval.service;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 /**
  * 승인 대상 업무(휴가 · 휴가 취소 · 연장근무 · 출장 · 출장 경비)가 구현하는 경계 인터페이스(역할 분담 v2 2.1).
  * 업무 영역마다 @Component 로 하나씩 만든다 — ApprovalService 가 type() 으로 찾아 부른다.
@@ -24,4 +28,16 @@ public interface ApprovalTarget {
 
     /** 승인함 · 재지정 화면에 보여 줄 요약. 신청자 ID는 재지정 검사(신청자 본인 불가)에도 쓴다. */
     TargetSummary summary(long targetId);
+
+    /**
+     * 승인함 · 처리 내역 · 재지정 목록이 한 페이지의 같은 업무 신청을 한 번에 요약한다(10/10 합의 ⑤).
+     * 기본 구현은 summary 를 한 건씩 부른다 — 묶음 쿼리로 바꾸려면 구현체에서 재정의한다.
+     */
+    default Map<Long, TargetSummary> summaries(Collection<Long> targetIds) {
+        Map<Long, TargetSummary> result = new LinkedHashMap<>();
+        for (long targetId : targetIds) {
+            result.put(targetId, summary(targetId));
+        }
+        return result;
+    }
 }

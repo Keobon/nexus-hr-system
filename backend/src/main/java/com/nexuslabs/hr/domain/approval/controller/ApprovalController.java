@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 /** API 설계서 9.2 — 승인함 · 승인 · 반려 · 재지정. 승인과 평가는 권한 코드가 아니라 "그 단계의 승인자"인지로 판단한다. */
 @RestController
@@ -67,8 +66,9 @@ public class ApprovalController {
 
     @GetMapping("/reassign-needed")
     @RequirePermission(PermissionCode.APPROVAL_MANAGE)
-    public ApiResponse<List<ReassignItem>> reassignNeeded(@CurrentUser LoginUser user) {
-        return ApiResponse.ok(approvalService.reassignNeeded(user));
+    public ApiResponse<PageResponse<ReassignItem>> reassignNeeded(@CurrentUser LoginUser user,
+                                                                @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(approvalService.reassignNeeded(user, pageable)));
     }
 
     @PatchMapping("/{stepId}/approver")
