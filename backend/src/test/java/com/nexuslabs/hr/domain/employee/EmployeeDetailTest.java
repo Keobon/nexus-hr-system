@@ -59,6 +59,11 @@ class EmployeeDetailTest {
                 INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, check_in_at, check_in_method)
                 VALUES (?, ?, ?, 'CHECKED_IN', 'REMOTE', TIMESTAMPTZ '2030-03-04 09:30+09', 'WEB')
                 """, cid, org.cho.id(), Date.valueOf(MONDAY));
+        // 가족 3명 — 공제 대상 배우자 · 공제 대상 자녀 · 공제 대상 아닌 부모 → 부양가족 2, 자녀 1
+        jdbc.update("""
+                INSERT INTO employee_family (company_id, employee_id, name, relation, is_tax_dependent)
+                VALUES (?, ?, '배우자', 'SPOUSE', TRUE), (?, ?, '자녀', 'CHILD', TRUE), (?, ?, '부모', 'PARENT', FALSE)
+                """, cid, org.cho.id(), cid, org.cho.id(), cid, org.cho.id());
     }
 
     private ResultActions as(TestFixture.Employee e, MockHttpServletRequestBuilder request) throws Exception {
@@ -86,6 +91,9 @@ class EmployeeDetailTest {
                 .andExpect(jsonPath("$.data.payrollEligible").value(true))
                 .andExpect(jsonPath("$.data.birthDate").isEmpty())                 // 값이 없으면 null 로 나온다
                 .andExpect(jsonPath("$.data.fieldValues").isArray())
+                .andExpect(jsonPath("$.data.dependentsCount").value(2))           // 가족 정보에서 센다(BR-EMP-007)
+                .andExpect(jsonPath("$.data.childrenCount").value(1))
+                .andExpect(jsonPath("$.data.familyMembers").doesNotExist())      // 명단은 가족 API(EMPLOYEE_MANAGE)
                 .andExpect(jsonPath("$.data.hrMemo").value("면담 예정"))
                 .andExpect(jsonPath("$.data.todayStatus").value("REMOTE"))
                 .andExpect(jsonPath("$.data.monthSummary.month").value("2030-03"))
@@ -98,6 +106,7 @@ class EmployeeDetailTest {
         detail(executive, org.cho.id())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.address").value("서울시 마포구"))
+                .andExpect(jsonPath("$.data.dependentsCount").value(2))
                 .andExpect(jsonPath("$.data.hrMemo").doesNotExist());
     }
 
@@ -113,6 +122,8 @@ class EmployeeDetailTest {
                 .andExpect(jsonPath("$.data.address").doesNotExist())
                 .andExpect(jsonPath("$.data.hireDate").doesNotExist())
                 .andExpect(jsonPath("$.data.fieldValues").doesNotExist())
+                .andExpect(jsonPath("$.data.dependentsCount").doesNotExist())
+                .andExpect(jsonPath("$.data.childrenCount").doesNotExist())
                 .andExpect(jsonPath("$.data.hrMemo").doesNotExist());
 
         detail(org.seo, org.yoon.id())
