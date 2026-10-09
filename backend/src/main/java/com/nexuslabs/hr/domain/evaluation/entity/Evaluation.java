@@ -61,4 +61,28 @@ public class Evaluation extends BaseTimeEntity {
         this.evaluatorId = evaluatorId;
         this.evalTemplate = evalTemplate;
     }
+
+    /** 임시저장 — 작성 전이면 작성중으로. 재오픈 건은 재오픈 그대로(기간 종료 뒤에도 고칠 수 있게). */
+    public void saveDraft(String overallComment) {
+        this.overallComment = overallComment;
+        if (status == EvaluationStatus.NOT_STARTED) {
+            status = EvaluationStatus.IN_PROGRESS;
+        }
+    }
+
+    public void submit(OffsetDateTime now) {
+        this.status = EvaluationStatus.SUBMITTED;
+        this.submittedAt = now;
+    }
+
+    public void confirm(long confirmedBy, OffsetDateTime now) {
+        this.status = EvaluationStatus.CONFIRMED;
+        this.confirmedBy = confirmedBy;
+        this.confirmedAt = now;
+    }
+
+    public void reopen(String reason) {
+        this.status = EvaluationStatus.REOPENED;
+        this.reopenReason = reason;
+    }
 }
