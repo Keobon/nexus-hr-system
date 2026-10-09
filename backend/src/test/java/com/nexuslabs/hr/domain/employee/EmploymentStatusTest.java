@@ -172,7 +172,11 @@ class EmploymentStatusTest {
     @Test
     void 마지막_최고_관리자는_퇴직할_수_없고_아무것도_바뀌지_않는다() throws Exception {
         long admin = org.company.adminId();
-        changeStatus(hr.id(), admin, "RESIGNED", "2030-03-04")
+        // 인사 담당(ROLE_MANAGE 없음)은 최고 관리자의 재직상태를 바꿀 수 없다(2026-10-10)
+        changeStatus(hr.id(), admin, "ON_LEAVE", "2030-03-04")
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+        changeStatus(admin, admin, "RESIGNED", "2030-03-04")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("LAST_SUPER_ADMIN"));
         assertThat(statusOf("employee", admin)).isEqualTo("ACTIVE");
@@ -181,6 +185,20 @@ class EmploymentStatusTest {
                 String.class, admin)).containsExactly("ACTIVE");
         assertThat(jdbc.queryForObject("SELECT is_active FROM account WHERE employee_id = ?", Boolean.class, admin))
                 .isTrue();
+    }
+
+    @Test
+    void 승인자가_휴직하면_그_사람_차례인_단계가_재지정_필요가_되고_복직하면_지워진다() throws Exception {
+        create(org.cho, "/api/me/business-trips", """
+                {"tripType": "DOMESTIC", "destination": "대구", "purpose": "교육",
+                 "startDate": "2030-03-13", "endDate": "2030-03-13"}""");   // 1단계 서예린
+        long admin = org.company.adminId();
+        changeStatus(hr.id(), org.seo.id(), "ON_LEAVE", "2030-03-04").andExpect(status().isOk());
+        as(admin, get("/api/approvals/reassign-needed"))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].approverId").value(org.seo.id()));
+        changeStatus(hr.id(), org.seo.id(), "ACTIVE", "2030-03-04").andExpect(status().isOk());
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test

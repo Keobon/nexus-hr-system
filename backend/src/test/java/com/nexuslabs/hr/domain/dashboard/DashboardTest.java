@@ -56,6 +56,11 @@ class DashboardTest {
         // 퇴직자 1명(백엔드팀) — 조직 인원에서 빠지고 퇴직 수에 들어간다
         TestFixture.Employee gone = fixture.employee(cid, org.backendTeam, "직원", false);
         jdbc.update("UPDATE employee SET status = 'RESIGNED' WHERE id = ?", gone.id());
+        // 퇴직 때 남겨 둔 승인된 미래 휴가 — 이번 달 휴가자에 나오면 안 된다
+        jdbc.update("""
+                INSERT INTO leave_request (company_id, employee_id, leave_type_id, leave_year, start_date, end_date, days, status)
+                SELECT ?, ?, id, 2030, '2030-03-20', '2030-03-20', 1, 'APPROVED' FROM leave_type
+                WHERE company_id = ? AND name = '연차'""", cid, gone.id(), cid);
 
         jdbc.update("""
                 INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, check_in_at, check_in_method)
@@ -157,6 +162,7 @@ class DashboardTest {
                 .andExpect(jsonPath("$.data.company.headcount.byOrgUnit[0].children[*].count").value(contains(2, 1)))
                 .andExpect(jsonPath("$.data.company.headcount.byEmploymentType[0].employmentTypeName").value("정규직"))
                 .andExpect(jsonPath("$.data.company.headcount.byEmploymentType[0].count").value(7))
+                .andExpect(jsonPath("$.data.company.onVacationThisMonth.length()").value(1))
                 .andExpect(jsonPath("$.data.company.onVacationThisMonth[0].employeeId").value(org.cho.id()))
                 .andExpect(jsonPath("$.data.company.onVacationThisMonth[0].days").value(2))
                 .andExpect(jsonPath("$.data.company.leaveUsageThisMonth[0].days").value(2))
