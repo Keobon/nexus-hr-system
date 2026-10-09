@@ -105,6 +105,13 @@ public class Employee extends BaseTimeEntity {
         this.employmentType = employmentType;
     }
 
+    /** 소속 조직 · 직급 · 직책은 인사발령으로만 바뀐다(BR-EMP-001) — AssignmentService 만 부른다. */
+    public void changeAssignment(OrgUnit orgUnit, JobGrade jobGrade, JobTitle jobTitle) {
+        this.orgUnit = orgUnit;
+        this.jobGrade = jobGrade;
+        this.jobTitle = jobTitle;
+    }
+
     public void changeContact(String phone, String address) {
         this.phone = phone;
         this.address = address;
