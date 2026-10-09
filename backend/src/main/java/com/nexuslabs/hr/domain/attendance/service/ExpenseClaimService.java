@@ -24,6 +24,7 @@ import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.permission.Scope;
 import com.nexuslabs.hr.global.permission.ScopeResolver;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -151,11 +152,14 @@ public class ExpenseClaimService {
         ExpenseClaim claim = repository.findById(id)
                 .filter(c -> c.getEmployee().getId() == user.employeeId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        // 잠금 순서는 승인 처리와 같게 — 승인 단계 먼저, 청구 행 다음(교착 방지). 진행 중인 최종 승인이 있으면
+        // 그 커밋을 기다린 뒤 최신 상태로 다시 판단한다
+        approvalService.withdraw(user.companyId(), ApprovalWorkType.TRIP_EXPENSE, id);
+        em.refresh(claim, LockModeType.PESSIMISTIC_WRITE);
         if (claim.getStatus() != RequestStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "승인대기 중인 청구만 철회할 수 있습니다");
         }
         claim.cancel(null);
-        approvalService.withdraw(user.companyId(), ApprovalWorkType.TRIP_EXPENSE, id);
         repository.flush();
         return detail(user.companyId(), id, user.employeeId());
     }

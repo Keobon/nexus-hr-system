@@ -43,6 +43,7 @@ class OvertimeTest {
     @Autowired TestFixture fixture;
     @Autowired OvertimeService overtimeService;
     @Autowired TransactionTemplate tx;
+    @Autowired javax.sql.DataSource dataSource;
 
     DemoOrg org;
     long cid;
@@ -322,5 +323,49 @@ class OvertimeTest {
         as(org.cho.id(), get(path)).andExpect(jsonPath("$.data.totalElements").value(0));     // 조직장 아님
         as(org.company.adminId(), get(path + "&status=WRONG"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void 철회와_최종_승인이_겹치면_승인이_먼저면_철회는_거부되고_승인이_유지된다() throws Exception {
+        long id = applyOk(org.cho, DATE, "18:00", "21:00");
+        try (java.sql.Connection c = dataSource.getConnection()) {
+            c.setAutoCommit(false);
+            // 서예린의 최종 승인이 처리 중(단계 · 신청 행을 바꾸고 아직 커밋 전)
+            try (java.sql.Statement st = c.createStatement()) {
+                st.execute("UPDATE approval_step SET status = 'APPROVED', acted_at = now() WHERE id = " + stepId(id));
+                st.execute("UPDATE overtime_request SET status = 'APPROVED', approved_minutes = 180 WHERE id = " + id);
+            }
+            java.util.concurrent.CompletableFuture<org.springframework.test.web.servlet.MvcResult> withdraw =
+                    java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return as(org.cho.id(), post("/api/me/overtime-requests/" + id + "/withdraw")).andReturn();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+            awaitLockWait(c);
+            c.commit();
+            org.springframework.test.web.servlet.MvcResult result = withdraw.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(result.getResponse().getStatus()).isEqualTo(409);
+            assertThat(result.getResponse().getContentAsString()).contains("INVALID_STATE");
+        }
+        assertThat(overtimeStatus(id)).isEqualTo("APPROVED");
+    }
+
+    /** 요청이 행 잠금을 기다리기 시작할 때까지 기다린다. */
+    private void awaitLockWait(java.sql.Connection c) throws Exception {
+        for (int i = 0; i < 250; i++) {
+            try (java.sql.Statement st = c.createStatement(); java.sql.ResultSet rs = st.executeQuery("""
+                    SELECT count(*) FROM pg_stat_activity
+                    WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()
+                    """)) {
+                rs.next();
+                if (rs.getLong(1) > 0) {
+                    return;
+                }
+            }
+            Thread.sleep(20);
+        }
+        throw new AssertionError("요청이 잠금 대기에 들어가지 않았다");
     }
 }
