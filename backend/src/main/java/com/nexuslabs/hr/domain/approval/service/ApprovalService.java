@@ -264,15 +264,16 @@ public class ApprovalService {
         List<Step> steps = jdbc.query(RAW_STEP_SELECT + where + " ORDER BY s.created_at, s.id LIMIT ? OFFSET ?",
                 RAW_STEP_MAPPER, pageArgs.toArray());
 
+        // 신청자 · 회차 단계는 페이지 전체를 한 번씩 읽는다(N+1 방지). 요약은 업무마다 한 건씩 — 묶음 조회는 팀원 합의 후
+        Map<Step, TargetSummary> summaries = summaries(steps);
+        Map<Long, Applicant> applicants = applicants(user.companyId(),
+                summaries.values().stream().map(TargetSummary::applicantId).toList());
+        Map<RoundKey, List<ApprovalStepView>> rounds = rounds(user, steps);
         List<InboxItem> items = new ArrayList<>();
         for (Step s : steps) {
-            TargetSummary summary = targets.get(s.workType()).summary(s.targetId());
-            Applicant applicant = applicant(user.companyId(), summary.applicantId());
-            List<ApprovalStepView> round = jdbc.query(STEP_SELECT + """
-                             WHERE s.company_id = ? AND s.work_type = ?::approval_work_type AND s.target_id = ? AND s.round = ?
-                             ORDER BY s.step_order
-                            """,
-                    stepMapper(user.employeeId()), user.companyId(), s.workType().name(), s.targetId(), s.round());
+            TargetSummary summary = summaries.get(s);
+            Applicant applicant = applicants.get(summary.applicantId());
+            List<ApprovalStepView> round = rounds.getOrDefault(RoundKey.of(s), List.of());
             items.add(new InboxItem(s.id(), s.workType(), s.targetId(), applicant.id(), applicant.name(),
                     applicant.orgUnitName(), summary.title(), summary.details(), summary.requestedMinutes(),
                     s.stepOrder(), round.size(),
@@ -289,11 +290,15 @@ public class ApprovalService {
                 user.companyId(), user.employeeId());
         List<Step> steps = jdbc.query(RAW_STEP_SELECT + where + " ORDER BY s.acted_at DESC, s.id DESC LIMIT ? OFFSET ?",
                 RAW_STEP_MAPPER, user.companyId(), user.employeeId(), pageable.getPageSize(), pageable.getOffset());
+        Map<Step, TargetSummary> summaries = summaries(steps);
+        Map<Long, Applicant> applicants = applicants(user.companyId(),
+                summaries.values().stream().map(TargetSummary::applicantId).toList());
+        Map<Long, ApprovalStepView> views = views(user, steps);
         List<HistoryItem> items = new ArrayList<>();
         for (Step s : steps) {
-            TargetSummary summary = targets.get(s.workType()).summary(s.targetId());
-            Applicant applicant = applicant(user.companyId(), summary.applicantId());
-            ApprovalStepView v = view(user, s.id());
+            TargetSummary summary = summaries.get(s);
+            Applicant applicant = applicants.get(summary.applicantId());
+            ApprovalStepView v = views.get(s.id());
             items.add(new HistoryItem(s.id(), s.workType(), s.targetId(), applicant.id(), applicant.name(),
                     summary.title(), v.status(), v.approvedMinutes(), v.comment(), v.actedAt()));
         }
@@ -308,11 +313,15 @@ public class ApprovalService {
                          ORDER BY s.created_at, s.id
                         """,
                 RAW_STEP_MAPPER, user.companyId());
+        Map<Step, TargetSummary> summaries = summaries(steps);
+        Map<Long, Applicant> applicants = applicants(user.companyId(),
+                summaries.values().stream().map(TargetSummary::applicantId).toList());
+        Map<Long, ApprovalStepView> views = views(user, steps);
         List<ReassignItem> items = new ArrayList<>();
         for (Step s : steps) {
-            TargetSummary summary = targets.get(s.workType()).summary(s.targetId());
-            Applicant applicant = applicant(user.companyId(), summary.applicantId());
-            ApprovalStepView v = view(user, s.id());
+            TargetSummary summary = summaries.get(s);
+            Applicant applicant = applicants.get(summary.applicantId());
+            ApprovalStepView v = views.get(s.id());
             items.add(new ReassignItem(s.id(), s.workType(), s.targetId(), applicant.id(), applicant.name(),
                     summary.title(), s.stepOrder(), v.status(), v.approverId(), v.approverName()));
         }
@@ -440,14 +449,75 @@ public class ApprovalService {
                 stepMapper(user.employeeId()), stepId, user.companyId());
     }
 
-    private Applicant applicant(long companyId, long employeeId) {
-        return jdbc.queryForObject("""
+    /** 목록 행마다의 신청 요약. 같은 신청이 두 번 나와도 한 번만 부른다. */
+    private Map<Step, TargetSummary> summaries(List<Step> steps) {
+        Map<Step, TargetSummary> result = new HashMap<>();
+        Map<RoundKey, TargetSummary> byTarget = new HashMap<>();
+        for (Step s : steps) {
+            result.put(s, byTarget.computeIfAbsent(RoundKey.of(s).withoutRound(),
+                    k -> targets.get(s.workType()).summary(s.targetId())));
+        }
+        return result;
+    }
+
+    private Map<Long, Applicant> applicants(long companyId, Collection<Long> employeeIds) {
+        Map<Long, Applicant> result = new HashMap<>();
+        if (employeeIds.isEmpty()) {
+            return result;
+        }
+        jdbc.query("""
                         SELECT e.id, e.name, o.name AS org_unit_name FROM employee e
                         JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id
-                        WHERE e.id = ? AND e.company_id = ?
+                        WHERE e.id = ANY(?) AND e.company_id = ?
                         """,
-                (rs, i) -> new Applicant(rs.getLong("id"), rs.getString("name"), rs.getString("org_unit_name")),
-                employeeId, companyId);
+                rs -> {
+                    result.put(rs.getLong("id"),
+                            new Applicant(rs.getLong("id"), rs.getString("name"), rs.getString("org_unit_name")));
+                },
+                employeeIds.stream().distinct().toArray(Long[]::new), companyId);
+        return result;
+    }
+
+    /** 단계 ID → 화면용 단계. */
+    private Map<Long, ApprovalStepView> views(LoginUser user, List<Step> steps) {
+        Map<Long, ApprovalStepView> result = new HashMap<>();
+        if (steps.isEmpty()) {
+            return result;
+        }
+        for (ApprovalStepView v : jdbc.query(STEP_SELECT + " WHERE s.id = ANY(?) AND s.company_id = ?",
+                stepMapper(user.employeeId()), steps.stream().map(Step::id).toArray(Long[]::new), user.companyId())) {
+            result.put(v.stepId(), v);
+        }
+        return result;
+    }
+
+    /** 각 단계가 속한 회차의 전체 단계(순서대로). */
+    private Map<RoundKey, List<ApprovalStepView>> rounds(LoginUser user, List<Step> steps) {
+        Map<RoundKey, List<ApprovalStepView>> result = new HashMap<>();
+        if (steps.isEmpty()) {
+            return result;
+        }
+        RowMapper<ApprovalStepView> mapper = stepMapper(user.employeeId());
+        jdbc.query("""
+                        SELECT s.work_type::text AS work_type, s.target_id, s.id, s.round, s.step_order, s.approver_id,
+                               e.name AS approver_name, s.status::text AS status, s.approved_minutes, s.comment, s.acted_at
+                        FROM approval_step s
+                        JOIN unnest(?::text[], ?::bigint[], ?::int[]) AS k(work_type, target_id, round)
+                          ON s.work_type::text = k.work_type AND s.target_id = k.target_id AND s.round = k.round
+                        LEFT JOIN employee e ON e.id = s.approver_id AND e.company_id = s.company_id
+                        WHERE s.company_id = ?
+                        ORDER BY s.step_order
+                        """,
+                rs -> {
+                    RoundKey key = new RoundKey(ApprovalWorkType.valueOf(rs.getString("work_type")),
+                            rs.getLong("target_id"), rs.getInt("round"));
+                    result.computeIfAbsent(key, k -> new ArrayList<>()).add(mapper.mapRow(rs, 0));
+                },
+                steps.stream().map(s -> s.workType().name()).toArray(String[]::new),
+                steps.stream().map(Step::targetId).toArray(Long[]::new),
+                steps.stream().map(Step::round).toArray(Integer[]::new),
+                user.companyId());
+        return result;
     }
 
     private static final String STEP_SELECT = """
@@ -488,5 +558,15 @@ public class ApprovalService {
     }
 
     private record Applicant(long id, String name, String orgUnitName) {
+    }
+
+    private record RoundKey(ApprovalWorkType workType, long targetId, int round) {
+        static RoundKey of(Step s) {
+            return new RoundKey(s.workType(), s.targetId(), s.round());
+        }
+
+        RoundKey withoutRound() {
+            return new RoundKey(workType, targetId, 0);
+        }
     }
 }

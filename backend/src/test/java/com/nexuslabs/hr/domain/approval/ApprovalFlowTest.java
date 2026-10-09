@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -272,6 +273,40 @@ class ApprovalFlowTest {
         as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(0));
         // 원래 승인자가 그대로 처리한다
         decide(org.seo, stepId(ApprovalWorkType.LEAVE, leave, 1), "approve", "{}").andExpect(status().isOk());
+    }
+
+    @Test
+    void 목록이_여러_건이어도_행마다_신청자와_단계가_맞게_붙는다() throws Exception {
+        long first = request(ApprovalWorkType.LEAVE, org.cho, 0);
+        long second = request(ApprovalWorkType.LEAVE, org.cho, 0);
+        long trip = request(ApprovalWorkType.BUSINESS_TRIP, org.yoon, 0); // 백엔드팀장 → 강하늘 1단계
+        decide(org.seo, stepId(ApprovalWorkType.LEAVE, first, 1), "approve", "{}").andExpect(status().isOk());
+        decide(org.seo, stepId(ApprovalWorkType.LEAVE, second, 1), "approve", "{}").andExpect(status().isOk());
+
+        // 강하늘의 승인함: 휴가 2건(2단계, 앞 단계 서예린) + 출장 1건(1단계, 앞 단계 없음)
+        as(org.kang, get("/api/approvals/inbox"))
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.content[?(@.targetId == " + first + ")].applicantId").value(Math.toIntExact(org.cho.id())))
+                .andExpect(jsonPath("$.data.content[?(@.targetId == " + first + ")].previousSteps[0].approverId")
+                        .value(Math.toIntExact(org.seo.id())))
+                .andExpect(jsonPath("$.data.content[?(@.targetId == " + second + ")].stepOrder").value(2))
+                .andExpect(jsonPath("$.data.content[?(@.targetId == " + second + ")].previousSteps[0].approverId")
+                        .value(Math.toIntExact(org.seo.id())))
+                .andExpect(jsonPath("$.data.content[?(@.workType == 'BUSINESS_TRIP')].applicantId").value(Math.toIntExact(org.yoon.id())))
+                .andExpect(jsonPath("$.data.content[?(@.workType == 'BUSINESS_TRIP')].previousSteps.length()").value(0));
+        // 서예린의 처리 내역 2건
+        as(org.seo, get("/api/approvals/history"))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[*].status").value(contains("APPROVED", "APPROVED")))
+                .andExpect(jsonPath("$.data.content[*].applicantId").value(contains(Math.toIntExact(org.cho.id()), Math.toIntExact(org.cho.id()))));
+        // 강하늘 비활성 → 재지정 목록 3건, 행마다 승인자 이름
+        TestFixture.Employee admin = new TestFixture.Employee(org.company.adminId(), cid, org.company.adminEmail());
+        as(admin, patch("/api/accounts/" + org.kang.id()).contentType(MediaType.APPLICATION_JSON).content("{\"active\": false}"))
+                .andExpect(status().isOk());
+        as(admin, get("/api/approvals/reassign-needed"))
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data[*].approverId").value(contains(Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()))))
+                .andExpect(jsonPath("$.data[?(@.targetId == " + trip + ")].applicantId").value(Math.toIntExact(org.yoon.id())));
     }
 
     @Test
