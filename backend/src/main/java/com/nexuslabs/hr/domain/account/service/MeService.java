@@ -71,6 +71,12 @@ public class MeService {
                 user.mustChangePassword(), todos(user, granted));
     }
 
+    /** 할 일 배지 — /me 와 대시보드 홈(B-17)이 같은 수를 쓴다. */
+    @Transactional(readOnly = true)
+    public MeResponse.Todos todos(LoginUser user) {
+        return todos(user, permissionReader.permissionsOf(user));
+    }
+
     private MeResponse.Todos todos(LoginUser user, Map<PermissionCode, PermissionScope> granted) {
         long cid = user.companyId();
         long approvalsPending = count("""

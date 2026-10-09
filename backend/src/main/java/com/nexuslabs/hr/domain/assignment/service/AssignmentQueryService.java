@@ -128,6 +128,13 @@ public class AssignmentQueryService {
         return new MyAssignments(current, history);
     }
 
+    /** 최근 발령(대시보드 홈 F-DASH-04) — 회사 전체, 새 발령부터. 권한 범위는 부르는 쪽이 본다(DASHBOARD_COMPANY). */
+    @Transactional(readOnly = true)
+    public List<AssignmentItem> recent(long companyId, int limit) {
+        return jdbc.query(SELECT + " WHERE h.company_id = ? ORDER BY h.effective_date DESC, h.id DESC LIMIT ?",
+                this::map, companyId, limit);
+    }
+
     /** 방금 등록 · 정정한 한 줄(응답용). */
     AssignmentItem item(long companyId, long id) {
         return jdbc.queryForObject(SELECT + " WHERE h.company_id = ? AND h.id = ?", this::map, companyId, id);
