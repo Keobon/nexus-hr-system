@@ -310,15 +310,11 @@ public class LeaveRequestService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
-    /** 신청 단계 뒤에 취소 요청 단계(LEAVE_CANCEL)를 잇는다. 취소 단계의 round 는 신청의 마지막 round 다음부터. */
+    /** 신청 단계 뒤에 취소 요청 단계(LEAVE_CANCEL)를 잇는다. 취소 단계의 round(신청의 마지막 round 다음부터)는 승인 영역이 계산한다. */
     private LeaveRequestResponse detail(long cid, long id, long viewerId) {
-        List<ApprovalStepView> leaveSteps = approvalService.steps(cid, ApprovalWorkType.LEAVE, id, viewerId);
-        int lastRound = leaveSteps.stream().mapToInt(ApprovalStepView::round).max().orElse(0);
-        List<ApprovalStepView> steps = Stream.concat(leaveSteps.stream(),
-                approvalService.steps(cid, ApprovalWorkType.LEAVE_CANCEL, id, viewerId).stream()
-                        .map(s -> new ApprovalStepView(s.stepId(), lastRound + s.round(), s.stepOrder(), s.approverId(),
-                                s.approverName(), s.status(), s.approvedMinutes(), s.comment(), s.actedAt(),
-                                s.isMyTurn()))).toList();
+        List<ApprovalStepView> steps = Stream.concat(
+                approvalService.steps(cid, ApprovalWorkType.LEAVE, id, viewerId).stream(),
+                approvalService.steps(cid, ApprovalWorkType.LEAVE_CANCEL, id, viewerId).stream()).toList();
         return jdbc.query(SELECT + ", r.cancel_reason" + FROM + " WHERE r.id = ? AND r.company_id = ?",
                         (rs, i) -> new LeaveRequestResponse(rs.getLong("id"), rs.getLong("employee_id"),
                                 rs.getString("employee_name"), rs.getString("org_unit_name"),

@@ -334,9 +334,30 @@ class LeaveRequestTest {
         long id = approvedLeave("2030-03-11", "2030-03-11");
         // 사유는 선택이라 본문 없이 보내도 된다
         as(org.cho, post("/api/me/leave-requests/" + id + "/cancel-request")).andExpect(status().isOk());
-        decide(org.kang, "LEAVE_CANCEL", id, "reject", "{\"comment\": \"대체 인력 없음\"}").andExpect(status().isOk());
+        // 취소 단계 round 는 어디서나 "휴가 마지막 round + 1"(API 9장 approvalSteps)
+        decide(org.kang, "LEAVE_CANCEL", id, "reject", "{\"comment\": \"대체 인력 없음\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.round").value(2));
         assertThat(leaveStatus(id)).isEqualTo("APPROVED");
         assertThat(leaveDays(id)).containsExactly("2030-03-11");
+        // 목록 currentStep 은 원래 휴가의 마지막 승인 단계
+        as(org.cho, get("/api/me/leave-requests"))
+                .andExpect(jsonPath("$.data.content[0].currentStep.stepOrder").value(2))
+                .andExpect(jsonPath("$.data.content[0].currentStep.totalSteps").value(2))
+                .andExpect(jsonPath("$.data.content[0].currentStep.approverName").value(name(org.kang)))
+                .andExpect(jsonPath("$.data.content[0].currentStep.status").value("APPROVED"));
+        as(org.cho, get("/api/leave-requests/" + id))
+                .andExpect(jsonPath("$.data.approvalSteps[2].round").value(2));
+
+        // 다시 취소 요청 → 두 번째 취소 단계는 round 3
+        as(org.cho, post("/api/me/leave-requests/" + id + "/cancel-request")).andExpect(status().isOk());
+        decide(org.kang, "LEAVE_CANCEL", id, "approve", "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.round").value(3));
+    }
+
+    private String name(TestFixture.Employee e) {
+        return jdbc.queryForObject("SELECT name FROM employee WHERE id = ?", String.class, e.id());
     }
 
     @Test
@@ -418,6 +439,9 @@ class LeaveRequestTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
         assertThat(leaveDays(id)).isEmpty();
+        // 승인자 없이 바로 취소된 휴가 → currentStep null
+        as(org.ceo, get("/api/me/leave-requests"))
+                .andExpect(jsonPath("$.data.content[0].currentStep").value(nullValue()));
     }
 
     @Test
