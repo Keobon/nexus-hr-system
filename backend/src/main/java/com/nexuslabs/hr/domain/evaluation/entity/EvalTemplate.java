@@ -50,4 +50,18 @@ public class EvalTemplate extends BaseTimeEntity {
     public void addCriteria(EvalCriteria item) {
         criteria.add(item);
     }
+
+    /** 통째로 다시 저장(PUT) — 쓰이지 않은 템플릿만. 기존 항목 · 질문은 orphanRemoval 로 지워진다. */
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    public void clearCriteria() {
+        criteria.clear();
+    }
+
+    /** 쓰인 템플릿 삭제 = 비활성화(BR-ORG-001). */
+    public void deactivate() {
+        this.active = false;
+    }
 }
