@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -319,6 +320,38 @@ class PayrollTest {
                 .andExpect(status().isForbidden());
         as(executive.id(), get("/api/payroll-runs")).andExpect(status().isOk());
         as(kim.id(), get("/api/statistics/labor-cost?payMonth=2030-03")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 실지급액이_음수면_미리보기는_알려주고_확정은_거부한다() throws Exception {
+        clock.set(LocalDateTime.of(2030, 4, 2, 10, 0));
+        long fine = item("{\"name\": \"가불 상환\", \"itemKind\": \"DEDUCTION\", \"calcMethod\": \"MANUAL\", \"sortOrder\": 90}");
+        String body = MARCH.formatted(", \"manualInputs\": [{\"employeeId\": %d, \"payItemId\": %d, \"amount\": 900000000}]"
+                .formatted(kim.id(), fine));
+
+        run("/api/payroll-runs/preview", body)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.negativeNetPayEmployeeIds", contains((int) kim.id())));
+        run("/api/payroll-runs", body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("BUSINESS_RULE_VIOLATION"))
+                .andExpect(jsonPath("$.error.details.negativeNetPayEmployeeIds", contains((int) kim.id())));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM payroll_run WHERE company_id = ?", Long.class,
+                company.id())).isZero();
+
+        run("/api/payroll-runs/preview", MARCH.formatted(""))                       // 평소에는 빈 배열
+                .andExpect(jsonPath("$.data.negativeNetPayEmployeeIds").isEmpty());
+    }
+
+    @Test
+    void 지급일은_귀속_월보다_앞설_수_없다() throws Exception {
+        clock.set(LocalDateTime.of(2030, 4, 2, 10, 0));
+        run("/api/payroll-runs/preview", MARCH.formatted(", \"payDate\": \"2030-02-28\""))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.fields.payDate").exists());
+        run("/api/payroll-runs", MARCH.formatted(", \"payDate\": \"2030-02-28\""))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.fields.payDate").exists());
+        run("/api/payroll-runs/preview", MARCH.formatted(", \"payDate\": \"2030-03-01\""))   // 귀속 월 안의 날짜는 된다
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.payDate").value("2030-03-01"));
     }
 
     @Test
