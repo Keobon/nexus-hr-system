@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -55,7 +56,18 @@ public class OvertimeApprovalTarget implements ApprovalTarget {
 
     @Override
     public TargetSummary summary(long targetId) {
-        OvertimeRequest overtime = get(targetId);
+        return toSummary(get(targetId));
+    }
+
+    /** 한 페이지의 신청을 쿼리 한 번으로 요약한다(역할 분담 2.1 "승인 업무 확정"). 없는 ID는 맵에서 빠진다. */
+    @Override
+    public Map<Long, TargetSummary> summaries(Collection<Long> targetIds) {
+        Map<Long, TargetSummary> result = new LinkedHashMap<>();
+        repository.findAllById(targetIds).forEach(overtime -> result.put(overtime.getId(), toSummary(overtime)));
+        return result;
+    }
+
+    private static TargetSummary toSummary(OvertimeRequest overtime) {
         OffsetDateTime start = seoul(overtime.getPlannedStart());
         OffsetDateTime end = seoul(overtime.getPlannedEnd());
         Map<String, Object> details = new LinkedHashMap<>();
