@@ -71,8 +71,22 @@ class ApproverCalculatorTest {
     @Test
     void 최상위_조직장은_모든_단계가_생략돼_즉시_승인() {
         ApprovalPlan p = plan(ApprovalWorkType.LEAVE, org.ceo);
-        assertThat(p.steps()).allMatch(s -> s.skipReason() == SkipReason.TOP_OF_ORG);
+        // 1단계(소속 조직장)는 위로 못 찾아 생략, 2단계(1단계 위)는 최상위에서 멈춰 본인이라 생략
+        assertThat(describe(p)).containsExactly("null:" + SkipReason.TOP_OF_ORG, org.ceo.id() + ":" + SkipReason.SELF);
         assertThat(p.immediatelyApproved()).isTrue();
+    }
+
+    @Test
+    void N단계_위_조직장은_최상위_조직에서_멈춘다() {
+        // 최상위 조직 소속 직원: 1단계 대표, "1단계 위"도 최상위에서 멈춰 대표 → 앞 단계와 같아 생략
+        TestFixture.Employee staff = fixture.employee(org.company.id(), org.company.rootOrgUnitId(), "직원", false);
+        assertThat(describe(plan(ApprovalWorkType.LEAVE, staff)))
+                .containsExactly(org.ceo.id() + "", org.ceo.id() + ":" + SkipReason.SAME_AS_PREVIOUS);
+
+        // 최상위 조직장이 비어 있으면(회사 등록 직후) 승인자 없음
+        jdbc.update("UPDATE org_unit SET lead_employee_id = NULL WHERE id = ?", org.company.rootOrgUnitId());
+        assertThatThrownBy(() -> plan(ApprovalWorkType.LEAVE, staff))
+                .extracting(e -> ((BusinessException) e).code()).isEqualTo(ErrorCode.APPROVER_NOT_FOUND);
     }
 
     @Test

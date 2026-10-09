@@ -73,13 +73,13 @@ public class ApproverCalculator {
         return switch (step.type()) {
             // 소속 조직장 — 비었거나 본인이거나 후보가 아니면 위로
             case ORG_LEAD -> firstLeadUpward(ctx, applicant.orgUnitId(), applicant.id());
-            // N단계 위 조직의 조직장 — 비었으면 그 위로
+            // N단계 위 조직의 조직장 — 위 조직이 모자라면 최상위 조직에서 멈추고, 비었으면 그 위로(BR-APPR-003)
             case ORG_LEAD_UP -> {
-                Long org = applicant.orgUnitId();
-                for (int i = 0; i < step.upLevels() && org != null; i++) {
+                long org = applicant.orgUnitId();
+                for (int i = 0; i < step.upLevels() && ctx.parent().get(org) != null; i++) {
                     org = ctx.parent().get(org);
                 }
-                yield org == null ? null : firstLeadUpward(ctx, org, null);
+                yield firstLeadUpward(ctx, org, null);
             }
             // 그 직책의 후보가 정확히 1명일 때만
             case JOB_TITLE -> {

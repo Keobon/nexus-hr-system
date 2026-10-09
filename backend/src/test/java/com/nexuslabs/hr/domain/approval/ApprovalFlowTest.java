@@ -231,10 +231,10 @@ class ApprovalFlowTest {
                 .andExpect(status().isOk());
         as(admin, get("/api/approvals/reassign-needed"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].stepId").value(step1))
-                .andExpect(jsonPath("$.data[0].approverId").value(org.seo.id()))
-                .andExpect(jsonPath("$.data[0].applicantId").value(org.cho.id()));
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.content[0].stepId").value(step1))
+                .andExpect(jsonPath("$.data.content[0].approverId").value(org.seo.id()))
+                .andExpect(jsonPath("$.data.content[0].applicantId").value(org.cho.id()));
         as(admin, get("/api/me")).andExpect(jsonPath("$.data.todos.reassignNeeded").value(1));
         // 재지정 목록은 APPROVAL_MANAGE 만
         as(org.cho, get("/api/approvals/reassign-needed")).andExpect(status().isForbidden());
@@ -252,7 +252,7 @@ class ApprovalFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.approverId").value(org.kang.id()));
 
-        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(0));
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.totalElements").value(0));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE target_type = 'APPROVAL_STEP' AND target_id = ?",
                 Long.class, step1)).isEqualTo(1);
         // 새 승인자가 바로 처리할 수 있다
@@ -267,10 +267,10 @@ class ApprovalFlowTest {
 
         as(admin, patch(account).contentType(MediaType.APPLICATION_JSON).content("{\"active\": false}"))
                 .andExpect(status().isOk());
-        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(1));
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.totalElements").value(1));
         as(admin, patch(account).contentType(MediaType.APPLICATION_JSON).content("{\"active\": true}"))
                 .andExpect(status().isOk());
-        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(0));
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.totalElements").value(0));
         // 원래 승인자가 그대로 처리한다
         decide(org.seo, stepId(ApprovalWorkType.LEAVE, leave, 1), "approve", "{}").andExpect(status().isOk());
     }
@@ -304,9 +304,14 @@ class ApprovalFlowTest {
         as(admin, patch("/api/accounts/" + org.kang.id()).contentType(MediaType.APPLICATION_JSON).content("{\"active\": false}"))
                 .andExpect(status().isOk());
         as(admin, get("/api/approvals/reassign-needed"))
-                .andExpect(jsonPath("$.data.length()").value(3))
-                .andExpect(jsonPath("$.data[*].approverId").value(contains(Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()))))
-                .andExpect(jsonPath("$.data[?(@.targetId == " + trip + ")].applicantId").value(Math.toIntExact(org.yoon.id())));
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.content[*].approverId").value(contains(Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()), Math.toIntExact(org.kang.id()))))
+                .andExpect(jsonPath("$.data.content[?(@.targetId == " + trip + ")].applicantId").value(Math.toIntExact(org.yoon.id())));
+        // 페이징 — 오래된 단계부터
+        as(admin, get("/api/approvals/reassign-needed?page=1&size=2"))
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].targetId").value(trip));
     }
 
     @Test
