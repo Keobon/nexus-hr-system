@@ -160,7 +160,8 @@ class LeaveGrantTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.fields.reason").value("필수 항목입니다"));
         asAdmin(json(post("/api/leave-grants/adjustments"), body.formatted(e.id(), annualType, 0, "\"영\"")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.days").exists());
 
         asAdmin(get("/api/leave-grants").param("employeeId", String.valueOf(e.id())).param("leaveYear", "2026"))
                 .andExpect(status().isOk())

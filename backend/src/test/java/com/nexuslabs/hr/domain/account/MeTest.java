@@ -79,11 +79,12 @@ class MeTest {
     @Test
     void 할_일_건수() throws Exception {
         TestFixture.Employee staff = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", false);
-        // 관리자에게 내 차례 1건, 재지정 필요 1건(승인자 퇴직)
+        // 관리자에게 내 차례 1건, 재지정 필요 1건(승인자 퇴직). 유일 제약에 회사가 없어 실제 신청 id 와 겹치지 않는 큰 값을 쓴다
+        long target = 900_000_000L + company.id() * 2;
         jdbc.update("""
                 INSERT INTO approval_step (company_id, work_type, target_id, step_order, approver_id, status, needs_reassign)
-                VALUES (?, 'LEAVE', 1, 1, ?, 'PENDING', FALSE), (?, 'LEAVE', 2, 1, ?, 'PENDING', TRUE)
-                """, company.id(), company.adminId(), company.id(), staff.id());
+                VALUES (?, 'LEAVE', ?, 1, ?, 'PENDING', FALSE), (?, 'LEAVE', ?, 1, ?, 'PENDING', TRUE)
+                """, company.id(), target, company.adminId(), company.id(), target + 1, staff.id());
         // 퇴근미기록 1건
         jdbc.update("""
                 INSERT INTO attendance (company_id, employee_id, work_date, status, check_in_at)

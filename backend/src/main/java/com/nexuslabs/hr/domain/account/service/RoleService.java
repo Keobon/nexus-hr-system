@@ -62,7 +62,7 @@ public class RoleService {
     @Transactional(readOnly = true)
     public RoleDetail get(LoginUser user, long roleId) {
         RoleListItem role = find(user.companyId(), roleId);
-        return new RoleDetail(role.id(), role.name(), role.description(), role.system(), role.accountCount(),
+        return new RoleDetail(role.id(), role.name(), role.description(), role.isSystem(), role.accountCount(),
                 grants(user.companyId(), roleId));
     }
 
@@ -82,7 +82,7 @@ public class RoleService {
     @Transactional
     public RoleDetail update(LoginUser user, long roleId, RoleRequest request) {
         RoleDetail before = get(user, roleId);
-        if (before.system()) {
+        if (before.isSystem()) {
             throw new BusinessException(ErrorCode.SYSTEM_ROLE_READONLY);
         }
         validatePermissions(request.permissions());
@@ -100,7 +100,7 @@ public class RoleService {
     @Transactional
     public DeleteResult delete(LoginUser user, long roleId) {
         RoleDetail before = get(user, roleId);
-        if (before.system()) {
+        if (before.isSystem()) {
             throw new BusinessException(ErrorCode.SYSTEM_ROLE_READONLY);
         }
         if (before.accountCount() > 0) {

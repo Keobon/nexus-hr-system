@@ -177,6 +177,19 @@ public class ApprovalService {
                 companyId, employeeId);
     }
 
+    /** 비활성 계정을 다시 활성화했을 때 — 다시 승인자 후보가 됐으면 그 사람의 대기 단계에서 재지정 필요 표시를 지운다. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void clearReassignNeeded(long companyId, long employeeId) {
+        if (!calculator.isCandidate(companyId, employeeId)) {
+            return;
+        }
+        jdbc.update("""
+                        UPDATE approval_step SET needs_reassign = FALSE
+                        WHERE company_id = ? AND approver_id = ? AND status IN ('PENDING', 'WAITING') AND needs_reassign
+                        """,
+                companyId, employeeId);
+    }
+
     // ------------------------------------------------------------------
     // 승인함 (API 설계서 9.2)
     // ------------------------------------------------------------------
@@ -214,10 +227,10 @@ public class ApprovalService {
     @Transactional
     public ApprovalStepView reject(LoginUser user, long stepId, ApprovalDecisionRequest request) {
         if (request.comment() == null || request.comment().isBlank()) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "반려 사유를 입력하세요");
+            throw BusinessException.invalidFields(Map.of("comment", "반려 사유를 입력하세요"));
         }
         if (request.approvedMinutes() != null) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "반려에는 인정 시간을 보내지 않습니다");
+            throw BusinessException.invalidFields(Map.of("approvedMinutes", "반려에는 인정 시간을 보내지 않습니다"));
         }
         Step step = lockMyTurn(user, stepId);
         jdbc.update("""
@@ -313,12 +326,18 @@ public class ApprovalService {
         if (step.status() != ApprovalStepStatus.PENDING && step.status() != ApprovalStepStatus.WAITING) {
             throw new BusinessException(ErrorCode.APPROVAL_ALREADY_DONE);
         }
+        // 본문의 ID가 다른 회사거나 없는 직원이면 404(API 설계서 1.5)
+        Boolean exists = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee WHERE id = ? AND company_id = ?)",
+                Boolean.class, approverId, user.companyId());
+        if (!Boolean.TRUE.equals(exists)) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
         if (!calculator.isCandidate(user.companyId(), approverId)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "재직중이고 계정이 활성인 직원만 승인자로 지정할 수 있습니다");
+            throw BusinessException.invalidFields(Map.of("approverId", "재직중이고 계정이 활성인 직원만 승인자로 지정할 수 있습니다"));
         }
         long applicantId = targets.get(step.workType()).summary(step.targetId()).applicantId();
         if (approverId == applicantId) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "신청자 본인은 승인자로 지정할 수 없습니다");
+            throw BusinessException.invalidFields(Map.of("approverId", "신청자 본인은 승인자로 지정할 수 없습니다"));
         }
         jdbc.update("UPDATE approval_step SET approver_id = ?, needs_reassign = FALSE WHERE id = ? AND company_id = ?",
                 approverId, stepId, user.companyId());

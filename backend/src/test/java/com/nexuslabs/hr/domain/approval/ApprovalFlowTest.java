@@ -133,7 +133,8 @@ class ApprovalFlowTest {
         long leave = request(ApprovalWorkType.LEAVE, org.cho, 0);
         decide(org.seo, stepId(ApprovalWorkType.LEAVE, leave, 1), "reject", "{}")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.comment").exists());
         decide(org.seo, stepId(ApprovalWorkType.LEAVE, leave, 1), "reject", "{\"comment\": \"일정 조정 필요\"}")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("REJECTED"));
@@ -241,7 +242,11 @@ class ApprovalFlowTest {
         as(admin, patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"approverId\": " + org.cho.id() + "}"))
                 .andExpect(status().isBadRequest()); // 신청자 본인
         as(admin, patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"approverId\": " + org.seo.id() + "}"))
-                .andExpect(status().isBadRequest()); // 비활성 계정
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.approverId").exists()); // 비활성 계정
+        TestFixture.Company other = fixture.company("다른회사");
+        as(admin, patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"approverId\": " + other.adminId() + "}"))
+                .andExpect(status().isNotFound()); // 다른 회사 직원
         as(admin, patch(path).contentType(MediaType.APPLICATION_JSON).content("{\"approverId\": " + org.kang.id() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.approverId").value(org.kang.id()));
@@ -251,6 +256,22 @@ class ApprovalFlowTest {
                 Long.class, step1)).isEqualTo(1);
         // 새 승인자가 바로 처리할 수 있다
         decide(org.kang, step1, "approve", "{}").andExpect(status().isOk());
+    }
+
+    @Test
+    void 비활성_계정을_다시_활성화하면_재지정_필요_표시가_지워진다() throws Exception {
+        long leave = request(ApprovalWorkType.LEAVE, org.cho, 0);
+        TestFixture.Employee admin = new TestFixture.Employee(org.company.adminId(), cid, org.company.adminEmail());
+        String account = "/api/accounts/" + org.seo.id();
+
+        as(admin, patch(account).contentType(MediaType.APPLICATION_JSON).content("{\"active\": false}"))
+                .andExpect(status().isOk());
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(1));
+        as(admin, patch(account).contentType(MediaType.APPLICATION_JSON).content("{\"active\": true}"))
+                .andExpect(status().isOk());
+        as(admin, get("/api/approvals/reassign-needed")).andExpect(jsonPath("$.data.length()").value(0));
+        // 원래 승인자가 그대로 처리한다
+        decide(org.seo, stepId(ApprovalWorkType.LEAVE, leave, 1), "approve", "{}").andExpect(status().isOk());
     }
 
     @Test

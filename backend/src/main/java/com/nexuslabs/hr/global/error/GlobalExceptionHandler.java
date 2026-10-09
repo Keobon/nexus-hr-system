@@ -8,6 +8,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tools.jackson.databind.exc.InvalidFormatException;
@@ -77,7 +79,9 @@ public class GlobalExceptionHandler {
         return simple(ErrorCode.VALIDATION_ERROR);
     }
 
-    @ExceptionHandler({MissingServletRequestParameterException.class, MissingServletRequestPartException.class})
+    /** 본문 형식이 틀린 요청(JSON 이 아닌 Content-Type, 깨진 multipart)도 입력 오류다. */
+    @ExceptionHandler({MissingServletRequestParameterException.class, MissingServletRequestPartException.class,
+            HttpMediaTypeNotSupportedException.class, MultipartException.class})
     public ResponseEntity<ApiResponse<Void>> handleMissingParam(Exception e) {
         return simple(ErrorCode.VALIDATION_ERROR);
     }

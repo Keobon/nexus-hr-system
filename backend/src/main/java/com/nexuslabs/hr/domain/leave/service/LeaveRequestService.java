@@ -24,6 +24,7 @@ import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.permission.Scope;
 import com.nexuslabs.hr.global.permission.ScopeResolver;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -125,15 +126,20 @@ public class LeaveRequestService {
         return leave;
     }
 
-    /** 승인대기 중에만 본인이 철회한다 → 취소완료, 남은 단계 취소(F-LEAVE-06). 남의 휴가는 404. */
+    /**
+     * 승인대기 중에만 본인이 철회한다 → 취소완료, 남은 단계 취소(F-LEAVE-06). 남의 휴가는 404.
+     * 잠금 순서는 승인 처리와 같게 — 승인 단계 먼저, 휴가 행 다음(교착 방지). 동시에 진행 중인 최종 승인이 있으면
+     * 그 커밋을 기다린 뒤 최신 상태로 다시 판단해, 승인된 휴가를 취소로 덮어쓰지 않는다.
+     */
     @Transactional
     public LeaveRequestResponse withdraw(LoginUser user, long id) {
         LeaveRequest leave = mine(user, id);
+        approvalService.withdraw(user.companyId(), ApprovalWorkType.LEAVE, id);
+        em.refresh(leave, LockModeType.PESSIMISTIC_WRITE);
         if (leave.getStatus() != LeaveStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "승인대기 중인 휴가만 철회할 수 있습니다");
         }
         leave.withdraw(null);
-        approvalService.withdraw(user.companyId(), ApprovalWorkType.LEAVE, id);
         repository.flush();
         return detail(user.companyId(), id, user.employeeId());
     }
@@ -145,6 +151,8 @@ public class LeaveRequestService {
     @Transactional
     public LeaveRequestResponse requestCancel(LoginUser user, long id, String reason) {
         LeaveRequest leave = mine(user, id);
+        // 같은 휴가의 취소 요청이 동시에 와도 한 건만 — 휴가 행을 잠그고 최신 상태로 판단한다
+        em.refresh(leave, LockModeType.PESSIMISTIC_WRITE);
         if (leave.getStatus() != LeaveStatus.APPROVED) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "승인완료된 휴가만 취소 요청할 수 있습니다");
         }

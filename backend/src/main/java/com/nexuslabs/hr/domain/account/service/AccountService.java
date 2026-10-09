@@ -171,6 +171,8 @@ public class AccountService {
         if (before.active() && !newActive) {
             // 비활성 계정은 승인자 후보가 아니다 — 대기 중인 승인 단계를 재지정 필요로(F-APPR-02)
             approvalService.markReassignNeeded(user.companyId(), employeeId);
+        } else if (!before.active() && newActive) {
+            approvalService.clearReassignNeeded(user.companyId(), employeeId);
         }
         auditLogger.log(user, AuditAction.UPDATE, "ACCOUNT", employeeId,
                 Map.of("roleId", before.roleId(), "active", before.active()),

@@ -89,7 +89,8 @@ public class LeaveRequestController {
 
     @PostMapping("/api/me/leave-requests/{id}/cancel-request")
     public ApiResponse<LeaveRequestResponse> cancelRequest(@CurrentUser LoginUser user, @PathVariable long id,
-                                                           @Valid @RequestBody LeaveCancelRequest request) {
-        return ApiResponse.ok(leaveRequestService.requestCancel(user, id, request.reason()));
+                                                           @Valid @RequestBody(required = false) LeaveCancelRequest request) {
+        // 사유는 선택 — 본문 없이 보내도 된다
+        return ApiResponse.ok(leaveRequestService.requestCancel(user, id, request == null ? null : request.reason()));
     }
 }
