@@ -155,6 +155,7 @@ public class DashboardService {
                              JOIN leave_type t ON t.id = r.leave_type_id AND t.company_id = r.company_id
                         WHERE r.company_id = ? AND r.status IN ('APPROVED', 'CANCEL_REQUESTED')
                           AND r.start_date <= ? AND r.end_date >= ?
+                          AND e.status <> 'RESIGNED'          -- 퇴직 때 남겨 둔 승인된 미래 휴가는 보이지 않게
                         ORDER BY r.start_date, e.employee_no, r.id
                         """,
                 (rs, i) -> new DashboardHome.Vacation(rs.getLong("id"), rs.getLong("employee_id"),

@@ -55,7 +55,7 @@ public record DashboardHome(Me me, Todos todos, Company company, MyOrg myOrg, Ad
     public record TypeCount(long employmentTypeId, String employmentTypeName, long count) {
     }
 
-    /** 이번 달과 겹치는 승인된 휴가(취소 요청 중 포함). 시작일 순. */
+    /** 이번 달과 겹치는 승인된 휴가(취소 요청 중 포함), 퇴직자 제외. 시작일 순. */
     public record Vacation(long leaveRequestId, long employeeId, String employeeName, String orgUnitName,
                            String leaveTypeName, LocalDate startDate, LocalDate endDate, int days) {
     }

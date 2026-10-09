@@ -10,6 +10,8 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import com.nexuslabs.hr.global.permission.PermissionCode;
+import com.nexuslabs.hr.global.permission.PermissionReader;
 import com.nexuslabs.hr.global.request.PatchRequest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -68,17 +70,20 @@ public class AccountService {
     private final TemporaryPasswordGenerator passwordGenerator;
     private final AuditLogger auditLogger;
     private final ApprovalService approvalService;
+    private final PermissionReader permissionReader;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
     public AccountService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder,
                           TemporaryPasswordGenerator passwordGenerator, AuditLogger auditLogger,
-                          ApprovalService approvalService, Clock clock, ObjectMapper objectMapper) {
+                          ApprovalService approvalService, PermissionReader permissionReader, Clock clock,
+                          ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.passwordGenerator = passwordGenerator;
         this.auditLogger = auditLogger;
         this.approvalService = approvalService;
+        this.permissionReader = permissionReader;
         this.clock = clock;
         this.objectMapper = objectMapper;
     }
@@ -251,6 +256,24 @@ public class AccountService {
                         rs.getBoolean("is_system"), rs.getBoolean("resigned")),
                 employeeId, companyId).stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+    }
+
+    /**
+     * 대상 직원이 최고 관리자 역할이면 요청자에게 ROLE_MANAGE 도 있어야 한다(아니면 FORBIDDEN) — EMPLOYEE_MANAGE 만 있는
+     * 인사 담당이 최고 관리자의 로그인 ID 를 바꾸거나 휴직 · 퇴직시켜 내보내지 못하게(2026-10-10). 직원 수정 · 재직상태 변경이 부른다.
+     */
+    @Transactional(readOnly = true)
+    public void requireRoleManageForSuperAdmin(LoginUser user, long employeeId) {
+        Boolean superAdmin = jdbc.queryForObject("""
+                        SELECT EXISTS (SELECT 1 FROM account a
+                                       JOIN role r ON r.id = a.role_id AND r.company_id = a.company_id AND r.is_system
+                                       WHERE a.company_id = ? AND a.employee_id = ?)
+                        """,
+                Boolean.class, user.companyId(), employeeId);
+        if (Boolean.TRUE.equals(superAdmin)
+                && !permissionReader.permissionsOf(user).containsKey(PermissionCode.ROLE_MANAGE)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "최고 관리자의 정보는 역할 관리 권한이 있어야 바꿀 수 있습니다");
+        }
     }
 
     /** 나를 뺀 활성 최고 관리자 수. 동시에 두 명을 해제하는 경우를 막으려고 그 계정들을 잠근다. */

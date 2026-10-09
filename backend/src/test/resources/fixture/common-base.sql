@@ -5,6 +5,13 @@
 --   E1 91101 본부 · E2 91102 팀 · E3 91103 파트 · E4 91104 별도 조직
 --   E5 91105 비밀번호 변경 필요 · E6 91106 계정 비활성 · E7 91107 퇴직
 -- 회사 B(9002): 조직 92001, 직원 92101
+-- 고정 ID(9001–92301)와 자동 번호가 겹치지 않게 넣기 전에 번호를 10만 이상으로 올린다. 다른 테스트가 만든 회사 · 직원은
+-- 지우지 않아 로컬 테스트 DB 의 번호가 계속 올라가므로(2026-10-10 회사 9001 충돌). setval 은 롤백되지 않는다.
+SELECT setval('company_id_seq', GREATEST(100000, (SELECT last_value FROM company_id_seq)));
+SELECT setval('org_unit_id_seq', GREATEST(100000, (SELECT last_value FROM org_unit_id_seq)));
+SELECT setval('employee_id_seq', GREATEST(100000, (SELECT last_value FROM employee_id_seq)));
+SELECT setval('role_id_seq', GREATEST(100000, (SELECT last_value FROM role_id_seq)));
+SELECT setval('employment_type_id_seq', GREATEST(100000, (SELECT last_value FROM employment_type_id_seq)));
 INSERT INTO company (id, name, business_reg_no, ceo_name, address, phone, email) VALUES
   (9001, '테스트A', '900-00-00001', '대표A', '서울', '02-000-0001', 'a@test.example'),
   (9002, '테스트B', '900-00-00002', '대표B', '서울', '02-000-0002', 'b@test.example');

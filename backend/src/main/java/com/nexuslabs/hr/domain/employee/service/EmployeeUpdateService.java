@@ -1,5 +1,6 @@
 package com.nexuslabs.hr.domain.employee.service;
 
+import com.nexuslabs.hr.domain.account.service.AccountService;
 import com.nexuslabs.hr.domain.company.service.CompanyRegistrationService;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeDetail;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeUpdateRequest;
@@ -47,19 +48,21 @@ public class EmployeeUpdateService {
     private final EmploymentTypeService employmentTypeService;
     private final FileService fileService;
     private final DocumentFiles documentFiles;
+    private final AccountService accountService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
     private final JdbcTemplate jdbc;
 
     public EmployeeUpdateService(EmployeeRepository employeeRepository, EmployeeQueryService queryService,
                                  EmploymentTypeService employmentTypeService, FileService fileService,
-                                 DocumentFiles documentFiles,
+                                 DocumentFiles documentFiles, AccountService accountService,
                                  ObjectMapper objectMapper, Validator validator, JdbcTemplate jdbc) {
         this.employeeRepository = employeeRepository;
         this.queryService = queryService;
         this.employmentTypeService = employmentTypeService;
         this.fileService = fileService;
         this.documentFiles = documentFiles;
+        this.accountService = accountService;
         this.objectMapper = objectMapper;
         this.validator = validator;
         this.jdbc = jdbc;
@@ -76,6 +79,7 @@ public class EmployeeUpdateService {
         if (employee.getStatus() == EmpStatus.RESIGNED) {
             throw new BusinessException(ErrorCode.EMPLOYEE_RESIGNED);
         }
+        accountService.requireRoleManageForSuperAdmin(user, employeeId);
         EmployeeUpdateRequest request = merge(employee, fields);
 
         String email = CompanyRegistrationService.normalizeEmail(request.email());

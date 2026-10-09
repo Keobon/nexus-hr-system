@@ -91,6 +91,7 @@ public class EmploymentStatusService {
         if (employee.getStatus() == request.status()) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "이미 그 재직상태입니다");
         }
+        accountService.requireRoleManageForSuperAdmin(user, employeeId);
         checkEffectiveDate(cid, employee, request.effectiveDate());
 
         // ① 이력 · 현재 상태 — 뒤의 SQL(조직장 해제 등)이 바뀐 상태를 보도록 바로 반영한다
@@ -107,6 +108,12 @@ public class EmploymentStatusService {
             businessTripService.cancelPendingByResignation(cid, employeeId);
             expenseClaimService.cancelPendingByResignation(cid, employeeId);
             approvalService.markReassignNeeded(cid, employeeId);               // ⑤
+        } else if (request.status() == EmpStatus.ON_LEAVE) {
+            // 휴직자는 승인자 후보가 아니다(BR-APPR-002) — 그 사람 차례인 대기 단계가 멈추지 않게 재지정 필요로(2026-10-10)
+            approvalService.markReassignNeeded(cid, employeeId);
+        } else {
+            // 복직 — 계정이 활성이면 다시 후보이므로 표시를 지운다(계정 재활성화와 같다)
+            approvalService.clearReassignNeeded(cid, employeeId);
         }
         return item(cid, history.getId());
     }
