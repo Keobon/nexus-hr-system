@@ -39,14 +39,17 @@ public class MyProfileService {
     private final EmployeeRepository employeeRepository;
     private final EmployeeQueryService queryService;
     private final FileService fileService;
+    private final DocumentFiles documentFiles;
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
     public MyProfileService(EmployeeRepository employeeRepository, EmployeeQueryService queryService,
-                            FileService fileService, ObjectMapper objectMapper, Validator validator) {
+                            FileService fileService, DocumentFiles documentFiles, ObjectMapper objectMapper,
+                            Validator validator) {
         this.employeeRepository = employeeRepository;
         this.queryService = queryService;
         this.fileService = fileService;
+        this.documentFiles = documentFiles;
         this.objectMapper = objectMapper;
         this.validator = validator;
     }
@@ -100,11 +103,10 @@ public class MyProfileService {
         return request;
     }
 
-    /** 프로필 사진은 본인이 올린 jpg · png 만 건다. 남의 파일 ID · 없는 ID 는 구별하지 않는다. */
+    /** 프로필 사진은 본인이 올린, 아직 다른 곳에 쓰이지 않은 jpg · png 만(BR-FILE-001, DocumentFiles 와 같은 규칙). */
     private void requireMyImage(LoginUser user, long fileId) {
-        StoredFile file = fileService.find(user.companyId(), fileId)
-                .filter(f -> f.uploadedBy() != null && f.uploadedBy() == user.employeeId())
-                .orElseThrow(() -> BusinessException.invalidFields(Map.of("profileFileId", "파일을 다시 올려 주세요")));
+        documentFiles.requireLinkable(user, fileId, "profileFileId");
+        StoredFile file = fileService.find(user.companyId(), fileId).orElseThrow();
         if (!IMAGE_TYPES.contains(file.contentType())) {
             throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "프로필 사진은 jpg, png만 쓸 수 있습니다");
         }

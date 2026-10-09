@@ -17,6 +17,7 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import com.nexuslabs.hr.domain.employee.service.DocumentFiles;
 import com.nexuslabs.hr.global.file.FileService;
 import com.nexuslabs.hr.global.file.StoredFile;
 import com.nexuslabs.hr.global.permission.PermissionCode;
@@ -63,17 +64,20 @@ public class CompanyService {
     private final JdbcTemplate jdbc;
     private final PermissionReader permissionReader;
     private final FileService fileService;
+    private final DocumentFiles documentFiles;
     private final AuditLogger auditLogger;
 
     public CompanyService(CompanyRepository companyRepository, CompanyChangeHistoryRepository changeHistoryRepository,
                           CompanyDocumentRepository documentRepository, JdbcTemplate jdbc,
-                          PermissionReader permissionReader, FileService fileService, AuditLogger auditLogger) {
+                          PermissionReader permissionReader, FileService fileService, DocumentFiles documentFiles,
+                          AuditLogger auditLogger) {
         this.companyRepository = companyRepository;
         this.changeHistoryRepository = changeHistoryRepository;
         this.documentRepository = documentRepository;
         this.jdbc = jdbc;
         this.permissionReader = permissionReader;
         this.fileService = fileService;
+        this.documentFiles = documentFiles;
         this.auditLogger = auditLogger;
     }
 
@@ -136,7 +140,7 @@ public class CompanyService {
                     "휴가가 부여된 뒤에는 회계연도 시작월을 바꿀 수 없습니다");
         }
         if (logoFileId != null && !logoFileId.equals(before.logoFileId())) {
-            requireImage(user.companyId(), logoFileId);
+            requireImage(user, logoFileId);
         }
         CompanyDocument document = change == null || change.documentId() == null ? null
                 : documentRepository.findById(change.documentId())
@@ -184,9 +188,10 @@ public class CompanyService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
-    private void requireImage(long companyId, long fileId) {
-        StoredFile file = fileService.find(companyId, fileId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "파일을 찾을 수 없습니다"));
+    /** 로고는 요청자가 올린, 아직 다른 곳에 쓰이지 않은 jpg · png 만(BR-FILE-001, DocumentFiles 와 같은 규칙). */
+    private void requireImage(LoginUser user, long fileId) {
+        documentFiles.requireLinkable(user, fileId, "logoFileId");
+        StoredFile file = fileService.find(user.companyId(), fileId).orElseThrow();
         if (!IMAGE_TYPES.contains(file.contentType())) {
             throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "로고는 jpg, png만 쓸 수 있습니다");
         }
