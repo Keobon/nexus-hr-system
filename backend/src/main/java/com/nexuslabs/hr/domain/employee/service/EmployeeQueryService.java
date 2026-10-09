@@ -6,6 +6,7 @@ import com.nexuslabs.hr.domain.attendance.service.TodayStatus;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatusReader;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeDetail;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeRow;
+import com.nexuslabs.hr.domain.employee.dto.FamilyList;
 import com.nexuslabs.hr.domain.employee.dto.MyProfileResponse;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
 import com.nexuslabs.hr.domain.employee.entity.Gender;
@@ -73,19 +74,21 @@ public class EmployeeQueryService {
     private final TodayStatusReader todayStatusReader;
     private final LeaveBalanceService leaveBalanceService;
     private final EmployeeFieldValueService fieldValueService;
+    private final EmployeeFamilyService familyService;
     private final AttendanceCalculator attendanceCalculator;
     private final Clock clock;
 
     public EmployeeQueryService(JdbcTemplate jdbc, ScopeResolver scopeResolver, PermissionReader permissionReader,
                                 TodayStatusReader todayStatusReader, LeaveBalanceService leaveBalanceService,
-                                EmployeeFieldValueService fieldValueService, AttendanceCalculator attendanceCalculator,
-                                Clock clock) {
+                                EmployeeFieldValueService fieldValueService, EmployeeFamilyService familyService,
+                                AttendanceCalculator attendanceCalculator, Clock clock) {
         this.jdbc = jdbc;
         this.scopeResolver = scopeResolver;
         this.permissionReader = permissionReader;
         this.todayStatusReader = todayStatusReader;
         this.leaveBalanceService = leaveBalanceService;
         this.fieldValueService = fieldValueService;
+        this.familyService = familyService;
         this.attendanceCalculator = attendanceCalculator;
         this.clock = clock;
     }
@@ -198,7 +201,7 @@ public class EmployeeQueryService {
     }
 
     /**
-     * 직원 상세. 다른 회사 직원이면 404, 팀 범위 밖이면 OUT_OF_SCOPE. 팀 범위면 제한 필드만(BR-EMP-003),
+     * 직원 상세. 다른 회사 직원이면 404, 팀 범위 밖이면 OUT_OF_SCOPE. 팀 범위면 제한 필드만(BR-EMP-003 — 주소 · 부양가족 · 자녀 · 추가 항목 숨김),
      * 인사 메모는 EMPLOYEE_MANAGE 만. 두 범위 모두 오늘 상태와 이번 달 근태 요약을 붙인다.
      */
     @Transactional(readOnly = true)
@@ -220,6 +223,7 @@ public class EmployeeQueryService {
         TodayStatus todayStatus = todayStatusReader.today(companyId, List.of(employeeId)).get(employeeId);
         List<MyProfileResponse.FieldValue> fieldValues =
                 scope.all() ? fieldValueService.values(companyId, employeeId) : null;
+        FamilyList family = scope.all() ? familyService.list(companyId, employeeId) : null;
 
         return jdbc.query("""
                         SELECT e.id, e.employee_no, e.name, e.name_en, e.email, e.phone, e.address, e.birth_date,
@@ -243,7 +247,8 @@ public class EmployeeQueryService {
                                 rs.getLong("org_unit_id"), rs.getObject("job_grade_id", Long.class),
                                 rs.getObject("job_title_id", Long.class), rs.getLong("employment_type_id"),
                                 rs.getBoolean("payroll_eligible"), rs.getObject("contract_end_date", LocalDate.class),
-                                rs.getObject("probation_end_date", LocalDate.class), fieldValues),
+                                rs.getObject("probation_end_date", LocalDate.class), fieldValues,
+                                family.dependentsCount(), family.childrenCount()),
                         manage ? Optional.ofNullable(rs.getString("hr_memo")) : null),
                 companyId, employeeId).getFirst();
     }
