@@ -46,17 +46,20 @@ public class EmployeeUpdateService {
     private final EmployeeQueryService queryService;
     private final EmploymentTypeService employmentTypeService;
     private final FileService fileService;
+    private final DocumentFiles documentFiles;
     private final ObjectMapper objectMapper;
     private final Validator validator;
     private final JdbcTemplate jdbc;
 
     public EmployeeUpdateService(EmployeeRepository employeeRepository, EmployeeQueryService queryService,
                                  EmploymentTypeService employmentTypeService, FileService fileService,
+                                 DocumentFiles documentFiles,
                                  ObjectMapper objectMapper, Validator validator, JdbcTemplate jdbc) {
         this.employeeRepository = employeeRepository;
         this.queryService = queryService;
         this.employmentTypeService = employmentTypeService;
         this.fileService = fileService;
+        this.documentFiles = documentFiles;
         this.objectMapper = objectMapper;
         this.validator = validator;
         this.jdbc = jdbc;
@@ -87,7 +90,7 @@ public class EmployeeUpdateService {
                 ? employee.getEmploymentType()
                 : employmentTypeService.requireActive(request.employmentTypeId());
         if (request.profileFileId() != null && !Objects.equals(request.profileFileId(), employee.getProfileFileId())) {
-            requireImage(user.companyId(), request.profileFileId());
+            requireImage(user, request.profileFileId());
         }
 
         employee.changeBasic(request.name().trim(), email, employmentType);
@@ -138,10 +141,10 @@ public class EmployeeUpdateService {
         return request;
     }
 
-    /** 프로필 사진은 같은 회사 파일 중 jpg · png 만. 없는 ID 는 error.fields.profileFileId. */
-    private void requireImage(long companyId, long fileId) {
-        StoredFile file = fileService.find(companyId, fileId)
-                .orElseThrow(() -> BusinessException.invalidFields(Map.of("profileFileId", "파일을 다시 올려 주세요")));
+    /** 프로필 사진은 요청자가 올린, 아직 다른 곳에 쓰이지 않은 jpg · png 만(BR-FILE-001, DocumentFiles 와 같은 규칙). */
+    private void requireImage(LoginUser user, long fileId) {
+        documentFiles.requireLinkable(user, fileId, "profileFileId");
+        StoredFile file = fileService.find(user.companyId(), fileId).orElseThrow();
         if (!IMAGE_TYPES.contains(file.contentType())) {
             throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "프로필 사진은 jpg, png만 쓸 수 있습니다");
         }

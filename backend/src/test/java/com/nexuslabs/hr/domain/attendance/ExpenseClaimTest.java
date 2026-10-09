@@ -228,6 +228,20 @@ class ExpenseClaimTest {
     }
 
     @Test
+    void 영수증은_진행_중인_다른_청구에_쓴_파일이면_거부하고_반려된_청구의_영수증은_다시_쓴다() throws Exception {
+        long receipt = upload(org.cho);
+        long first = id(claim(org.cho, trip, line(transport, "2030-03-04", 119800, receipt)).andExpect(status().isCreated()));
+        // 다른 출장 청구에 같은 영수증 — 진행 중(승인대기)인 청구에 쓰였으므로 거부
+        long otherTrip = approvedTrip(org.cho, "2030-03-01", "2030-03-01");
+        claim(org.cho, otherTrip, line(transport, "2030-03-01", 50000, receipt))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields['lines[0].receiptFileId']").value("이미 다른 곳에 쓰인 파일입니다"));
+        // 반려되면 같은 영수증으로 다시 청구할 수 있다
+        decide(org.seo, "TRIP_EXPENSE", first, "reject", "{\"comment\": \"금액 확인\"}").andExpect(status().isOk());
+        claim(org.cho, trip, line(transport, "2030-03-04", 119000, receipt)).andExpect(status().isCreated());
+    }
+
+    @Test
     void 승인대기_중에만_본인이_철회한다() throws Exception {
         long id = claimOk();
         as(org.seo.id(), post("/api/me/expense-claims/" + id + "/withdraw")).andExpect(status().isNotFound());

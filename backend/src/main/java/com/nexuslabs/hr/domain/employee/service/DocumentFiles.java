@@ -15,7 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 /**
- * 직원 서류(F-EMP-08) · 회사 서류(F-COMP-07) 공통 규칙(BR-FILE-001). 연결할 파일은 같은 회사 파일이면서 요청자가 올린 것이어야 하고,
+ * 직원 서류(F-EMP-08) · 회사 서류(F-COMP-07) 공통 규칙(BR-FILE-001) — 프로필 사진 · 로고 · 영수증도 같은 규칙(2026-10-10). 연결할 파일은 같은 회사 파일이면서 요청자가 올린 것이어야 하고,
  * 이미 다른 곳(서류 · 영수증 · 프로필 사진 · 로고)에 연결된 파일은 받지 않는다 — 내려받기 권한이 섞이지 않게 한다.
  */
 @Component
@@ -36,24 +36,43 @@ public class DocumentFiles {
 
     /** 문제가 있으면 VALIDATION_ERROR(error.fields.fileId). */
     public void requireLinkable(LoginUser user, long fileId) {
-        long cid = user.companyId();
-        boolean mine = fileService.find(cid, fileId)
+        requireLinkable(user, fileId, "fileId");
+    }
+
+    /** 같은 규칙을 다른 필드 이름으로 — 프로필 사진(profileFileId) · 회사 로고(logoFileId)도 이 규칙을 따른다. */
+    public void requireLinkable(LoginUser user, long fileId, String field) {
+        if (!uploadedBy(user, fileId)) {
+            throw BusinessException.invalidFields(Map.of(field, "파일을 다시 올려 주세요"));
+        }
+        if (linked(user.companyId(), fileId, true)) {
+            throw BusinessException.invalidFields(Map.of(field, "이미 다른 곳에 쓰인 파일입니다"));
+        }
+    }
+
+    /** 요청자가 올린 같은 회사 파일인가. */
+    public boolean uploadedBy(LoginUser user, long fileId) {
+        return fileService.find(user.companyId(), fileId)
                 .map(f -> f.uploadedBy() != null && f.uploadedBy() == user.employeeId())
                 .orElse(false);
-        if (!mine) {
-            throw BusinessException.invalidFields(Map.of("fileId", "파일을 다시 올려 주세요"));
-        }
-        Boolean linked = jdbc.queryForObject("""
+    }
+
+    /**
+     * 서류 · 영수증 · 프로필 사진 · 로고 중 어딘가에 이미 연결된 파일인가. countEndedClaims 가 false 면 반려 · 취소된
+     * 경비 청구의 영수증은 세지 않는다(같은 영수증으로 다시 청구할 수 있게).
+     */
+    public boolean linked(long companyId, long fileId, boolean countEndedClaims) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("""
                         SELECT EXISTS (SELECT 1 FROM employee_document WHERE company_id = ? AND file_id = ?)
                             OR EXISTS (SELECT 1 FROM company_document WHERE company_id = ? AND file_id = ?)
-                            OR EXISTS (SELECT 1 FROM expense_claim_line WHERE company_id = ? AND receipt_file_id = ?)
+                            OR EXISTS (SELECT 1 FROM expense_claim_line l
+                                       JOIN expense_claim c ON c.id = l.expense_claim_id AND c.company_id = l.company_id
+                                       WHERE l.company_id = ? AND l.receipt_file_id = ?
+                                         AND (? OR c.status IN ('PENDING', 'APPROVED')))
                             OR EXISTS (SELECT 1 FROM employee WHERE company_id = ? AND profile_file_id = ?)
                             OR EXISTS (SELECT 1 FROM company WHERE id = ? AND logo_file_id = ?)
                         """,
-                Boolean.class, cid, fileId, cid, fileId, cid, fileId, cid, fileId, cid, fileId);
-        if (Boolean.TRUE.equals(linked)) {
-            throw BusinessException.invalidFields(Map.of("fileId", "이미 다른 곳에 쓰인 파일입니다"));
-        }
+                Boolean.class, companyId, fileId, companyId, fileId, companyId, fileId, countEndedClaims, companyId,
+                fileId, companyId, fileId));
     }
 
     /** 기타(OTHER)면 이름 필수(앞뒤 공백 제거), 다른 종류면 이름을 무시한다(null). */

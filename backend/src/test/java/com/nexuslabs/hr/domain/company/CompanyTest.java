@@ -234,8 +234,10 @@ class CompanyTest {
                 .andExpect(jsonPath("$.error.fields.employeeNoPrefix").exists())
                 .andExpect(jsonPath("$.error.fields.foundedDate").exists())
                 .andExpect(jsonPath("$.error.fields.phone").exists());
+        // 없는 파일 · 남이 올린 파일은 서류와 같은 규칙으로 fields.logoFileId(BR-FILE-001)
         patchCompany("{\"logoFileId\": 999999999}")
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.fields.logoFileId").exists());
         patchCompany("{\"name\": \"근거서류\", \"change\": {\"effectiveDate\": \"2026-10-01\", \"reason\": \"변경\", "
                 + "\"documentId\": 999999999}}")
                 .andExpect(status().isNotFound());

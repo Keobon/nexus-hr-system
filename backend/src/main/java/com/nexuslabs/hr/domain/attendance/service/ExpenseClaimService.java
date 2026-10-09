@@ -18,6 +18,7 @@ import com.nexuslabs.hr.domain.employee.entity.Employee;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import com.nexuslabs.hr.domain.employee.service.DocumentFiles;
 import com.nexuslabs.hr.global.file.FileService;
 import com.nexuslabs.hr.global.file.StoredFile;
 import com.nexuslabs.hr.global.permission.PermissionCode;
@@ -54,6 +55,7 @@ public class ExpenseClaimService {
     private final BusinessTripRepository tripRepository;
     private final ExpenseTypeService expenseTypeService;
     private final FileService fileService;
+    private final DocumentFiles documentFiles;
     private final ApprovalService approvalService;
     private final ScopeResolver scopeResolver;
     private final RequestAccess access;
@@ -63,12 +65,14 @@ public class ExpenseClaimService {
 
     public ExpenseClaimService(ExpenseClaimRepository repository, BusinessTripRepository tripRepository,
                                ExpenseTypeService expenseTypeService, FileService fileService,
+                               DocumentFiles documentFiles,
                                ApprovalService approvalService, ScopeResolver scopeResolver, RequestAccess access,
                                JdbcTemplate jdbc, EntityManager em, Clock clock) {
         this.repository = repository;
         this.tripRepository = tripRepository;
         this.expenseTypeService = expenseTypeService;
         this.fileService = fileService;
+        this.documentFiles = documentFiles;
         this.approvalService = approvalService;
         this.scopeResolver = scopeResolver;
         this.access = access;
@@ -112,6 +116,9 @@ public class ExpenseClaimService {
                     errors.put("lines[%d].receiptFileId".formatted(i), "본인이 올린 영수증 파일만 붙일 수 있습니다");
                 } else if (!usedFiles.add(line.receiptFileId())) {
                     errors.put("lines[%d].receiptFileId".formatted(i), "같은 파일을 두 줄에 붙일 수 없습니다");
+                } else if (documentFiles.linked(cid, line.receiptFileId(), false)) {
+                    // 다른 청구 · 서류 · 프로필 사진 · 로고에 쓰인 파일(반려 · 취소된 청구의 영수증은 다시 쓸 수 있다)
+                    errors.put("lines[%d].receiptFileId".formatted(i), "이미 다른 곳에 쓰인 파일입니다");
                 }
             }
         }
