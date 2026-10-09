@@ -10,6 +10,7 @@ import com.nexuslabs.hr.domain.attendance.entity.ExpenseClaimLine;
 import com.nexuslabs.hr.domain.attendance.repository.ExpenseClaimRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -44,7 +45,18 @@ public class ExpenseClaimApprovalTarget implements ApprovalTarget {
 
     @Override
     public TargetSummary summary(long targetId) {
-        ExpenseClaim claim = get(targetId);
+        return toSummary(get(targetId));
+    }
+
+    /** 한 페이지의 신청을 쿼리 한 번으로 요약한다(역할 분담 2.1 "승인 업무 확정"). 없는 ID는 맵에서 빠진다. */
+    @Override
+    public Map<Long, TargetSummary> summaries(Collection<Long> targetIds) {
+        Map<Long, TargetSummary> result = new LinkedHashMap<>();
+        repository.findAllWithTripAndLines(targetIds).forEach(claim -> result.put(claim.getId(), toSummary(claim)));
+        return result;
+    }
+
+    private static TargetSummary toSummary(ExpenseClaim claim) {
         BusinessTrip trip = claim.getBusinessTrip();
         long total = claim.getLines().stream().mapToLong(ExpenseClaimLine::getAmount).sum();
         Map<String, Object> details = new LinkedHashMap<>();
