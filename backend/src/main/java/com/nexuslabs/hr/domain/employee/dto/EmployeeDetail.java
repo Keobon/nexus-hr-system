@@ -21,12 +21,15 @@ public record EmployeeDetail(long id, String employeeNo, String name, String org
                              @JsonUnwrapped Full full,
                              @JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> hrMemo) {
 
-    /** 전사 범위에서만 더해지는 항목. */
+    /**
+     * 전사 범위에서만 더해지는 항목. 부양가족 수 · 자녀 수는 가족 정보에서 센 값이다(BR-EMP-007, 가족 API 와 같은 계산) —
+     * 가족 명단은 EMPLOYEE_MANAGE 만 보는 가족 API 에 있다.
+     */
     public record Full(String nameEn, String address, LocalDate birthDate, Gender gender, String emergencyName,
                        String emergencyRelation, String emergencyPhone, LocalDate hireDate, long orgUnitId,
                        Long jobGradeId, Long jobTitleId, long employmentTypeId, boolean payrollEligible,
                        LocalDate contractEndDate, LocalDate probationEndDate,
-                       List<MyProfileResponse.FieldValue> fieldValues) {
+                       List<MyProfileResponse.FieldValue> fieldValues, int dependentsCount, int childrenCount) {
     }
 
     /** 이번 달 근태 요약(F-EMP-06) — 지각 · 조퇴 횟수와 결근 · 재택 · 외근 일수. */
