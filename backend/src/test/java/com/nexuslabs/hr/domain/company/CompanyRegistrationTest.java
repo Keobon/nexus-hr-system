@@ -90,7 +90,8 @@ class CompanyRegistrationTest {
         assertThat(count("SELECT count(*) FROM pay_item WHERE company_id = ? AND calc_method = 'TRIP_EXPENSE' AND NOT is_taxable", cid)).isEqualTo(1);
         assertThat(count("SELECT count(*) FROM pay_variable WHERE company_id = ? AND effective_from = ?", cid, today)).isEqualTo(5);
         assertThat(count("SELECT count(*) FROM tax_bracket WHERE company_id = ?", cid)).isEqualTo(5);
-        assertThat(count("SELECT count(*) FROM job_grade WHERE company_id = ?", cid)).isZero();
+        assertThat(jdbc.queryForList("SELECT name FROM job_grade WHERE company_id = ? ORDER BY sort_order", String.class, cid))
+                .containsExactly("사원", "대리", "과장", "차장", "부장");
         assertThat(count("SELECT count(*) FROM holiday WHERE company_id = ?", cid)).isZero();
 
         // 관리자: 최상위 조직 · 정규직 · 직급 없음 · 사원번호 자동 · 입사 이력 · 비밀번호 변경 불필요

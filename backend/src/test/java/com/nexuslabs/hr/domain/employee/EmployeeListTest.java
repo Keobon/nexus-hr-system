@@ -80,7 +80,7 @@ class EmployeeListTest {
     @Test
     void 목록은_사원번호_순으로_소속과_오늘_상태를_담는다() throws Exception {
         long gradeId = jdbc.queryForObject(
-                "INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '대리', 2) RETURNING id", Long.class,
+                "SELECT id FROM job_grade WHERE company_id = ? AND name = '대리'", Long.class,
                 company.id());
         jdbc.update("UPDATE employee SET job_grade_id = ? WHERE id = ?", gradeId, developer);
 

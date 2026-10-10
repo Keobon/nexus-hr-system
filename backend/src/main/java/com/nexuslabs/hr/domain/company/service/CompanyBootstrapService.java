@@ -40,6 +40,11 @@ public class CompanyBootstrapService {
         long regularTypeId = jdbc.queryForObject(
                 "SELECT id FROM employment_type WHERE company_id = ? AND name = ?",
                 Long.class, companyId, REGULAR_EMPLOYMENT_TYPE);
+        // 직원 등록에 직급이 필수라 기본값을 넣는다(직책은 비워 둔다). 순서가 서열
+        jdbc.update("""
+                INSERT INTO job_grade (company_id, name, sort_order)
+                VALUES (?, '사원', 1), (?, '대리', 2), (?, '과장', 3), (?, '차장', 4), (?, '부장', 5)
+                """, companyId, companyId, companyId, companyId, companyId);
 
         createWorkSchedule(companyId, today);
         createLeaveTypes(companyId);

@@ -50,7 +50,7 @@ class RoleAndFileGuardTest {
         admin = new TestFixture.Employee(company.adminId(), company.id(), company.adminEmail());
         hr = fixture.employee(company.id(), company.rootOrgUnitId(), "인사 담당", false);
         kim = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", false);
-        gradeId = jdbc.queryForObject("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '사원', 1) RETURNING id",
+        gradeId = jdbc.queryForObject("SELECT id FROM job_grade WHERE company_id = ? AND name = '사원'",
                 Long.class, company.id());
         typeId = jdbc.queryForObject("SELECT id FROM employment_type WHERE company_id = ? AND name = '정규직'",
                 Long.class, company.id());

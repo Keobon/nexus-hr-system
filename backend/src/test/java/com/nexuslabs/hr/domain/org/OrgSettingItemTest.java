@@ -37,6 +37,8 @@ class OrgSettingItemTest {
     @BeforeEach
     void setUp() {
         company = fixture.company("직급테스트");
+        // 회사 등록 때 들어가는 기본 직급(부록 B)을 지우고 빈 상태에서 시작한다
+        jdbc.update("DELETE FROM job_grade WHERE company_id = ?", company.id());
     }
 
     private ResultActions asAdmin(MockHttpServletRequestBuilder request) throws Exception {
@@ -195,7 +197,7 @@ class OrgSettingItemTest {
         String otherToken = fixture.token(other.adminId(), other.id());
 
         mvc.perform(get("/api/job-grades").header("Authorization", otherToken))
-                .andExpect(jsonPath("$.data.length()").value(0));
+                .andExpect(jsonPath("$.data.length()").value(5));    // 그 회사의 기본 직급만
         mvc.perform(json(patch("/api/job-grades/" + id), "{\"name\": \"상무\", \"sortOrder\": 1}")
                         .header("Authorization", otherToken))
                 .andExpect(status().isNotFound())

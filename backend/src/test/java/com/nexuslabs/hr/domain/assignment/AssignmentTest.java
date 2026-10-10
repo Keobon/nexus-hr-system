@@ -52,14 +52,15 @@ class AssignmentTest {
         org = new DemoOrg(fixture, jdbc);
         cid = org.company.id();
         hr = fixture.employee(cid, org.company.rootOrgUnitId(), "인사 담당", false);
-        staff = grade("사원", 1);
-        senior = grade("대리", 2);
+        staff = grade("사원");
+        senior = grade("대리");
         jdbc.update("UPDATE employee SET job_grade_id = ? WHERE company_id = ?", staff, cid);
     }
 
-    private long grade(String name, int order) {
-        return jdbc.queryForObject("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, ?, ?) RETURNING id",
-                Long.class, cid, name, order);
+    /** 회사 등록 때 만들어지는 기본 직급(기능명세서 부록 B). */
+    private long grade(String name) {
+        return jdbc.queryForObject("SELECT id FROM job_grade WHERE company_id = ? AND name = ?",
+                Long.class, cid, name);
     }
 
     private ResultActions as(TestFixture.Employee e, MockHttpServletRequestBuilder request) throws Exception {

@@ -51,9 +51,10 @@ class CompanySetupTest {
                 // 최상위 조직과 등록한 관리자는 세지 않는다
                 .andExpect(jsonPath("$.data.steps[0].counts.orgUnits").value(0))
                 .andExpect(jsonPath("$.data.steps[0].done").value(false))
-                .andExpect(jsonPath("$.data.steps[1].counts.jobGrades").value(0))
+                // 직급은 기본값 5개(직원 등록에 필수), 직책은 없다
+                .andExpect(jsonPath("$.data.steps[1].counts.jobGrades").value(5))
                 .andExpect(jsonPath("$.data.steps[1].counts.jobTitles").value(0))
-                .andExpect(jsonPath("$.data.steps[1].done").value(false))
+                .andExpect(jsonPath("$.data.steps[1].done").value(true))
                 .andExpect(jsonPath("$.data.steps[2].counts.employmentTypes").value(3))
                 .andExpect(jsonPath("$.data.steps[2].done").value(true))
                 .andExpect(jsonPath("$.data.steps[3].counts.workSchedules").value(1))
@@ -72,8 +73,8 @@ class CompanySetupTest {
         long team = fixture.orgUnit(company.id(), company.rootOrgUnitId(), "개발팀");
         long closed = fixture.orgUnit(company.id(), company.rootOrgUnitId(), "폐지팀");
         jdbc.update("UPDATE org_unit SET is_active = FALSE WHERE id = ?", closed);
-        jdbc.update("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, ?, 1), (?, ?, 2)",
-                company.id(), "사원", company.id(), "대리");
+        jdbc.update("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, ?, 6)", company.id(), "이사");
+        jdbc.update("UPDATE job_grade SET is_active = FALSE WHERE company_id = ? AND name = ?", company.id(), "부장");
         jdbc.update("INSERT INTO job_title (company_id, name, sort_order) VALUES (?, ?, 1)", company.id(), "팀장");
         long resigned = fixture.employee(company.id(), team, "직원", false).id();
         jdbc.update("UPDATE employee SET status = ?::emp_status WHERE id = ?", "RESIGNED", resigned);
@@ -83,7 +84,7 @@ class CompanySetupTest {
                 // 비활성 조직과 퇴직자는 세지 않는다
                 .andExpect(jsonPath("$.data.steps[0].counts.orgUnits").value(1))
                 .andExpect(jsonPath("$.data.steps[0].done").value(true))
-                .andExpect(jsonPath("$.data.steps[1].counts.jobGrades").value(2))
+                .andExpect(jsonPath("$.data.steps[1].counts.jobGrades").value(5))     // 기본 5 + 이사 − 비활성 부장
                 .andExpect(jsonPath("$.data.steps[1].counts.jobTitles").value(1))
                 .andExpect(jsonPath("$.data.steps[1].done").value(true))
                 .andExpect(jsonPath("$.data.steps[6].counts.employees").value(2))
