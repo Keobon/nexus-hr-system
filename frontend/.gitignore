@@ -1,0 +1,6 @@
+node_modules
+dist
+.env.local
+# 루트 .gitignore 의 .env.* 에서 예시 파일만 다시 포함
+!.env.example
+*.log

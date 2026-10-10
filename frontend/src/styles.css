@@ -1,0 +1,110 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #f5f6f8;
+}
+
+/* 로그인 · 비밀번호 변경 · 첫 화면처럼 사이드바 없는 화면 */
+.page-center {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-footer {
+  margin-top: 16px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.password-rules {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.password-rules .ok {
+  color: #389e0d;
+}
+
+/* 앱 레이아웃 */
+.app-layout {
+  min-height: 100%;
+}
+
+.app-sider {
+  border-right: 1px solid #f0f0f0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+}
+
+.sider-brand {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.side-menu {
+  border-inline-end: none !important;
+}
+
+.menu-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 56px;
+  line-height: 56px;
+}
+
+.app-content {
+  padding: 24px;
+}
+
+@media (max-width: 991px) {
+  .app-content {
+    padding: 16px;
+  }
+}
+
+/* 작은 도우미 */
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+
+.full-width {
+  width: 100%;
+}
