@@ -382,7 +382,7 @@ class OrgUnitTest {
     void 발령_이력이_있는_조직은_삭제_대신_비활성화된다() throws Exception {
         long from = org(root, "옛팀");
         long gradeId = jdbc.queryForObject(
-                "INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '사원', 1) RETURNING id",
+                "SELECT id FROM job_grade WHERE company_id = ? AND name = '사원'",
                 Long.class, company.id());
         jdbc.update("""
                 INSERT INTO assignment_history (company_id, employee_id, assignment_type, from_org_unit_id, to_org_unit_id,
@@ -477,7 +477,7 @@ class OrgUnitTest {
         long dev = org(root, "개발본부");
         long team = org(dev, "백엔드팀");
         long gradeId = jdbc.queryForObject(
-                "INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '과장', 1) RETURNING id",
+                "SELECT id FROM job_grade WHERE company_id = ? AND name = '과장'",
                 Long.class, company.id());
         long titleId = jdbc.queryForObject(
                 "INSERT INTO job_title (company_id, name, sort_order) VALUES (?, '본부장', 1) RETURNING id",

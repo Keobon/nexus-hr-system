@@ -76,7 +76,7 @@ class DashboardTest {
                     INSERT INTO attendance (company_id, employee_id, work_date, status, check_in_method, leave_request_id)
                     VALUES (?, ?, ?::date, 'ON_VACATION', 'SYSTEM', ?)""", cid, org.cho.id(), day, leave);
         }
-        long grade = jdbc.queryForObject("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '사원', 1) RETURNING id",
+        long grade = jdbc.queryForObject("SELECT id FROM job_grade WHERE company_id = ? AND name = '사원'",
                 Long.class, cid);
         as(hr, post("/api/assignments").contentType(MediaType.APPLICATION_JSON).content("""
                 {"employeeId": %d, "assignmentType": "TRANSFER", "toOrgUnitId": %d, "toJobGradeId": %d, "reason": "지원"}"""

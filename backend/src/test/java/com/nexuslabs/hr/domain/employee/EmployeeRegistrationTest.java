@@ -41,7 +41,8 @@ class EmployeeRegistrationTest {
     @BeforeEach
     void setUp() {
         company = fixture.company("직원등록테스트");
-        gradeId = insertItem("job_grade", "사원");
+        gradeId = jdbc.queryForObject("SELECT id FROM job_grade WHERE company_id = ? AND name = '사원'", Long.class,
+                company.id());
         regularTypeId = jdbc.queryForObject("SELECT id FROM employment_type WHERE company_id = ? AND name = '정규직'",
                 Long.class, company.id());
     }
@@ -178,7 +179,7 @@ class EmployeeRegistrationTest {
         // 다른 회사는 같은 사원번호를 쓸 수 있다
         TestFixture.Company other = fixture.company("직원등록테스트타사");
         long otherGrade = jdbc.queryForObject(
-                "INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '사원', 1) RETURNING id", Long.class,
+                "SELECT id FROM job_grade WHERE company_id = ? AND name = '사원'", Long.class,
                 other.id());
         long otherType = jdbc.queryForObject("SELECT id FROM employment_type WHERE company_id = ? AND name = '정규직'",
                 Long.class, other.id());
