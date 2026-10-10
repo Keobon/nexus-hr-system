@@ -3,6 +3,7 @@ import RequireAuth from './auth/RequireAuth';
 import AppLayout from './components/layout/AppLayout';
 import MenuGuard from './components/layout/MenuGuard';
 import { ALL_MENU_ITEMS } from './components/layout/menu';
+import ComponentsPage from './pages/dev/ComponentsPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -59,6 +60,8 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           ...menuRoutes,
+          // 공통 컴포넌트 견본 — 개발 서버에서만(빌드에서는 import.meta.env.DEV 가 false 라 빠진다)
+          ...(import.meta.env.DEV ? [{ path: '/dev/components', element: <ComponentsPage /> }] : []),
           { path: '/forbidden', element: <ForbiddenPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],

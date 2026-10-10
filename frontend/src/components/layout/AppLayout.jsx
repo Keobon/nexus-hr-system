@@ -92,7 +92,7 @@ export default function AppLayout() {
   return (
     <Layout className="app-layout">
       {isMobile ? (
-        <Drawer placement="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} width={260} styles={{ body: { padding: 0 } }}>
+        <Drawer placement="left" open={drawerOpen} onClose={() => setDrawerOpen(false)} size={260} styles={{ body: { padding: 0 } }}>
           {sideMenu}
         </Drawer>
       ) : (

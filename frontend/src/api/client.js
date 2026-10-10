@@ -93,17 +93,26 @@ export const api = {
   patch: (path, body) => send('PATCH', path, { body }),
   delete: (path, params) => send('DELETE', path, { params }),
 
-  /** 파일 올리기(API 14장) — 성공하면 { id, ... } */
-  upload: (file, purpose) => {
-    const form = new FormData();
-    form.append('file', file);
-    if (purpose) form.append('purpose', purpose);
-    return send('POST', '/files', { body: form });
-  },
+  /** multipart 요청(파일 올리기 — api/files.js) */
+  postForm: (path, form) => send('POST', path, { body: form }),
 
-  /** 토큰이 필요한 파일 내려받기 — <img src> 에 바로 못 쓰므로 blob URL 로 바꾼다 */
-  blobUrl: async (path) => {
+  /** 토큰이 필요한 본문 내려받기 → { blob, fileName }. 파일 이름은 Content-Disposition 에서 */
+  fetchBlob: async (path) => {
     const res = await send('GET', path, { raw: true });
-    return URL.createObjectURL(await res.blob());
+    return { blob: await res.blob(), fileName: fileNameOf(res.headers.get('Content-Disposition')) };
   },
 };
+
+// attachment; filename="a.pdf"; filename*=UTF-8''%ED%95%9C.pdf — 한글 이름은 filename* 쪽
+function fileNameOf(disposition) {
+  if (!disposition) return null;
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1]);
+    } catch {
+      // 아래 filename 으로
+    }
+  }
+  return /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? null;
+}

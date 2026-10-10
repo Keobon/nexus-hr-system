@@ -23,12 +23,12 @@ npm run dev                        # http://localhost:5173
 
 ```
 src/
-├─ api/          client.js(응답 래퍼 · 에러 처리 · 파일), 영역별 API 함수(auth.js …)
+├─ api/          client.js(응답 래퍼 · 에러 처리), 영역별 API 함수(auth.js · files.js …)
 ├─ auth/         token.js · useMe() · makeCan()/isSetupLocked() · RequireAuth · nextPath
 ├─ constants/    labels.js(코드값 → 한글 라벨 · 배지 색, 가이드 부록 A) · errors.js(에러 코드 → 메시지, 가이드 5장)
 ├─ components/
 │  ├─ layout/    AppLayout(사이드바 · 상단 바) · menu.js(메뉴 정의) · MenuGuard
-│  └─ common/    StatusTag · useNotify · applyFieldErrors
+│  └─ common/    StatusTag · useNotify · applyFieldErrors · ApprovalSteps · FileUpload · useFileUrl
 ├─ pages/        public/(로그인 · 비밀번호 변경 · 첫 화면), 메뉴별 화면(me/, hr/, settings/)
 ├─ utils/        format.js(날짜 · 시각 · 시간(분) · 금액 · 요율)
 ├─ router.jsx    라우트 — 메뉴마다 MenuGuard, 만든 화면은 PAGES 에 등록
@@ -49,9 +49,22 @@ src/
 - 성공 응답의 `data.warning`은 `useNotify().success(text, data)`가 경고 토스트로 띄운다.
 - 근태 시간 · 휴가 일수 · 급여 금액은 서버 값을 그대로 보여 준다. 화면에서 다시 계산하지 않는다.
 - 응답에 없는 필드는 빈칸으로 두지 말고 칸을 숨긴다.
-- 파일은 `api.upload(file, purpose)`, 미리보기는 `api.blobUrl('/files/{id}')`(토큰이 필요해서 `<img src>`에 바로 못 씀).
+- 파일은 `<FileUpload purpose="RECEIPT" />`를 `Form.Item` 안에 넣는다(값 = fileId). 이미지 표시는 `useFileUrl(fileId)`, 열기 · 내려받기는 `openFile` · `downloadFile`(`api/files.js`) — `GET /files/{id}`는 토큰이 필요해서 `<img src>`에 바로 못 쓴다.
+- 승인 진행은 `<ApprovalSteps steps={detail.approvalSteps} />`(연장근무는 `showMinutes`). 휴가 신청 미리보기의 `steps`도 그대로 넣으면 된다.
+
+## 공통 컴포넌트 견본
+
+개발 서버에서 `/dev/components`를 열면 `ApprovalSteps` · `FileUpload`를 예시 데이터로 볼 수 있다(빌드에는 안 들어감).
+
+## 공통 컴포넌트 담당 (FE-A · FE-B 합의)
+
+| 컴포넌트 | 담당 |
+|---|---|
+| A `SettingList` · B `HistoryCard` · C `SearchTable` | FE-A |
+| `ApprovalSteps` · `FileUpload` | FE-B ✅ |
 
 ## 진행 상황
 
 - [x] F-01 공통 기반 ① — 셋업 · 프록시 · API 클라이언트 · 토큰 · `/me` · 권한 판정 · 라우팅 가드(비밀번호 변경 · 초기 설정 잠금) · 레이아웃 · 권한별 메뉴와 배지 · 코드값 라벨 · 에러 메시지 · 포맷 · 로그인 · 비밀번호 변경
-- [ ] F-01 공통 기반 ② — 화면 유형 A `SettingList` · B `HistoryCard` · C `SearchTable` · `ApprovalSteps` · `FileUpload`
+- [x] F-01 공통 기반 ② — `ApprovalSteps`(승인 진행 표시) · `FileUpload`(파일 올리기) · `useFileUrl` (FE-B)
+- [ ] F-01 공통 기반 ③ — 화면 유형 A `SettingList` · B `HistoryCard` · C `SearchTable` (FE-A)

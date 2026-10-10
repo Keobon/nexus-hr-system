@@ -96,6 +96,47 @@ body {
   }
 }
 
+/* 승인 진행 표시 */
+.approval-steps .ant-timeline {
+  margin-top: 8px;
+}
+
+.approval-step-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.approval-step-comment {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #f5f6f8;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.approval-round {
+  margin: 8px 0 !important;
+}
+
+/* 파일 올리기 */
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-thumb {
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 /* 작은 도우미 */
 .mb-16 {
   margin-bottom: 16px;
@@ -103,6 +144,10 @@ body {
 
 .mt-8 {
   margin-top: 8px;
+}
+
+.mt-24 {
+  margin-top: 24px;
 }
 
 .full-width {
