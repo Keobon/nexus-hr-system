@@ -79,7 +79,7 @@ src/
 
 ## Figma
 
-- **전체 크기는 `src/styles.css`의 `--ui-scale` 하나로 조절한다**(지금 0.875). 우리 CSS 는 Figma px 를 rem 으로 적었고(1rem = Figma 16px), JSX 인라인 크기는 `rem(px)`(`utils/size.js`). AntD 크기는 `theme.js`의 `UI_SCALE`을 같은 값으로. 휴대폰 폭은 1(원래 크기)
+- **전체 크기는 `src/styles.css`의 `--ui-scale` 하나로 조절한다**(지금 0.8). 우리 CSS 는 Figma px 를 rem 으로 적었고(1rem = Figma 16px), JSX 인라인 크기는 `rem(px)`(`utils/size.js`). AntD 크기는 `theme.js`의 `UI_SCALE`을 같은 값으로. 휴대폰 폭은 1(원래 크기)
 
 - 파일: `Design` (`ton5xp30RtOBzmJoSRQHbF`). 내려받은 로고 · 아이콘은 `src/assets/figma/`.
 - 로그인 · 회사 등록 화면 스타일은 `src/pages/public/auth.css`에 프레임 1440 × 1024 값을 그대로 옮겼다.

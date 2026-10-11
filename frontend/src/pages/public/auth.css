@@ -26,6 +26,13 @@
   max-width: none;
 }
 
+/* 로그인 · 회사 등록 화면의 로고는 Figma(400 × 76)보다 작게 — 260 × 49.4, 같은 비율 */
+.login-intro .brand-logo,
+.signup-page .brand-logo {
+  width: 16.25rem;
+  height: 3.0875rem;
+}
+
 .auth-copyright {
   position: absolute;
   bottom: 1.8125rem;
