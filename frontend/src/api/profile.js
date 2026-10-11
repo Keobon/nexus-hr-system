@@ -8,3 +8,13 @@ export const getMyProfile = () => api.get('/me/profile');
 
 /** PATCH /me/profile — 본인이 바로 고치는 항목만(전화 · 주소 · 비상연락처 · 프로필 사진 등) */
 export const updateMyProfile = (body) => api.patch('/me/profile', body);
+
+export const myBankAccountKey = ['me', 'bank-account'];
+
+/** GET /me/bank-account → { bankName, accountNoMasked, accountNo, holder }, 등록 전이면 null */
+export const getMyBankAccount = () => api.get('/me/bank-account');
+
+export const myFamilyKey = ['me', 'family'];
+
+/** GET /me/family → { dependentsCount, childrenCount, members[] } (본인은 조회만) */
+export const getMyFamily = () => api.get('/me/family');
