@@ -22,7 +22,15 @@ import {
 
 const always = () => true;
 
-export const MENU_GROUPS = [
+/**
+ * 최고 관리자 — 회사를 등록한 사람의 시스템 역할. 이 역할은 이름 · 권한을 바꿀 수 없어서(SYSTEM_ROLE_READONLY)
+ * 이름으로 알아본다. 역할 이름으로 분기하는 곳은 이 메뉴 정의 한 곳뿐이다(화면마다 넣지 않는다).
+ */
+const isSuperAdmin = (me) => me?.role?.name === '최고 관리자';
+
+// 묶음 단위로 숨기는 조건은 hiddenFor(ctx). 아래 MENU_GROUPS 가 각 메뉴의 visible 에 합쳐서
+// 사이드바와 주소 접근(MenuGuard)이 같은 규칙을 쓴다.
+const GROUPS = [
   {
     key: 'me',
     title: '내 업무',
@@ -64,6 +72,8 @@ export const MENU_GROUPS = [
     key: 'hr',
     title: '인사 관리',
     lockedDuringSetup: true,
+    // 최고 관리자는 인사 관리를 보지 않는다 — 인사 업무는 인사 담당 계정으로 한다(노션 추가사항, 2026-10-11)
+    hiddenFor: ({ me }) => isSuperAdmin(me),
     items: [
       {
         key: 'employees',
@@ -147,6 +157,14 @@ export const MENU_GROUPS = [
     ].map((item) => (item.perm ? { ...item, visible: ({ can }) => can(item.perm) } : item)),
   },
 ];
+
+export const MENU_GROUPS = GROUPS.map((group) => ({
+  ...group,
+  items: group.items.map((item) => ({
+    ...item,
+    visible: (ctx) => !group.hiddenFor?.(ctx) && item.visible(ctx),
+  })),
+}));
 
 export const ALL_MENU_ITEMS = MENU_GROUPS.flatMap((g) =>
   g.items.map((item) => ({ ...item, group: g.key, lockedDuringSetup: g.lockedDuringSetup && !item.unlockedDuringSetup })),
