@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import RequireAuth from './auth/RequireAuth';
 import AppLayout from './components/layout/AppLayout';
 import MenuGuard from './components/layout/MenuGuard';
@@ -9,7 +9,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import LoginPage from './pages/public/LoginPage';
 import PasswordPage from './pages/public/PasswordPage';
-import WelcomePage from './pages/public/WelcomePage';
+import SignupPage from './pages/public/SignupPage';
 
 // 메뉴별 화면. 만든 화면은 여기에 넣고, 없으면 담당자 표시와 함께 PlaceholderPage(역할 분담 3장)
 const PAGES = {};
@@ -47,9 +47,10 @@ const menuRoutes = ALL_MENU_ITEMS.filter((item) => item.key !== 'setup').map((it
 });
 
 export const router = createBrowserRouter([
-  { path: '/welcome', element: <WelcomePage /> },
+  // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록은 링크 없이 /signup 주소로만(일반 직원은 등록하지 않는다)
+  { path: '/welcome', element: <Navigate to="/login" replace /> },
   { path: '/login', element: <LoginPage /> },
-  { path: '/signup', element: <PlaceholderPage title="회사 등록" owner="FE-A · F-02" /> },
+  { path: '/signup', element: <SignupPage /> },
   {
     element: <RequireAuth />,
     children: [

@@ -1,0 +1,586 @@
+/*
+ * 로그인 · 회사 등록 화면 — Figma "Design" 파일
+ *   Auth_Login(84:4630) · Auth_Login_Fail(84:4684) · first_page(199:5486) · second_page(199:5604)
+ * 프레임 1440 × 1024 기준 값을 그대로 옮기고, 절대 위치는 flex · grid 로 바꿨다.
+ */
+
+.auth-font {
+  font-family: Inter, 'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+}
+
+/* 로고 400 × 76 — 500 × 500 원본의 가운데 띠(Figma: h 528.21%, top -212.82%) */
+.brand-logo {
+  position: relative;
+  width: 400px;
+  height: 76px;
+  overflow: hidden;
+  flex: none;
+}
+
+.brand-logo img {
+  position: absolute;
+  left: 0;
+  top: -212.82%;
+  width: 100%;
+  height: 528.21%;
+  max-width: none;
+}
+
+.auth-copyright {
+  position: absolute;
+  bottom: 29px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 400;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+/* ───────────── 로그인 ───────────── */
+
+.login-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* 왼쪽 소개 패널 760px */
+.login-intro {
+  position: relative;
+  flex: 0 0 760px;
+  min-height: 1024px;
+  background: #0f172a;
+  box-sizing: border-box;
+  padding: 41px 0 80px 21px;
+}
+
+.login-intro .auth-copyright {
+  left: 643px;
+}
+
+.login-hero {
+  margin-top: 275px; /* 로고 아래(117) → 배지(392) */
+}
+
+.login-hero-badge {
+  box-sizing: border-box;
+  width: 633px;
+  height: 28px;
+  margin-left: 47px;
+  padding-left: 13px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 20px;
+  background: #1e293b;
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.login-hero-title {
+  margin: 32px 0 0 61px;
+  color: #fff;
+  font-size: 35px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.login-hero-title em {
+  font-style: normal;
+  color: #38bdf8;
+}
+
+.login-hero-desc {
+  width: 603px;
+  margin: 21px 0 0 62px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.login-features {
+  display: grid;
+  grid-template-columns: repeat(2, 280px);
+  gap: 38px;
+  margin: 45px 0 0 65px;
+}
+
+.login-feature {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  height: 60px;
+  padding: 9px 15px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #1e293b;
+}
+
+.login-feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #344765;
+}
+
+.login-feature-text {
+  margin: 3px 0 0 14px;
+}
+
+.login-feature-title {
+  margin: 0;
+  color: #e1e7ec;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+.login-feature-sub {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+/* 오른쪽 로그인 패널 */
+.login-panel {
+  flex: 1;
+  min-width: 0;
+  background: #f8fafc;
+  box-sizing: border-box;
+  padding: 250px 40px 60px 62px;
+}
+
+.login-form {
+  width: 540px;
+  max-width: 100%;
+}
+
+.login-badge {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 88px;
+  height: 21px;
+  margin-left: -6px;
+  padding: 4px 0 0 4px;
+  border-radius: 8px;
+  background: #f0f9ff;
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 13px;
+  white-space: nowrap;
+}
+
+.login-title {
+  width: 179px;
+  margin: 13px 0 0 2px;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.login-sub {
+  margin: 5px 0 0 2px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.login-label {
+  display: block;
+  margin-top: 27px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 13px;
+}
+
+.login-label + .login-input-wrap {
+  margin-top: 8px;
+}
+
+.login-label.is-password {
+  margin-top: 50px;
+}
+
+.login-label.is-password + .login-input-wrap {
+  margin-top: 3px;
+}
+
+.login-input-wrap {
+  position: relative;
+}
+
+.login-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid #2563eb;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  outline: none;
+}
+
+.login-input.has-toggle {
+  padding-right: 56px;
+}
+
+/* 로그인 실패 — 비밀번호 칸은 회색 테두리 · 글자(Auth_Login_Fail) */
+.login-input.is-failed {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.login-input.is-failed:focus {
+  border-color: #2563eb;
+  color: #0f172a;
+}
+
+.login-toggle {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  padding: 0;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 21px;
+  padding-left: 2px;
+}
+
+.login-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.login-remember input {
+  appearance: none;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.login-remember input:checked {
+  border-color: #2563eb;
+  background: #2563eb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+
+.login-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.login-submit {
+  width: 100%;
+  height: 44px;
+  margin-top: 23px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  box-shadow: 0 4px 4px rgba(37, 99, 235, 0.25);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* 버튼 아래 87px — 실패 안내가 생겨도 보안 안내 위치가 그대로(756px) */
+.login-error-slot {
+  height: 87px;
+  padding-top: 23px;
+  box-sizing: border-box;
+}
+
+.login-error {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  margin: 0;
+  padding: 0 6px 0 22px;
+  border: 1.5px solid #fee2e2;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 400;
+  list-style: disc;
+}
+
+.login-notice {
+  width: 301px;
+  color: #000;
+  font-size: 11px;
+  line-height: normal;
+}
+
+.login-notice-title {
+  margin: 0 0 13px;
+  color: #334155;
+  font-weight: 700;
+}
+
+.login-notice ul {
+  margin: 0;
+  padding-left: 16.5px;
+}
+
+.login-notice li + li {
+  margin-top: 8px;
+}
+
+.login-notice li span {
+  color: #64748b;
+}
+
+.login-dev {
+  margin-top: 32px;
+  width: 301px;
+}
+
+/* 좁은 화면: 소개 패널을 숨기고 로그인만 */
+@media (max-width: 1199px) {
+  .login-intro {
+    display: none;
+  }
+
+  .login-panel {
+    display: flex;
+    justify-content: center;
+    padding: 80px 16px 40px;
+  }
+}
+
+/* ───────────── 회사 등록(first_page · second_page) ───────────── */
+
+.signup-page {
+  position: relative;
+  min-height: 1024px;
+  box-sizing: border-box;
+  padding: 41px 16px 69px 21px; /* 카드 아래(955) → 프레임 끝(1024) */
+  background: #0f172a;
+}
+
+.signup-page .auth-copyright {
+  left: 643px;
+}
+
+.signup-head {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 1242px;
+  max-width: 100%;
+  height: 80px;
+  margin: 55px 0 0 47px;
+  padding-left: 18px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 20px;
+  background: #1e293b;
+  color: #38bdf8;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.signup-card {
+  position: relative;
+  box-sizing: border-box;
+  width: 1242px;
+  max-width: 100%;
+  margin: 29px 0 0 47px;
+  padding: 24px 0 0;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 20px;
+  background: #1e293b;
+}
+
+.signup-card.is-company {
+  height: 674px;
+}
+
+.signup-card.is-admin {
+  height: 641px;
+}
+
+.signup-step-title {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0 0 507px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.signup-step-title img {
+  margin-right: -2px;
+}
+
+.signup-step-title span {
+  margin-left: 0;
+}
+
+.signup-grid {
+  display: grid;
+  grid-template-columns: 206px 315px;
+  justify-content: space-between;
+  row-gap: 52px;
+  width: 521px;
+  margin: 80px 0 0 335px;
+}
+
+.signup-label {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.signup-field {
+  position: relative;
+}
+
+.signup-input {
+  box-sizing: border-box;
+  display: block;
+  width: 315px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 0;
+  background: #d9d9d9;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.signup-input:focus {
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+.signup-field-error {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  margin: 0;
+  color: #f87171;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.signup-submit {
+  display: block;
+  width: 123px;
+  height: 32px;
+  border: none;
+  border-radius: 20px;
+  background: #38bdf8;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.signup-card.is-company .signup-submit {
+  margin: 65px 0 0 486px;
+}
+
+.signup-card.is-admin .signup-submit {
+  margin: 93px 0 0 497px;
+}
+
+.signup-submit:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.signup-alert {
+  width: 521px;
+  margin: 24px 0 0 335px;
+  color: #f87171;
+  font-size: 13px;
+}
+
+@media (max-width: 1340px) {
+  .signup-head,
+  .signup-card {
+    margin-left: 0;
+  }
+
+  .signup-card {
+    height: auto !important;
+    padding-bottom: 48px;
+  }
+
+  .signup-step-title,
+  .signup-grid,
+  .signup-alert {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .signup-step-title {
+    justify-content: center;
+  }
+
+  .signup-grid {
+    max-width: calc(100% - 32px);
+  }
+
+  .signup-card .signup-submit {
+    margin: 48px auto 0 !important;
+  }
+}
