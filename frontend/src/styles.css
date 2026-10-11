@@ -9,7 +9,7 @@ body {
   background: #f5f6f8;
 }
 
-/* 로그인 · 비밀번호 변경 · 첫 화면처럼 사이드바 없는 화면 */
+/* 비밀번호 변경처럼 사이드바 없는 화면 (로그인 · 회사 등록은 pages/public/auth.css) */
 .page-center {
   min-height: 100%;
   display: flex;
@@ -23,12 +23,6 @@ body {
 .auth-card {
   width: 100%;
   max-width: 400px;
-}
-
-.auth-footer {
-  margin-top: 16px;
-  text-align: center;
-  color: rgba(0, 0, 0, 0.55);
 }
 
 .password-rules {

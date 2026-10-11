@@ -68,3 +68,16 @@ src/
 - [x] F-01 공통 기반 ① — 셋업 · 프록시 · API 클라이언트 · 토큰 · `/me` · 권한 판정 · 라우팅 가드(비밀번호 변경 · 초기 설정 잠금) · 레이아웃 · 권한별 메뉴와 배지 · 코드값 라벨 · 에러 메시지 · 포맷 · 로그인 · 비밀번호 변경
 - [x] F-01 공통 기반 ② — `ApprovalSteps`(승인 진행 표시) · `FileUpload`(파일 올리기) · `useFileUrl` (FE-B)
 - [ ] F-01 공통 기반 ③ — 화면 유형 A `SettingList` · B `HistoryCard` · C `SearchTable` (FE-A)
+- [x] 로그인 · 회사 등록 Figma 디자인 — Auth_Login · Auth_Login_Fail · first_page · second_page
+
+## 시작 흐름
+
+- 로그인 안 한 사용자 → **로그인**(`/login`). `/welcome`도 로그인으로 넘긴다.
+- 회사 등록은 로그인 화면에 링크가 없고 **`/signup` 주소로만** 들어온다(일반 직원은 회사를 등록하지 않는다).
+  1단계 회사 정보 → 2단계 관리자 → 등록하면 그 관리자로 바로 로그인되어 초기 설정 마법사(`/setup`)로 간다.
+- 마법사를 끝내지 못한 관리자는 로그인하면 다시 마법사로 간다(`next = SETUP_WIZARD`).
+
+## Figma
+
+- 파일: `Design` (`ton5xp30RtOBzmJoSRQHbF`). 내려받은 로고 · 아이콘은 `src/assets/figma/`.
+- 로그인 · 회사 등록 화면 스타일은 `src/pages/public/auth.css`에 프레임 1440 × 1024 값을 그대로 옮겼다.

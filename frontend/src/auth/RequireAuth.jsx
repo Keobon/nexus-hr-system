@@ -5,13 +5,13 @@ import { useMe } from './useMe';
 
 /**
  * 로그인한 사용자만 들어오는 라우트(프론트 가이드 2.2 시작 흐름).
- * 토큰 없음 → /welcome, 비밀번호 변경 필요 → /password 외에는 막는다(M-5).
+ * 토큰 없음 → /login, 비밀번호 변경 필요 → /password 외에는 막는다(M-5).
  */
 export default function RequireAuth() {
   const location = useLocation();
   const { me, isLoading, error } = useMe();
 
-  if (!getToken()) return <Navigate to="/welcome" replace />;
+  if (!getToken()) return <Navigate to="/login" replace />;
   if (isLoading) {
     return (
       <div className="page-center">
