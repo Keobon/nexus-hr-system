@@ -17,6 +17,7 @@ import ContactTab from './ContactTab';
 import SecurityTab from './SecurityTab';
 import { Badge } from './parts';
 import '../myinfo.css';
+import { rem } from '../../../utils/size';
 
 const TABS = [
   { key: 'basic', label: '기본정보' },
@@ -79,10 +80,10 @@ function Summary({ profile, isBasic, onRename }) {
           </>
         )}
       </div>
-      <div className="mi-summary-text" style={{ gap: isBasic ? 12 : 10 }}>
+      <div className="mi-summary-text" style={{ gap: rem(isBasic ? 12 : 10) }}>
         <div>
           <p className="mi-summary-name">{profile.name}</p>
-          <p className="mi-summary-sub" style={{ marginTop: isBasic ? 4 : 10 }}>
+          <p className="mi-summary-sub" style={{ marginTop: rem(isBasic ? 4 : 10) }}>
             {profile.jobTitleName && !isBasic ? `${sub} · ${profile.jobTitleName}` : sub}
           </p>
         </div>
@@ -115,7 +116,7 @@ export default function MyInfoPage() {
 
   if (profile.isLoading) {
     return (
-      <div className="page-center" style={{ minHeight: 400 }}>
+      <div className="page-center" style={{ minHeight: rem(400) }}>
         <Spin size="large" />
       </div>
     );

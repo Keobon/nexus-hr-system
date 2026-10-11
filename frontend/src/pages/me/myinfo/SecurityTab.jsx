@@ -4,6 +4,7 @@ import { changePassword, meKey } from '../../../api/auth';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
 import { InfoRow, Note, usePendingFeature } from './parts';
+import { rem } from '../../../utils/size';
 
 // 8자 이상, 영문 · 숫자 포함(F-AUTH-03) — 서버 PasswordRule 과 같은 조건
 const validPassword = (v) => v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v);
@@ -87,7 +88,7 @@ export default function SecurityTab() {
           {error && <p className="mi-error">{error}</p>}
           <p className="mi-text">비밀번호는 보안을 위해 표시되지 않으며, 변경 후 즉시 반영됩니다.</p>
           <div className="mi-actions is-divided">
-            <button type="button" className="mi-btn is-green" style={{ width: 158 }} disabled={mutation.isPending} onClick={submit}>
+            <button type="button" className="mi-btn is-green" style={{ width: rem(158) }} disabled={mutation.isPending} onClick={submit}>
               비밀번호 변경
             </button>
           </div>
@@ -101,10 +102,10 @@ export default function SecurityTab() {
           </div>
           <p className="mi-text">2차 인증 등록·변경은 기존 담당자 확인 절차에 따라 처리됩니다.</p>
           <div className="mi-actions is-divided">
-            <button type="button" className="mi-btn is-secondary" style={{ width: 171 }} onClick={() => pending('2차 인증 등록 신청', '2차 인증')}>
+            <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('2차 인증 등록 신청', '2차 인증')}>
               2차 인증 등록 신청
             </button>
-            <button type="button" className="mi-btn is-secondary" style={{ width: 171 }} onClick={() => pending('2차 인증 변경 신청', '2차 인증')}>
+            <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('2차 인증 변경 신청', '2차 인증')}>
               2차 인증 변경 신청
             </button>
           </div>
@@ -119,7 +120,7 @@ export default function SecurityTab() {
           <button
             type="button"
             className="mi-btn is-secondary"
-            style={{ width: 223 }}
+            style={{ width: rem(223) }}
             onClick={() => pending('로그인 보안 설정 변경 신청', '로그인 보안 설정')}
           >
             로그인 보안 설정 변경 신청

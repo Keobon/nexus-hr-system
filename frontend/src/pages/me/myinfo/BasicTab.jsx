@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react';
 import { labelOf } from '../../../constants/labels';
 import { formatDate } from '../../../utils/format';
 import { Badge, EMPTY, EvidencePicker, InfoRow, usePendingFeature } from './parts';
+import { rem } from '../../../utils/size';
 
 const CERTIFICATES = ['재직증명서', '경력증명서', '원천징수영수증'];
 
@@ -21,7 +22,7 @@ const RenameCard = forwardRef(function RenameCard({ currentName }, ref) {
   };
 
   return (
-    <section ref={ref} className="mi-card" style={{ gap: 16 }}>
+    <section ref={ref} className="mi-card" style={{ gap: rem(16) }}>
       <h2 className="mi-card-title is-regular">이름 변경 · 증빙 제출 후 승인</h2>
       <p className="mi-text is-14 is-dark" style={{ whiteSpace: 'pre-wrap' }}>{`현재 이름  ${currentName}`}</p>
       <label className="mi-text is-14" htmlFor="rename-input">
@@ -30,7 +31,7 @@ const RenameCard = forwardRef(function RenameCard({ currentName }, ref) {
       <input
         id="rename-input"
         className="mi-input"
-        style={{ height: 47 }}
+        style={{ height: rem(47) }}
         placeholder="변경할 이름을 입력해 주세요"
         maxLength={50}
         value={name}

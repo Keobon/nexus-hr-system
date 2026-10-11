@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Badge, EvidencePicker, Note, usePendingFeature } from './parts';
+import { rem } from '../../../utils/size';
 
 /**
  * 학력 · 이전 직장 경력 · 자격증은 증빙 제출 후 승인(추가사항 ②) — 백엔드 API 가 생기기 전이라 보내기만 막는다.
@@ -87,7 +88,7 @@ function RequestForm({ section }) {
     <div className="mi-box is-request">
       <div className="mi-card-head">
         <h3 className="mi-subhead">{section.requestTitle}</h3>
-        <span className="mi-text" style={{ fontSize: 12 }}>
+        <span className="mi-text" style={{ fontSize: rem(12) }}>
           변경 내용과 증빙을 첨부한 뒤 승인 요청합니다.
         </span>
       </div>
@@ -157,13 +158,13 @@ function RequestForm({ section }) {
       </div>
       {error && <p className="mi-error">{error}</p>}
       <div className="mi-actions">
-        <button type="button" className="mi-btn" style={{ minWidth: section.buttonWidth }} onClick={() => submit(section.buttons[0])}>
+        <button type="button" className="mi-btn" style={{ minWidth: rem(section.buttonWidth) }} onClick={() => submit(section.buttons[0])}>
           {section.buttons[0]}
         </button>
         <button
           type="button"
           className="mi-btn is-secondary"
-          style={{ minWidth: section.buttonWidth }}
+          style={{ minWidth: rem(section.buttonWidth) }}
           onClick={() => submit(section.buttons[1])}
         >
           {section.buttons[1]}
@@ -231,10 +232,10 @@ export default function CareerTab({ profile }) {
           <p className="mi-list-empty">등록된 어학 점수 정보가 없습니다.</p>
         </div>
         <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: 171 }} onClick={() => pending('어학 점수 등록 신청')}>
+          <button type="button" className="mi-btn" style={{ width: rem(171) }} onClick={() => pending('어학 점수 등록 신청')}>
             어학 점수 등록 신청
           </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: 171 }} onClick={() => pending('어학 점수 변경 신청')}>
+          <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('어학 점수 변경 신청')}>
             어학 점수 변경 신청
           </button>
         </div>
@@ -243,7 +244,7 @@ export default function CareerTab({ profile }) {
       <section className="mi-card">
         <h2 className="mi-card-title">보유 기술</h2>
         {skills.length === 0 ? (
-          <div className="mi-box is-borderless" style={{ padding: 24 }}>
+          <div className="mi-box is-borderless" style={{ padding: rem(24) }}>
             <p className="mi-list-empty" style={{ padding: 0 }}>
               등록된 보유 기술 정보가 없습니다.
             </p>
@@ -256,10 +257,10 @@ export default function CareerTab({ profile }) {
           </div>
         )}
         <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: 171 }} onClick={() => pending('보유 기술 등록 신청')}>
+          <button type="button" className="mi-btn" style={{ width: rem(171) }} onClick={() => pending('보유 기술 등록 신청')}>
             보유 기술 등록 신청
           </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: 171 }} onClick={() => pending('보유 기술 변경 신청')}>
+          <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('보유 기술 변경 신청')}>
             보유 기술 변경 신청
           </button>
         </div>

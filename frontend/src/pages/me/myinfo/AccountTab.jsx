@@ -4,6 +4,7 @@ import { getMyBankAccount, getMyFamily, myBankAccountKey, myFamilyKey } from '..
 import { labelOf } from '../../../constants/labels';
 import { formatDate } from '../../../utils/format';
 import { EvidencePicker, InfoRow, Note, usePendingFeature } from './parts';
+import { rem } from '../../../utils/size';
 
 // 은행 목록은 화면 고정(역할 분담 2.3 H 58번)
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', 'SC제일은행', '카카오뱅크', '토스뱅크', '케이뱅크', '부산은행', '대구은행'];
@@ -31,8 +32,8 @@ function BankCard({ account, holderDefault }) {
   };
 
   return (
-    <section className="mi-card" style={{ minHeight: 278 }}>
-      <div className="mi-section" style={{ gap: 8 }}>
+    <section className="mi-card" style={{ minHeight: rem(278) }}>
+      <div className="mi-section" style={{ gap: rem(8) }}>
         <h2 className="mi-card-title">급여 수령 계좌</h2>
         <p className="mi-text">증빙 필수 · 인사팀/관리자 승인 후 반영</p>
       </div>
@@ -50,7 +51,7 @@ function BankCard({ account, holderDefault }) {
 
       <div className="mi-section">
         <h3 className="mi-subhead">변경 요청</h3>
-        <div className="mi-box" style={{ gap: 16 }}>
+        <div className="mi-box" style={{ gap: rem(16) }}>
           <div className="mi-rows is-tight">
             <label className="mi-stacked">
               <span>은행명</span>
@@ -78,7 +79,7 @@ function BankCard({ account, holderDefault }) {
               <input maxLength={50} value={holder} onChange={(e) => setHolder(e.target.value)} />
             </label>
           </div>
-          <div className="mi-section" style={{ gap: 8 }}>
+          <div className="mi-section" style={{ gap: rem(8) }}>
             <h3 className="mi-subhead">통장 사본 첨부</h3>
             <EvidencePicker value={file} onChange={setFile} variant="center" title="통장 사본 PDF 또는 JPG를 업로드해주세요" />
           </div>
@@ -94,10 +95,10 @@ function BankCard({ account, holderDefault }) {
 
       {error && <p className="mi-error">{error}</p>}
       <div className="mi-actions is-divided">
-        <button type="button" className="mi-btn" style={{ width: 132 }} onClick={submit}>
+        <button type="button" className="mi-btn" style={{ width: rem(132) }} onClick={submit}>
           승인 요청
         </button>
-        <button type="button" className="mi-btn is-secondary" style={{ width: 132 }} onClick={() => pending('요청 내역')}>
+        <button type="button" className="mi-btn is-secondary" style={{ width: rem(132) }} onClick={() => pending('요청 내역')}>
           요청 내역
         </button>
       </div>
@@ -117,7 +118,7 @@ export default function AccountTab({ profile }) {
       <div className="mi-row">
         <BankCard account={bank.data} holderDefault={profile.name} />
 
-        <section className="mi-card" style={{ minHeight: 278 }}>
+        <section className="mi-card" style={{ minHeight: rem(278) }}>
           <h2 className="mi-card-title">연말정산 기본 인적 정보</h2>
           <div className="mi-rows">
             <InfoRow label="성명">{profile.name}</InfoRow>
@@ -131,7 +132,7 @@ export default function AccountTab({ profile }) {
             <p className="mi-text is-14">기본 인적 정보의 변경은 기존 담당자 확인 절차에 따라 신청해 주세요.</p>
           </div>
           <div className="mi-actions is-divided">
-            <button type="button" className="mi-btn" style={{ width: 132 }} onClick={() => pending('정보 변경 신청')}>
+            <button type="button" className="mi-btn" style={{ width: rem(132) }} onClick={() => pending('정보 변경 신청')}>
               정보 변경 신청
             </button>
           </div>
@@ -159,10 +160,10 @@ export default function AccountTab({ profile }) {
           )}
         </div>
         <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: 158 }} onClick={() => pending('부양가족 등록 신청')}>
+          <button type="button" className="mi-btn" style={{ width: rem(158) }} onClick={() => pending('부양가족 등록 신청')}>
             부양가족 등록 신청
           </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: 158 }} onClick={() => pending('부양가족 변경 신청')}>
+          <button type="button" className="mi-btn is-secondary" style={{ width: rem(158) }} onClick={() => pending('부양가족 변경 신청')}>
             부양가족 변경 신청
           </button>
         </div>

@@ -1,3 +1,33 @@
+/*
+ * 전체 화면 크기 — 이 값 하나로 글자 · 여백 · 카드 · 버튼이 같이 커지고 작아진다.
+ * 우리 CSS 는 Figma px 를 rem 으로 적어 두었고(1rem = Figma 16px), html 글자 크기 = 16px × --ui-scale.
+ * AntD 컴포넌트 크기는 theme.js 의 UI_SCALE 을 같은 값으로 맞춘다.
+ */
+:root {
+  --ui-scale: 0.875;
+}
+
+html {
+  font-size: calc(16px * var(--ui-scale));
+}
+
+/* 휴대폰은 글자가 너무 작아지지 않게 원래 크기 */
+@media (max-width: 767px) {
+  :root {
+    --ui-scale: 1;
+  }
+}
+
+/* SVG 파일 아이콘은 자체 px 크기라 같은 비율로 줄인다 */
+.mi-note img,
+.mi-drop img,
+.mi-avatar img:not(.photo),
+.login-feature-icon img,
+.signup-step-title img,
+.nav-icon {
+  zoom: var(--ui-scale);
+}
+
 html,
 body,
 #root {
@@ -16,19 +46,19 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 1.5rem 1rem;
   box-sizing: border-box;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 25rem;
 }
 
 .password-rules {
   display: flex;
-  gap: 12px;
-  margin-top: 4px;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
 }
 
 .password-rules .ok {
@@ -37,35 +67,35 @@ body {
 
 /* 승인 진행 표시 */
 .approval-steps .ant-timeline {
-  margin-top: 8px;
+  margin-top: 0.5rem;
 }
 
 .approval-step-meta {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: rgba(0, 0, 0, 0.45);
 }
 
 .approval-step-comment {
-  margin-top: 4px;
-  padding: 6px 10px;
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.625rem;
   background: #f5f6f8;
-  border-radius: 6px;
-  font-size: 13px;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
 }
 
 .approval-round {
-  margin: 8px 0 !important;
+  margin: 0.5rem 0 !important;
 }
 
 /* 파일 올리기 */
 .file-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  max-width: 260px;
+  gap: 0.25rem;
+  max-width: 16.25rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -73,20 +103,20 @@ body {
 
 .file-thumb {
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 0.375rem;
 }
 
 /* 작은 도우미 */
 .mb-16 {
-  margin-bottom: 16px;
+  margin-bottom: 1rem;
 }
 
 .mt-8 {
-  margin-top: 8px;
+  margin-top: 0.5rem;
 }
 
 .mt-24 {
-  margin-top: 24px;
+  margin-top: 1.5rem;
 }
 
 .full-width {

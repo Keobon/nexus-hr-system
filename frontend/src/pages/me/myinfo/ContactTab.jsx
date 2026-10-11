@@ -4,6 +4,7 @@ import { myProfileKey, updateMyProfile } from '../../../api/profile';
 import { meKey } from '../../../api/auth';
 import { useNotify } from '../../../components/common/useNotify';
 import { InfoRow, Note } from './parts';
+import { rem } from '../../../utils/size';
 
 const PHONE_RE = /^[0-9+\-\s()]{0,20}$/;
 
@@ -95,7 +96,7 @@ export default function ContactTab({ profile }) {
           <h2 className="mi-card-title">거주지 주소</h2>
           <InfoRow label="거주지 주소">{profile.address}</InfoRow>
           {!profile.address && (
-            <div className="mi-box is-borderless" style={{ minHeight: 70, justifyContent: 'center', gap: 0 }}>
+            <div className="mi-box is-borderless" style={{ minHeight: rem(70), justifyContent: 'center', gap: 0 }}>
               <p className="mi-text">등록된 거주지 주소가 없습니다.</p>
               <p className="mi-text">아래에 주소를 입력하고 저장해 주세요.</p>
             </div>

@@ -1,21 +1,21 @@
 /*
  * 대시보드 — Figma EMP_home(84:4558)
  * 카드 크기 · 색 · 글자는 Figma 값 그대로. Figma 에서 줄마다 조금씩 달랐던 왼쪽 시작점(277 · 305)과 오른쪽 끝은
- * 본문 여백(40px)에 맞춰 한 줄로 정렬했다.
+ * 본문 여백(2.5rem)에 맞춰 한 줄로 정렬했다.
  */
 
 .home-title {
   margin: 0;
   color: #000;
-  font-size: 40px;
+  font-size: 2.5rem;
   font-weight: 700;
   line-height: normal;
 }
 
 .home-sub {
-  margin: 52px 0 0;
+  margin: 3.25rem 0 0;
   color: #0f172a;
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: normal;
 }
@@ -23,31 +23,31 @@
 /* 요약 카드 4개(260 × 100, 간격 34) */
 .home-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 34px;
-  margin-top: 13px;
+  grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
+  gap: 2.125rem;
+  margin-top: 0.8125rem;
 }
 
 .home-stat {
   box-sizing: border-box;
-  height: 100px;
-  padding: 14px 16px 0;
+  height: 6.25rem;
+  padding: 0.875rem 1rem 0;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 0.625rem;
   background: #fff;
 }
 
 .home-stat-label {
   margin: 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 300;
 }
 
 .home-stat-value {
-  margin: 7px 0 0;
+  margin: 0.4375rem 0 0;
   color: #000;
-  font-size: 24px;
+  font-size: 1.5rem;
   font-weight: 700;
   line-height: normal;
   white-space: nowrap;
@@ -56,8 +56,8 @@
 }
 
 .home-stat-sub {
-  margin: 6px 0 0;
-  font-size: 11px;
+  margin: 0.375rem 0 0;
+  font-size: 0.6875rem;
   font-weight: 300;
   white-space: nowrap;
   overflow: hidden;
@@ -84,29 +84,29 @@
 .home-panels {
   display: grid;
   grid-template-columns: 430fr 566fr;
-  gap: 45px;
-  margin-top: 32px;
+  gap: 2.8125rem;
+  margin-top: 2rem;
 }
 
 .home-card {
   position: relative;
   box-sizing: border-box;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 0.625rem;
   background: #fff;
 }
 
 .home-panel {
   display: flex;
   flex-direction: column;
-  min-height: 342px;
-  padding: 29px 23px 20px;
+  min-height: 21.375rem;
+  padding: 1.8125rem 1.4375rem 1.25rem;
 }
 
 .home-card-title {
   margin: 0;
   color: #0f172a;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: normal;
 }
@@ -114,27 +114,27 @@
 .home-field-label {
   margin: 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 300;
 }
 
 .home-status {
-  margin: 8px 0 0;
-  font-size: 26px;
+  margin: 0.5rem 0 0;
+  font-size: 1.625rem;
   font-weight: 700;
   line-height: normal;
 }
 
 .home-times {
   display: grid;
-  grid-template-columns: 168px 1fr;
-  margin-top: 21px;
+  grid-template-columns: 10.5rem 1fr;
+  margin-top: 1.3125rem;
 }
 
 .home-time {
-  margin: 7px 0 0;
+  margin: 0.4375rem 0 0;
   color: #000;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: normal;
 }
@@ -142,7 +142,7 @@
 .home-note {
   margin: auto 0 0;
   color: #64748b;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 300;
 }
 
@@ -150,21 +150,21 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 21px;
+  gap: 0.5rem;
+  margin-top: 1.3125rem;
 }
 
 .home-btn {
   box-sizing: border-box;
-  min-width: 120px;
-  height: 36px;
-  padding: 0 16px;
+  min-width: 7.5rem;
+  height: 2.25rem;
+  padding: 0 1rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   background: #38bdf8;
   color: #fff;
   font: inherit;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -175,41 +175,41 @@
 }
 
 .home-worktype {
-  min-width: 96px;
+  min-width: 6rem;
 }
 
 .home-place {
-  width: 160px;
+  width: 10rem;
 }
 
 .home-attendance-head {
-  margin-top: 30px;
+  margin-top: 1.875rem;
 }
 
 /* 휴가 현황 줄 — 라벨 13 · 값 16, 줄 간격 45 */
 .home-leave-rows {
   display: flex;
   flex-direction: column;
-  gap: 26px;
-  margin-top: 33px;
+  gap: 1.625rem;
+  margin-top: 2.0625rem;
 }
 
 .home-leave-row {
   display: grid;
-  grid-template-columns: 1fr 160px;
+  grid-template-columns: 1fr 10rem;
   align-items: center;
 }
 
 .home-leave-row dt {
   color: #64748b;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 300;
 }
 
 .home-leave-row dd {
   margin: 0;
   color: #000;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -218,13 +218,13 @@
 }
 
 .home-leave-type {
-  margin-left: 8px;
+  margin-left: 0.5rem;
 }
 
 /* 내 정보(1080 × 280) */
 .home-info {
-  margin-top: 42px;
-  padding: 23px 30px 44px;
+  margin-top: 2.625rem;
+  padding: 1.4375rem 1.875rem 2.75rem;
 }
 
 .home-info-head {
@@ -234,15 +234,15 @@
 }
 
 .home-info-desc {
-  margin: 10px 0 0;
+  margin: 0.625rem 0 0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 300;
 }
 
 .home-link {
   color: #38bdf8;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
   text-decoration: none;
   white-space: nowrap;
@@ -253,36 +253,36 @@
 }
 
 .home-info-head .home-link {
-  margin-top: 6px;
+  margin-top: 0.375rem;
 }
 
 .home-table {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 1.25rem;
   border-collapse: collapse;
   table-layout: fixed;
 }
 
 .home-table th,
 .home-table td {
-  padding: 0 16px;
+  padding: 0 1rem;
   text-align: left;
   border-top: 1px solid #e2e8f0;
 }
 
 .home-table thead th {
-  height: 36px;
+  height: 2.25rem;
   background: #f7f9fc;
   color: #64748b;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .home-table tbody td {
-  height: 62px;
+  height: 3.875rem;
   background: #fff;
   color: #000;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -306,11 +306,11 @@
 }
 
 .home-table tfoot td {
-  height: 42px;
+  height: 2.625rem;
   background: #fbfcfe;
   border-bottom: 1px solid #e2e8f0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -321,31 +321,31 @@
 
 .home-quick-label {
   flex: 0 0 auto;
-  width: 100px;
+  width: 6.25rem;
 }
 
-/* Figma: 링크 칸(150px)이 표 왼쪽에서 314 · 514 · 714 — "빠른 이동"(16 + 100) 뒤로 198, 간격 50 */
+/* Figma: 링크 칸(9.375rem)이 표 왼쪽에서 314 · 514 · 714 — "빠른 이동"(16 + 100) 뒤로 198, 간격 50 */
 .home-quick-links {
   display: flex;
-  gap: 50px;
-  margin-left: 198px;
+  gap: 3.125rem;
+  margin-left: 12.375rem;
 }
 
 .home-quick-links .home-link {
-  width: 150px;
+  width: 9.375rem;
   text-align: center;
 }
 
 @media (max-width: 1199px) {
   .home-panels {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 1.5rem;
   }
 
   .home-quick-links {
     margin-left: 0;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 0.75rem;
   }
 
   .home-quick-links .home-link {
@@ -356,17 +356,17 @@
 
 @media (max-width: 767px) {
   .home-title {
-    font-size: 28px;
+    font-size: 1.75rem;
   }
 
   .home-sub {
-    margin-top: 16px;
-    font-size: 15px;
+    margin-top: 1rem;
+    font-size: 0.9375rem;
   }
 
   .home-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 0.75rem;
   }
 
   .home-table-wrap {
@@ -374,6 +374,6 @@
   }
 
   .home-table {
-    min-width: 640px;
+    min-width: 40rem;
   }
 }

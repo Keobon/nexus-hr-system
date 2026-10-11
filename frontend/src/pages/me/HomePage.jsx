@@ -12,6 +12,7 @@ import { errorMessage } from '../../constants/errors';
 import { formatDays, formatTime } from '../../utils/format';
 import { tryLocation } from '../../utils/location';
 import './home.css';
+import { rem } from '../../utils/size';
 
 const WORKING = ['OFFICE', 'REMOTE', 'FIELD'];
 const NO_BUTTON = ['ON_VACATION', 'BUSINESS_TRIP', 'ON_LEAVE'];
@@ -205,7 +206,7 @@ function LeavePanel({ balances }) {
           </div>
         </dl>
       ) : (
-        <p className="home-note" style={{ marginTop: 33 }}>올해 부여된 휴가가 없습니다.</p>
+        <p className="home-note" style={{ marginTop: rem(33) }}>올해 부여된 휴가가 없습니다.</p>
       )}
       <p className="home-note">휴가 신청 시 잔여일수를 초과하면 제출할 수 없습니다.</p>
       <div className="home-actions">
@@ -292,7 +293,7 @@ export default function HomePage() {
 
   if (home.isLoading || profile.isLoading) {
     return (
-      <div className="page-center" style={{ minHeight: 400 }}>
+      <div className="page-center" style={{ minHeight: rem(400) }}>
         <Spin size="large" />
       </div>
     );
