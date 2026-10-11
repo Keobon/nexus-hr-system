@@ -6,6 +6,7 @@ import { ALL_MENU_ITEMS } from './components/layout/menu';
 import ComponentsPage from './pages/dev/ComponentsPage';
 import HomePage from './pages/me/HomePage';
 import MyInfoPage from './pages/me/myinfo/MyInfoPage';
+import MyAttendancePage from './pages/me/attendance/MyAttendancePage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -17,6 +18,7 @@ import SignupPage from './pages/public/SignupPage';
 const PAGES = {
   home: HomePage,
   'my-info': MyInfoPage,
+  'my-attendance': MyAttendancePage,
 };
 
 const OWNER = {

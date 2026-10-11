@@ -1,0 +1,552 @@
+/*
+ * 출퇴근 및 근태 조회 — Figma EMP_출퇴근(284:8165)
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale
+ * 페이지 제목 · 부제는 다른 화면(내 정보 · 대시보드)과 같은 30 · 15
+ */
+
+.att {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  color: #0f172a;
+  font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+.att-head h1 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.att-head p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+/* 배지 — 초록 · 파랑 · 빨강 · 주황 · 회색 */
+.att-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  border-radius: 0.75rem;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.att-badge.green { background: #ecfdf5; color: #10b981; }
+.att-badge.blue { background: #eff6ff; color: #2563eb; }
+.att-badge.red { background: #fef2f2; color: #dc2626; }
+.att-badge.amber { background: #fffbeb; color: #d97706; }
+.att-badge.purple { background: #f5f3ff; color: #7c3aed; }
+
+/* 요약 카드 4개 */
+.att-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.att-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-height: 7rem;
+  box-sizing: border-box;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.att-summary-card > p {
+  margin: 0;
+}
+
+.att-label {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.att-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.att-summary-main strong {
+  overflow: hidden;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.att-summary-sub {
+  flex: none; /* overflow:hidden 이라 flex 안에서 높이 0으로 줄어들지 않게 */
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 섹션 */
+.att-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.att-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.att-section-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.att-section-head span {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.att-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.att-card.is-24 {
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.att-card.is-flush {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.att-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.att-two.is-24 {
+  gap: 1.5rem;
+}
+
+.att-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.att-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.att-block-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.att-block-head .att-sub {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* 회색 숫자 칸 */
+.att-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.att-stats.is-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.att-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+  padding: 1rem;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.att-stat strong {
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.att-stat .att-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* 출근 · 퇴근 큰 버튼 */
+.att-checks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.att-check {
+  height: 3.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.att-check.is-primary {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+.att-check:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.att-worktype {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.att-worktype .ant-select {
+  min-width: 6rem;
+}
+
+.att-worktype input {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.625rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.att-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* 버튼 */
+.att-btn {
+  align-self: flex-start;
+  height: 2.25rem;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 줄 목록(라벨 · 값) */
+.att-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.att-rows.is-10 {
+  gap: 0.625rem;
+}
+
+.att-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.att-row > span:first-child {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.att-row > span:last-child {
+  font-weight: 700;
+  text-align: right;
+}
+
+.att-rows.is-10 .att-row > span:last-child {
+  font-weight: 600;
+}
+
+/* 진행 막대 */
+.att-bar {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  background: #e2e8f0;
+}
+
+.att-bar > div {
+  height: 100%;
+  border-radius: 0.25rem;
+  background: #38bdf8;
+}
+
+.att-bar > div.is-warn {
+  background: #f59e0b;
+}
+
+.att-bar > div.is-over {
+  background: #dc2626;
+}
+
+/* 표(이력 · 부서원) */
+.att-table-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.att-table-top h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.att-table-top p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.att-table {
+  overflow-x: auto;
+}
+
+.att-tr {
+  display: grid;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 52rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.att-tr:last-child {
+  border-bottom: none;
+}
+
+.att-tr.is-head {
+  padding: 0.75rem 1.25rem;
+  border-bottom: none;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.att-tr.is-team.is-head {
+  padding: 1rem 1.25rem;
+}
+
+.att-tr.is-history {
+  grid-template-columns: 7.5rem 8.75rem 8.75rem 7.5rem 7.5rem minmax(0, 1fr);
+}
+
+.att-tr.is-team {
+  grid-template-columns: 11.25rem 7.5rem 7.5rem 7.5rem 7.5rem 7.5rem minmax(0, 1fr);
+}
+
+.att-tr .is-strong {
+  font-weight: 600;
+}
+
+.att-tr .is-muted {
+  overflow: hidden;
+  color: #64748b;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.att-empty {
+  margin: 0;
+  padding: 1.5rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* 달력 */
+.att-cal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.att-cal-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  cursor: pointer;
+}
+
+.att-legend {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.att-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1rem 0.75rem;
+}
+
+.att-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  height: 4.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.att-day span {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.att-day strong {
+  overflow: hidden;
+  max-width: 100%;
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.att-day.is-out {
+  opacity: 0.45;
+}
+
+.att-day.is-today {
+  box-shadow: 0 0 0 2px #38bdf8;
+}
+
+/* Figma 달력 칸 색 — 정상 · 근무중 / 지각 · 조퇴 / 미체크 / 외근 / 출장 / 재택 / 예정 / 휴무 */
+.att-day.ok { background: #f0fdf4; color: #15803d; }
+.att-day.ok span { color: #64748b; }
+.att-day.late { background: #fff7ed; }
+.att-day.late strong { color: #dc2626; }
+.att-day.missing { background: #fff7ed; }
+.att-day.missing strong { color: #d97706; }
+.att-day.field { background: #eff6ff; }
+.att-day.field strong { color: #2563eb; }
+.att-day.trip { background: #fffbeb; }
+.att-day.trip strong { color: #b45309; }
+.att-day.remote { background: #fff7ed; }
+.att-day.vacation { background: #f5f3ff; }
+.att-day.vacation strong { color: #7c3aed; }
+.att-day.absent { background: #fef2f2; }
+.att-day.absent strong { color: #dc2626; }
+.att-day.off strong { color: #94a3b8; }
+
+@media (max-width: 1199px) {
+  .att-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .att-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .att-stats.is-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .att-cal {
+    gap: 0.375rem;
+  }
+
+  .att-day {
+    height: 3.5rem;
+  }
+
+  .att-day strong {
+    font-size: 0.6875rem;
+  }
+
+  .att-legend {
+    display: none;
+  }
+}
