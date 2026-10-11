@@ -7,6 +7,7 @@ import ComponentsPage from './pages/dev/ComponentsPage';
 import HomePage from './pages/me/HomePage';
 import MyInfoPage from './pages/me/myinfo/MyInfoPage';
 import MyAttendancePage from './pages/me/attendance/MyAttendancePage';
+import MyLeavePage from './pages/me/leave/MyLeavePage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -19,6 +20,7 @@ const PAGES = {
   home: HomePage,
   'my-info': MyInfoPage,
   'my-attendance': MyAttendancePage,
+  'my-leaves': MyLeavePage,
 };
 
 const OWNER = {
