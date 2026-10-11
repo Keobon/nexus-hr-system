@@ -4,6 +4,8 @@ import AppLayout from './components/layout/AppLayout';
 import MenuGuard from './components/layout/MenuGuard';
 import { ALL_MENU_ITEMS } from './components/layout/menu';
 import ComponentsPage from './pages/dev/ComponentsPage';
+import HomePage from './pages/me/HomePage';
+import MyInfoPage from './pages/me/myinfo/MyInfoPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -12,7 +14,10 @@ import PasswordPage from './pages/public/PasswordPage';
 import SignupPage from './pages/public/SignupPage';
 
 // 메뉴별 화면. 만든 화면은 여기에 넣고, 없으면 담당자 표시와 함께 PlaceholderPage(역할 분담 3장)
-const PAGES = {};
+const PAGES = {
+  home: HomePage,
+  'my-info': MyInfoPage,
+};
 
 const OWNER = {
   home: 'FE-B · F-10',
