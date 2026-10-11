@@ -1,0 +1,379 @@
+/*
+ * 대시보드 — Figma EMP_home(84:4558)
+ * 카드 크기 · 색 · 글자는 Figma 값 그대로. Figma 에서 줄마다 조금씩 달랐던 왼쪽 시작점(277 · 305)과 오른쪽 끝은
+ * 본문 여백(40px)에 맞춰 한 줄로 정렬했다.
+ */
+
+.home-title {
+  margin: 0;
+  color: #000;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.home-sub {
+  margin: 52px 0 0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: normal;
+}
+
+/* 요약 카드 4개(260 × 100, 간격 34) */
+.home-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 34px;
+  margin-top: 13px;
+}
+
+.home-stat {
+  box-sizing: border-box;
+  height: 100px;
+  padding: 14px 16px 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.home-stat-label {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.home-stat-value {
+  margin: 7px 0 0;
+  color: #000;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-stat-sub {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 300;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tone-green {
+  color: #10b981;
+}
+
+.tone-blue {
+  color: #38bdf8;
+}
+
+.tone-orange {
+  color: #f9952d;
+}
+
+.tone-gray {
+  color: #64748b;
+}
+
+/* 오늘 근태(430) · 나의 휴가 현황(566) — 높이 342 */
+.home-panels {
+  display: grid;
+  grid-template-columns: 430fr 566fr;
+  gap: 45px;
+  margin-top: 32px;
+}
+
+.home-card {
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.home-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 342px;
+  padding: 29px 23px 20px;
+}
+
+.home-card-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.home-field-label {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.home-status {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.home-times {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  margin-top: 21px;
+}
+
+.home-time {
+  margin: 7px 0 0;
+  color: #000;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.home-note {
+  margin: auto 0 0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 300;
+}
+
+.home-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 21px;
+}
+
+.home-btn {
+  box-sizing: border-box;
+  min-width: 120px;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: #38bdf8;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.home-worktype {
+  min-width: 96px;
+}
+
+.home-place {
+  width: 160px;
+}
+
+.home-attendance-head {
+  margin-top: 30px;
+}
+
+/* 휴가 현황 줄 — 라벨 13 · 값 16, 줄 간격 45 */
+.home-leave-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin-top: 33px;
+}
+
+.home-leave-row {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  align-items: center;
+}
+
+.home-leave-row dt {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 300;
+}
+
+.home-leave-row dd {
+  margin: 0;
+  color: #000;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.home-leave-row dd.tone-blue {
+  color: #38bdf8;
+}
+
+.home-leave-type {
+  margin-left: 8px;
+}
+
+/* 내 정보(1080 × 280) */
+.home-info {
+  margin-top: 42px;
+  padding: 23px 30px 44px;
+}
+
+.home-info-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.home-info-desc {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.home-link {
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.home-link:hover {
+  text-decoration: underline;
+}
+
+.home-info-head .home-link {
+  margin-top: 6px;
+}
+
+.home-table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.home-table th,
+.home-table td {
+  padding: 0 16px;
+  text-align: left;
+  border-top: 1px solid #e2e8f0;
+}
+
+.home-table thead th {
+  height: 36px;
+  background: #f7f9fc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.home-table tbody td {
+  height: 62px;
+  background: #fff;
+  color: #000;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 재직상태 색(재직중 #10b981) — 위 td 글자색보다 우선 */
+.home-table tbody td.tone-green {
+  color: #10b981;
+}
+
+.home-table tbody td.tone-orange {
+  color: #f9952d;
+}
+
+.home-table tbody td.tone-gray {
+  color: #64748b;
+}
+
+/* 머리 · 데이터 칸 사이 세로선(Figma info col divider) */
+.home-table thead th + th,
+.home-table tbody td + td {
+  border-left: 1px solid #e2e8f0;
+}
+
+.home-table tfoot td {
+  height: 42px;
+  background: #fbfcfe;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.home-quick {
+  display: flex;
+  align-items: center;
+}
+
+.home-quick-label {
+  flex: 0 0 auto;
+  width: 100px;
+}
+
+/* Figma: 링크 칸(150px)이 표 왼쪽에서 314 · 514 · 714 — "빠른 이동"(16 + 100) 뒤로 198, 간격 50 */
+.home-quick-links {
+  display: flex;
+  gap: 50px;
+  margin-left: 198px;
+}
+
+.home-quick-links .home-link {
+  width: 150px;
+  text-align: center;
+}
+
+@media (max-width: 1199px) {
+  .home-panels {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .home-quick-links {
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .home-quick-links .home-link {
+    width: auto;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .home-title {
+    font-size: 28px;
+  }
+
+  .home-sub {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+
+  .home-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .home-table-wrap {
+    overflow-x: auto;
+  }
+
+  .home-table {
+    min-width: 640px;
+  }
+}

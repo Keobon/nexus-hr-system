@@ -1,9 +1,9 @@
-// AntD 테마. 디자인 v2 토큰이 나오면 여기만 바꾼다.
+// AntD 테마. Figma 글꼴 Inter(한글은 Pretendard)와 기본색 #38bdf8.
 export const theme = {
   token: {
-    colorPrimary: '#2f54eb',
+    colorPrimary: '#38bdf8',
     borderRadius: 8,
     fontFamily:
-      "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
+      "Inter, 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif",
   },
 };

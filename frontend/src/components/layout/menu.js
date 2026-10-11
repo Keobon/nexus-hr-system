@@ -19,6 +19,13 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import navAccount from '../../assets/figma/nav-account.svg';
+import navCalendar from '../../assets/figma/nav-calendar.svg';
+import navClock from '../../assets/figma/nav-clock.svg';
+import navDashboard from '../../assets/figma/nav-dashboard.svg';
+import navMoney from '../../assets/figma/nav-money.svg';
+import navPeople from '../../assets/figma/nav-people.svg';
+import navStatistic from '../../assets/figma/nav-statistic.svg';
 
 const always = () => true;
 
@@ -31,24 +38,51 @@ const isSuperAdmin = (me) => me?.role?.name === '최고 관리자';
 // 묶음 단위로 숨기는 조건은 hiddenFor(ctx). 아래 MENU_GROUPS 가 각 메뉴의 visible 에 합쳐서
 // 사이드바와 주소 접근(MenuGuard)이 같은 규칙을 쓴다.
 const GROUPS = [
+  // Figma EMP_Sidebar — MAIN(대시보드) · 인사 서비스(내 업무). 이름 · 아이콘이 Figma 에 있는 메뉴는 그대로 쓴다(navIcon)
+  {
+    key: 'main',
+    title: 'MAIN',
+    items: [{ key: 'home', path: '/', label: '대시보드', icon: HomeOutlined, navIcon: navDashboard, visible: always }],
+  },
   {
     key: 'me',
-    title: '내 업무',
+    title: '인사 서비스',
     items: [
-      { key: 'home', path: '/', label: '홈', icon: HomeOutlined, visible: always },
-      { key: 'my-info', path: '/me', label: '내 정보', icon: UserOutlined, visible: always },
-      { key: 'my-attendance', path: '/me/attendance', label: '내 근태', icon: ClockCircleOutlined, visible: always },
-      { key: 'my-leaves', path: '/me/leaves', label: '내 휴가', icon: CalendarOutlined, visible: always },
+      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always },
+      {
+        key: 'my-attendance',
+        path: '/me/attendance',
+        label: '출퇴근 및 근태 조회',
+        icon: ClockCircleOutlined,
+        navIcon: navClock,
+        visible: always,
+      },
+      {
+        key: 'my-leaves',
+        path: '/me/leaves',
+        label: '휴가 신청 및 조회',
+        icon: CalendarOutlined,
+        navIcon: navCalendar,
+        visible: always,
+      },
       { key: 'my-work-requests', path: '/me/work-requests', label: '연장근무·출장', icon: CarOutlined, visible: always },
       {
         key: 'my-payroll',
         path: '/me/payroll',
-        label: '내 급여',
+        label: '급여 명세서',
         icon: DollarOutlined,
+        navIcon: navMoney,
         visible: ({ me }) => me.employee?.payrollEligible === true,
       },
-      { key: 'my-evaluations', path: '/me/evaluations', label: '내 평가', icon: StarOutlined, visible: always },
-      { key: 'org-chart', path: '/org-chart', label: '조직도', icon: ApartmentOutlined, visible: always },
+      {
+        key: 'my-evaluations',
+        path: '/me/evaluations',
+        label: '인사발령/평가 조회',
+        icon: StarOutlined,
+        navIcon: navStatistic,
+        visible: always,
+      },
+      { key: 'org-chart', path: '/org-chart', label: '조직도', icon: ApartmentOutlined, navIcon: navPeople, visible: always },
       {
         key: 'approvals',
         path: '/approvals',
