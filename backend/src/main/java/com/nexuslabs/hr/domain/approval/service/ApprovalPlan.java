@@ -16,8 +16,10 @@ public record ApprovalPlan(Long approvalLineId, String approvalLineName, List<Pl
     /**
      * @param approverId 계산된 승인자. 생략된 단계도 계산된 사람을 남긴다(최상위라 못 찾은 경우만 null)
      * @param skipReason SELF(신청자 본인) · SAME_AS_PREVIOUS(앞 단계와 같은 사람) · TOP_OF_ORG(최상위 조직장이라 위가 없음)
+     * @param stepLabel  승인선 단계 설정의 이름 — "조직장" · "N단계 위 조직장" · 직책명 · 지정 직원 이름(역할 분담 2.3 L-95)
      */
-    public record PlannedStep(int stepOrder, Long approverId, String approverName, SkipReason skipReason) {
+    public record PlannedStep(int stepOrder, Long approverId, String approverName, SkipReason skipReason,
+                              String stepLabel) {
 
         public boolean skipped() {
             return skipReason != null;

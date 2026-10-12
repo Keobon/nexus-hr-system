@@ -6,6 +6,7 @@ import java.util.List;
  * GET /api/me/leave-requests/preview 응답(API 설계서 8장). 저장하지 않는다.
  * balance 는 차감 종류만(차감 안 하는 종류는 null), approvalLine 은 승인자를 못 찾으면 null.
  * errors 는 실제 신청하면 걸릴 오류 코드 — 하나라도 있으면 화면이 신청 버튼을 막는다.
+ * steps[].stepLabel 은 승인선 단계 이름("조직장" · "N단계 위 조직장" · 직책명 · 지정 직원 이름).
  */
 public record LeavePreview(int days, int leaveYear, Balance balance, ApprovalLine approvalLine, List<Step> steps,
                            List<String> errors) {
@@ -16,6 +17,6 @@ public record LeavePreview(int days, int leaveYear, Balance balance, ApprovalLin
     public record ApprovalLine(long id, String name) {
     }
 
-    public record Step(int stepOrder, Long approverId, String approverName, boolean skipped) {
+    public record Step(int stepOrder, Long approverId, String approverName, boolean skipped, String stepLabel) {
     }
 }

@@ -55,13 +55,15 @@ public class LeaveRequestController {
         return ApiResponse.ok(leaveRequestService.create(user, request));
     }
 
-    /** 내 휴가 목록. 최근 시작일부터. */
+    /** 내 휴가 목록. 최근 시작일부터. from · to 는 기간이 걸치는 휴가(GET /leave-requests 와 같다). */
     @GetMapping("/api/me/leave-requests")
     public ApiResponse<PageResponse<LeaveRequestRow>> mine(@CurrentUser LoginUser user,
                                                            @RequestParam(required = false) Integer leaveYear,
                                                            @RequestParam(required = false) LeaveStatus status,
+                                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
                                                            @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.ok(PageResponse.of(leaveRequestService.mine(user, leaveYear, status, pageable)));
+        return ApiResponse.ok(PageResponse.of(leaveRequestService.mine(user, leaveYear, status, from, to, pageable)));
     }
 
     /** 팀 휴가 캘린더 — 같은 조직(하위 제외) 동료의 진행 중 휴가. 권한 없이 로그인한 직원 누구나. */

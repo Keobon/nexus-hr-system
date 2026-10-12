@@ -87,7 +87,8 @@ public class LeaveRequestService {
         return new LeavePreview(ev.days(), ev.leaveYear(), balance,
                 plan == null ? null : new LeavePreview.ApprovalLine(plan.approvalLineId(), plan.approvalLineName()),
                 plan == null ? List.of() : plan.steps().stream()
-                        .map(s -> new LeavePreview.Step(s.stepOrder(), s.approverId(), s.approverName(), s.skipped()))
+                        .map(s -> new LeavePreview.Step(s.stepOrder(), s.approverId(), s.approverName(), s.skipped(),
+                                s.stepLabel()))
                         .toList(),
                 ev.errors().stream().map(e -> e.code().name()).toList());
     }
@@ -167,10 +168,11 @@ public class LeaveRequestService {
         return detail(user.companyId(), id, user.employeeId());
     }
 
-    /** 내 휴가 목록. leaveYear · status 는 선택. 최근 시작일부터. */
+    /** 내 휴가 목록. leaveYear · status · from · to 는 선택(from · to 는 기간이 걸치는 휴가). 최근 시작일부터. */
     @Transactional(readOnly = true)
-    public PageImpl<LeaveRequestRow> mine(LoginUser user, Integer leaveYear, LeaveStatus status, Pageable pageable) {
-        Filter filter = new Filter(null, null, null, status, null, leaveYear);
+    public PageImpl<LeaveRequestRow> mine(LoginUser user, Integer leaveYear, LeaveStatus status, LocalDate from,
+                                         LocalDate to, Pageable pageable) {
+        Filter filter = new Filter(from, to, null, status, null, leaveYear);
         return page(user.companyId(), " AND r.employee_id = ?", List.of(user.employeeId()), filter, pageable);
     }
 
@@ -195,14 +197,17 @@ public class LeaveRequestService {
     /**
      * 팀 휴가 캘린더 — 권한 없이 누구나. 나와 같은 조직(하위 제외)의 재직 · 휴직자가 낸 진행 중 휴가(승인대기 · 승인완료 ·
      * 취소요청) 중 기간이 from · to 에 걸치는 것. 시작일 → 이름 순.
+     * LEAVE_READ 를 쓸 수 없으면(2.3 N-103) 남의 휴가는 승인된 것만, 종류는 "휴가", 취소요청은 승인완료로 보인다.
+     * 승인 전 신청이나 병가 · 경조사 같은 종류가 동료에게 드러나지 않게 한다. 내 휴가는 그대로.
      */
     @Transactional(readOnly = true)
     public List<TeamLeaveRow> teamLeaves(LoginUser user, LocalDate from, LocalDate to) {
         if (from.isAfter(to)) {
             throw BusinessException.invalidFields(Map.of("to", "종료일은 시작일 이후여야 합니다"));
         }
+        boolean leaveReader = scopeResolver.usable(user, PermissionCode.LEAVE_READ);
         return jdbc.query("""
-                        SELECT e.id AS employee_id, e.name AS employee_name, t.name AS type_name,
+                        SELECT r.id, e.id AS employee_id, e.name AS employee_name, t.name AS type_name,
                                r.start_date, r.end_date, r.status::text AS status
                         FROM leave_request r
                         JOIN employee e ON e.id = r.employee_id AND e.company_id = r.company_id
@@ -211,13 +216,20 @@ public class LeaveRequestService {
                           AND e.org_unit_id = (SELECT org_unit_id FROM employee WHERE id = ? AND company_id = ?)
                           AND e.status <> 'RESIGNED'
                           AND r.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
+                          AND (? OR r.employee_id = ? OR r.status IN ('APPROVED', 'CANCEL_REQUESTED'))
                           AND r.start_date <= ? AND r.end_date >= ?
                         ORDER BY r.start_date, e.name, r.id
                         """,
-                (rs, i) -> new TeamLeaveRow(rs.getLong("employee_id"), rs.getString("employee_name"),
-                        rs.getString("type_name"), rs.getObject("start_date", LocalDate.class),
-                        rs.getObject("end_date", LocalDate.class), LeaveStatus.valueOf(rs.getString("status"))),
-                user.companyId(), user.employeeId(), user.companyId(), Date.valueOf(to), Date.valueOf(from));
+                (rs, i) -> {
+                    boolean full = leaveReader || rs.getLong("employee_id") == user.employeeId();
+                    LeaveStatus status = LeaveStatus.valueOf(rs.getString("status"));
+                    return new TeamLeaveRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
+                            full ? rs.getString("type_name") : "휴가", rs.getObject("start_date", LocalDate.class),
+                            rs.getObject("end_date", LocalDate.class),
+                            full || status != LeaveStatus.CANCEL_REQUESTED ? status : LeaveStatus.APPROVED);
+                },
+                user.companyId(), user.employeeId(), user.companyId(), leaveReader, user.employeeId(),
+                Date.valueOf(to), Date.valueOf(from));
     }
 
     /**

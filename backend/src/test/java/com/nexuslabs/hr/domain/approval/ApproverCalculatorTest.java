@@ -47,11 +47,17 @@ class ApproverCalculatorTest {
                 .toArray(String[]::new);
     }
 
+    private static String[] labels(ApprovalPlan plan) {
+        return plan.steps().stream().map(ApprovalPlan.PlannedStep::stepLabel).toArray(String[]::new);
+    }
+
     @Test
     void 팀원_휴가는_팀장_그다음_본부장() {
         ApprovalPlan p = plan(ApprovalWorkType.LEAVE, org.cho);
         assertThat(p.approvalLineName()).isEqualTo("휴가 기본");
         assertThat(describe(p)).containsExactly(org.seo.id() + "", org.kang.id() + "");
+        // 단계 이름은 승인선 설정에서 — 소속 조직장 · N단계 위 조직장
+        assertThat(labels(p)).containsExactly("조직장", "1단계 위 조직장");
         assertThat(p.immediatelyApproved()).isFalse();
     }
 
@@ -66,6 +72,7 @@ class ApproverCalculatorTest {
         ApprovalPlan p = plan(ApprovalWorkType.LEAVE, org.kang);
         assertThat(p.approvalLineName()).isEqualTo("본부장 휴가");
         assertThat(describe(p)).containsExactly(org.ceo.id() + "");
+        assertThat(labels(p)).containsExactly("대표이사"); // 직책 단계는 직책명
     }
 
     @Test
@@ -133,8 +140,11 @@ class ApproverCalculatorTest {
                 Long.class, org.company.id());
         jdbc.update("UPDATE approval_line_step SET approver_type = 'EMPLOYEE', employee_id = ? WHERE approval_line_id = ?",
                 org.company.adminId(), line);
-        assertThat(describe(plan(ApprovalWorkType.TRIP_EXPENSE, org.cho)))
-                .containsExactly(org.company.adminId() + "");
+        ApprovalPlan p = plan(ApprovalWorkType.TRIP_EXPENSE, org.cho);
+        assertThat(describe(p)).containsExactly(org.company.adminId() + "");
+        // 특정 직원 단계는 그 직원 이름
+        assertThat(labels(p)).containsExactly(jdbc.queryForObject("SELECT name FROM employee WHERE id = ?",
+                String.class, org.company.adminId()));
         // 본인이 지정된 직원이면 생략 → 즉시 승인
         ApprovalPlan self = approvalService.preview(org.company.id(), ApprovalWorkType.TRIP_EXPENSE, org.company.adminId());
         assertThat(Arrays.asList(describe(self))).containsExactly(org.company.adminId() + ":" + SkipReason.SELF);
