@@ -1,0 +1,426 @@
+/*
+ * 내 급여 명세서 — Figma COMMON_my_payslip(319:6577)
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale
+ * 페이지 제목 · 부제는 다른 화면과 같은 30 · 15
+ */
+
+.ps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  color: #0f172a;
+  font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+.ps-head h1 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.ps-head p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+/* 급여 메뉴 — 누르면 그 칸으로 */
+.ps-menu {
+  display: flex;
+  align-self: flex-start;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  background: #edf2fa;
+}
+
+.ps-menu button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #52637a;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ps-menu button.is-active,
+.ps-menu button:hover {
+  color: #0a8cc7;
+}
+
+.ps-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  scroll-margin-top: 1rem;
+}
+
+.ps-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ps-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.ps-label {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ps-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Figma Select(테두리 4 · 높이 36 · 회전한 화살표) */
+.ps-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  box-sizing: border-box;
+  border: 1px solid #e1e7ec;
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+.ps-select select {
+  height: 100%;
+  padding: 0 2.75rem 0 0.75rem;
+  border: none;
+  background: none;
+  color: #2a2e33;
+  font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.ps-select img {
+  position: absolute;
+  right: 0.75rem;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+
+.ps-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ps-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ps-btn.is-gray {
+  background: #d1d5db;
+  color: #374151;
+}
+
+/* 값 칸 — Figma 회색 상자(배경 #f8fafc · 테두리 · 둥글기 8) */
+.ps-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ps-tiles.is-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ps-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.ps-tile > span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-tile > strong {
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.ps-tile.is-big > strong {
+  font-size: 1.25rem;
+}
+
+.ps-tile > strong.is-blue {
+  color: #38bdf8;
+}
+
+.ps-tile > em {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.ps-meta {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* 한 줄 상자 — 이름 왼쪽, 값 오른쪽 */
+.ps-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ps-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ps-row > span:last-child {
+  text-align: right;
+}
+
+.ps-row .is-blue {
+  color: #38bdf8;
+}
+
+.ps-row .is-muted {
+  color: #64748b;
+}
+
+/* 안내 상자 */
+.ps-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.ps-note > strong {
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.ps-note > p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.ps-total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #f0f9ff;
+}
+
+.ps-total > span {
+  color: #2563eb;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.ps-total > strong {
+  color: #38bdf8;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.ps-total > em {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.ps-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ps-links button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #0a8cc7;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ps-bottom {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.ps-bottom > .is-side {
+  flex: none;
+  width: 22.5rem;
+}
+
+.ps-bottom > .is-grow {
+  flex: 1 1 0;
+}
+
+.ps-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.ps-two > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ps-empty {
+  margin: 0;
+  padding: 1.5rem 0;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* 급여 변경 이력 표 — 좁은 화면에서는 표 안에서만 가로 스크롤 */
+.ps-table-wrap {
+  overflow-x: auto;
+}
+
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.ps-table th {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  text-align: left;
+}
+
+.ps-table td {
+  padding: 0.75rem;
+  white-space: nowrap;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ps-table td.is-num {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 1199px) {
+  .ps-bottom {
+    flex-direction: column;
+  }
+
+  .ps-bottom > .is-side {
+    width: auto;
+  }
+
+  .ps-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .ps-two,
+  .ps-tiles.is-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ps-card-head {
+    align-items: flex-start;
+  }
+}
+
+/* 출력 — 명세서 카드만 */
+@media print {
+  .app-shell > .nav,
+  .app-topbar,
+  .ps-menu,
+  .ps-actions,
+  .ps-print-hide {
+    display: none !important;
+  }
+
+  .app-main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .ps-card {
+    break-inside: avoid;
+  }
+}

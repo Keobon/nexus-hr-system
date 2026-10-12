@@ -9,6 +9,7 @@ import MyInfoPage from './pages/me/myinfo/MyInfoPage';
 import MyAttendancePage from './pages/me/attendance/MyAttendancePage';
 import MyLeavePage from './pages/me/leave/MyLeavePage';
 import MyWorkRequestsPage from './pages/me/work/MyWorkRequestsPage';
+import MyPayrollPage from './pages/me/payroll/MyPayrollPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -23,6 +24,7 @@ const PAGES = {
   'my-attendance': MyAttendancePage,
   'my-leaves': MyLeavePage,
   'my-work-requests': MyWorkRequestsPage,
+  'my-payroll': MyPayrollPage,
 };
 
 const OWNER = {
