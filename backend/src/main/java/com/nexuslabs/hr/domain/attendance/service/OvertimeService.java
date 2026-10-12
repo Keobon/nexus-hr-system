@@ -10,6 +10,8 @@ import com.nexuslabs.hr.domain.attendance.dto.OvertimeRow;
 import com.nexuslabs.hr.domain.attendance.entity.OvertimeRequest;
 import com.nexuslabs.hr.domain.attendance.entity.RequestStatus;
 import com.nexuslabs.hr.domain.attendance.repository.OvertimeRequestRepository;
+import com.nexuslabs.hr.domain.company.service.WorkCalendar;
+import com.nexuslabs.hr.domain.company.service.WorkScheduleView;
 import com.nexuslabs.hr.domain.employee.entity.Employee;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.config.ClockConfig;
@@ -50,15 +52,18 @@ public class OvertimeService {
     private final ApprovalService approvalService;
     private final ScopeResolver scopeResolver;
     private final RequestAccess access;
+    private final WorkCalendar workCalendar;
     private final JdbcTemplate jdbc;
     private final EntityManager em;
 
     public OvertimeService(OvertimeRequestRepository repository, ApprovalService approvalService,
-                           ScopeResolver scopeResolver, RequestAccess access, JdbcTemplate jdbc, EntityManager em) {
+                           ScopeResolver scopeResolver, RequestAccess access, WorkCalendar workCalendar,
+                           JdbcTemplate jdbc, EntityManager em) {
         this.repository = repository;
         this.approvalService = approvalService;
         this.scopeResolver = scopeResolver;
         this.access = access;
+        this.workCalendar = workCalendar;
         this.jdbc = jdbc;
         this.em = em;
     }
@@ -210,15 +215,20 @@ public class OvertimeService {
         }
         long total = jdbc.queryForObject("SELECT count(*)" + FROM + where, Long.class, args.toArray());
         args.addAll(List.of(pageable.getPageSize(), pageable.getOffset()));
+        WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
         List<OvertimeRow> rows = jdbc.query(ROW_SELECT + FROM + where
                         + " ORDER BY o.work_date DESC, o.id DESC LIMIT ? OFFSET ?",
-                (rs, i) -> new OvertimeRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
-                        rs.getString("org_unit_name"), rs.getObject("work_date", LocalDate.class),
-                        RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class)),
-                        RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class)), rs.getInt("requested_minutes"),
-                        rs.getObject("approved_minutes", Integer.class), rs.getString("reason"),
-                        RequestStatus.valueOf(rs.getString("status")),
-                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
+                (rs, i) -> {
+                    LocalDate workDate = rs.getObject("work_date", LocalDate.class);
+                    OffsetDateTime start = RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class));
+                    OffsetDateTime end = RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class));
+                    return new OvertimeRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
+                            rs.getString("org_unit_name"), workDate, start, end, rs.getInt("requested_minutes"),
+                            rs.getObject("approved_minutes", Integer.class), !calendar.isWorkday(workDate),
+                            nightMinutes(calendar, workDate, start, end), rs.getString("reason"),
+                            RequestStatus.valueOf(rs.getString("status")),
+                            RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null);
+                },
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(companyId, ApprovalWorkType.OVERTIME,
                 rows.stream().map(OvertimeRow::id).toList());
@@ -237,8 +247,17 @@ public class OvertimeService {
              JOIN org_unit u ON u.id = e.org_unit_id AND u.company_id = e.company_id
             """;
 
+    /** 예정 시간 중 그 근무일에 유효한 근무시간의 야간 시간대와 겹치는 분(역할 분담 2.3 M 102). */
+    private static int nightMinutes(WorkCalendar.Snapshot calendar, LocalDate workDate, OffsetDateTime start,
+                                    OffsetDateTime end) {
+        WorkScheduleView schedule = calendar.scheduleOn(workDate);
+        return AttendanceCalculator.nightMinutes(start.toLocalDateTime(), end.toLocalDateTime(),
+                schedule.nightStart(), schedule.nightEnd());
+    }
+
     private OvertimeResponse detail(long companyId, long id, long viewerId) {
         List<ApprovalStepView> steps = approvalService.steps(companyId, ApprovalWorkType.OVERTIME, id, viewerId);
+        WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
         return jdbc.query("""
                                 SELECT o.id, o.employee_id, e.name AS employee_name, u.name AS org_unit_name, o.work_date,
                                        o.planned_start, o.planned_end, o.requested_minutes, o.approved_minutes, o.reason,
@@ -248,15 +267,18 @@ public class OvertimeService {
                                 JOIN org_unit u ON u.id = e.org_unit_id AND u.company_id = e.company_id
                                 WHERE o.id = ? AND o.company_id = ?
                                 """,
-                        (rs, i) -> new OvertimeResponse(rs.getLong("id"), rs.getLong("employee_id"),
-                                rs.getString("employee_name"), rs.getString("org_unit_name"),
-                                rs.getObject("work_date", LocalDate.class),
-                                RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class)),
-                                RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class)),
-                                rs.getInt("requested_minutes"), rs.getObject("approved_minutes", Integer.class),
-                                rs.getString("reason"), RequestStatus.valueOf(rs.getString("status")),
-                                rs.getString("cancel_reason"), RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)),
-                                steps),
+                        (rs, i) -> {
+                            LocalDate workDate = rs.getObject("work_date", LocalDate.class);
+                            OffsetDateTime start = RequestAccess.seoul(rs.getObject("planned_start", OffsetDateTime.class));
+                            OffsetDateTime end = RequestAccess.seoul(rs.getObject("planned_end", OffsetDateTime.class));
+                            return new OvertimeResponse(rs.getLong("id"), rs.getLong("employee_id"),
+                                    rs.getString("employee_name"), rs.getString("org_unit_name"), workDate, start, end,
+                                    rs.getInt("requested_minutes"), rs.getObject("approved_minutes", Integer.class),
+                                    !calendar.isWorkday(workDate), nightMinutes(calendar, workDate, start, end),
+                                    rs.getString("reason"), RequestStatus.valueOf(rs.getString("status")),
+                                    rs.getString("cancel_reason"),
+                                    RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), steps);
+                        },
                         id, companyId)
                 .stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));

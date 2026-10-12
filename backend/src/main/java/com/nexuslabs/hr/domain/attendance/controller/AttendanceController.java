@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.attendance.controller;
 
 import com.nexuslabs.hr.domain.attendance.dto.EmployeeMonthlySummary;
+import com.nexuslabs.hr.domain.attendance.dto.EmployeeTodayAttendance;
 import com.nexuslabs.hr.domain.attendance.dto.MonthlyAttendance;
 import com.nexuslabs.hr.domain.attendance.service.AttendanceQueryService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -44,6 +45,15 @@ public class AttendanceController {
                                                                   @RequestParam(required = false) Long employeeId,
                                                                   @PageableDefault(size = 20) Pageable pageable) {
         return ApiResponse.ok(PageResponse.of(queryService.list(user, month, orgUnitId, employeeId, pageable)));
+    }
+
+    /** 직원들의 오늘 근태. 범위 · orgUnitId · sort 는 위 목록과 같고, 퇴직자는 나오지 않는다. */
+    @GetMapping("/api/attendances/today")
+    @RequirePermission(PermissionCode.ATTENDANCE_READ)
+    public ApiResponse<PageResponse<EmployeeTodayAttendance>> today(@CurrentUser LoginUser user,
+                                                                    @RequestParam(required = false) Long orgUnitId,
+                                                                    @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(queryService.today(user, orgUnitId, pageable)));
     }
 
     /** 한 직원의 근태 — 내 근태와 같은 형식. */
