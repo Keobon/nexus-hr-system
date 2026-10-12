@@ -29,6 +29,6 @@ export const withdrawLeave = (id) => api.post(`/me/leave-requests/${id}/withdraw
 /** 승인완료 + 시작일 전 → 취소 요청 { reason } */
 export const cancelLeave = (id, reason) => api.post(`/me/leave-requests/${id}/cancel-request`, { reason });
 
-/** GET /leave-requests?from=&to=&status= — LEAVE_READ 범위(팀 휴가) */
+/** GET /me/team-leaves?from=&to= — 같은 조직(하위 제외) 재직 · 휴직자의 승인대기 · 승인완료 · 취소요청 휴가, 나 포함. 권한 없이 누구나(노션 2.3 L-91) */
 export const teamLeavesKey = (from, to) => ['leave-requests', 'team', from, to];
-export const getTeamLeaves = (from, to) => api.get('/leave-requests', { from, to, size: 100 });
+export const getTeamLeaves = (from, to) => api.get('/me/team-leaves', { from, to }); // [{ employeeId, employeeName, leaveTypeName, startDate, endDate, status }]
