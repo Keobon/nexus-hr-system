@@ -412,11 +412,14 @@ public class LeaveRequestService {
                         rs.getString("leave_type_name"), rs.getInt("leave_year"),
                         rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class),
                         rs.getInt("days"), LeaveStatus.valueOf(rs.getString("status")), rs.getString("reason"),
-                        seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
+                        seoul(rs.getObject("created_at", OffsetDateTime.class)), null, null),
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(cid, ApprovalWorkType.LEAVE,
                 rows.stream().map(LeaveRequestRow::id).toList());
-        return new PageImpl<>(rows.stream().map(r -> r.withCurrentStep(steps.get(r.id()))).toList(), pageable, total);
+        Map<Long, String> rejectReasons = approvalService.rejectReasons(cid, ApprovalWorkType.LEAVE,
+                rows.stream().filter(r -> r.status() == LeaveStatus.REJECTED).map(LeaveRequestRow::id).toList());
+        return new PageImpl<>(rows.stream().map(r -> r.withApproval(steps.get(r.id()), rejectReasons.get(r.id())))
+                .toList(), pageable, total);
     }
 
     private static OffsetDateTime seoul(OffsetDateTime t) {

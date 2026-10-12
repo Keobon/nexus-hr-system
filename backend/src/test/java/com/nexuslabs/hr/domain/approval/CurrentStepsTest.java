@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** 목록 행의 currentStep(API 설계서 8장 "휴가 신청 목록 행") — 경계 경우마다. */
+/** 목록 행의 currentStep · rejectReason(API 설계서 8장 "휴가 신청 목록 행") — 경계 경우마다. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -131,6 +131,40 @@ class CurrentStepsTest {
         assertThat(approvalService.currentSteps(cid, ApprovalWorkType.LEAVE, List.of())).isEmpty();
         // 업무 종류가 다르면 안 섞인다
         assertThat(approvalService.currentSteps(cid, ApprovalWorkType.OVERTIME, List.of(leave))).isEmpty();
+    }
+
+    private Map<Long, String> rejectReasons(long... ids) {
+        return approvalService.rejectReasons(cid, ApprovalWorkType.LEAVE, Arrays.stream(ids).boxed().toList());
+    }
+
+    @Test
+    void 반려_사유는_반려한_단계의_의견이고_대기_승인은_없음() throws Exception {
+        long rejected = request(ApprovalWorkType.LEAVE, org.cho);
+        decide(org.seo, ApprovalWorkType.LEAVE, rejected, "approve", "{\"comment\": \"확인\"}");
+        decide(org.kang, ApprovalWorkType.LEAVE, rejected, "reject", "{\"comment\": \"대체 인력 없음\"}");
+        long pending = request(ApprovalWorkType.LEAVE, org.cho);
+        long approved = request(ApprovalWorkType.LEAVE, org.cho);
+        decide(org.seo, ApprovalWorkType.LEAVE, approved, "approve", "{\"comment\": \"승인\"}");
+        decide(org.kang, ApprovalWorkType.LEAVE, approved, "approve", "{}");
+
+        assertThat(rejectReasons(rejected, pending, approved)).isEqualTo(Map.of(rejected, "대체 인력 없음"));
+    }
+
+    @Test
+    void 취소_반려_사유는_넣지_않고_다른_회사_업무_종류_빈_목록은_없음() throws Exception {
+        long leave = request(ApprovalWorkType.LEAVE, org.cho);
+        decide(org.seo, ApprovalWorkType.LEAVE, leave, "approve", "{}");
+        decide(org.kang, ApprovalWorkType.LEAVE, leave, "approve", "{}");
+        approvalService.openLeaveCancel(cid, leave, org.cho.id());
+        decide(org.kang, ApprovalWorkType.LEAVE_CANCEL, leave, "reject", "{\"comment\": \"대체 인력 없음\"}");
+        assertThat(rejectReasons(leave)).isEmpty();
+
+        long rejected = request(ApprovalWorkType.LEAVE, org.cho);
+        decide(org.seo, ApprovalWorkType.LEAVE, rejected, "reject", "{\"comment\": \"일정 조정 필요\"}");
+        TestFixture.Company other = fixture.company("다른회사");
+        assertThat(approvalService.rejectReasons(other.id(), ApprovalWorkType.LEAVE, List.of(rejected))).isEmpty();
+        assertThat(approvalService.rejectReasons(cid, ApprovalWorkType.OVERTIME, List.of(rejected))).isEmpty();
+        assertThat(approvalService.rejectReasons(cid, ApprovalWorkType.LEAVE, List.of())).isEmpty();
     }
 
     private String nameOf(TestFixture.Employee e) {
