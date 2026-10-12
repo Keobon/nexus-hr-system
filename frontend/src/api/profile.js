@@ -31,3 +31,7 @@ export const getEmployeeFields = () => api.get('/employee-fields', { activeOnly:
  * 보내지 않은 본인 수정 항목의 값은 지워지므로, 한 항목만 고칠 때도 나머지 값을 같이 보낸다.
  */
 export const updateMyFieldValues = (values) => api.put('/me/field-values', { values });
+
+/** GET /me/documents → [{ docType, docName, current: { id, versionNo, fileId, fileName, issuedDate, expiresAt, expired }, versions[] }] — 내 서류(조회만) */
+export const myDocumentsKey = ['me', 'documents'];
+export const getMyDocuments = () => api.get('/me/documents');
