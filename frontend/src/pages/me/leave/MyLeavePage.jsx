@@ -421,8 +421,8 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
     <section className="lv-card lv-stats">
       <h2 className="lv-title is-18">휴가 사용 이력 및 통계</h2>
       <div className="lv-pickers">
-        <Select size="small" value={year} options={years.map((y) => ({ value: y, label: `${y}년` }))} onChange={setYear} />
-        <Select size="small" value={month} options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` }))} onChange={setMonth} />
+        <Select size="small" variant="borderless" value={year} options={years.map((y) => ({ value: y, label: `${y}년` }))} onChange={setYear} />
+        <Select size="small" variant="borderless" value={month} options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` }))} onChange={setMonth} />
       </div>
       <div className="lv-usage">
         <div>
@@ -456,7 +456,7 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
       <button type="button" className="lv-link" style={{ color: '#172235', fontSize: '0.8125rem' }} onClick={() => pending('미사용 수당 정산 내역', '연차 미사용 수당 정산')}>
         {'미사용 수당 정산 내역  →'}
       </button>
-      <span className="lv-muted">남은 연차는 다음 해로 이월되지 않습니다(회사 정책).</span>
+      <span className="lv-muted">정산 내역은 준비 중입니다.</span>
     </section>
   );
 }
@@ -566,7 +566,7 @@ export default function MyLeavePage() {
   const requests = useQuery({ queryKey: myLeaveRequestsKey, queryFn: getMyLeaveRequests });
   const schedules = useQuery({ queryKey: workSchedulesKey, queryFn: getWorkSchedules });
 
-  if (types.isLoading || balances.isLoading || requests.isLoading) {
+  if (types.isLoading || balances.isLoading || requests.isLoading || schedules.isLoading) {
     return (
       <div className="page-center" style={{ minHeight: '25rem' }}>
         <Spin size="large" />
