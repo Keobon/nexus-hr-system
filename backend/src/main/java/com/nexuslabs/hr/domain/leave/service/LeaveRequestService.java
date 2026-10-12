@@ -11,6 +11,7 @@ import com.nexuslabs.hr.domain.leave.dto.LeavePreview;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestCreate;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestResponse;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestRow;
+import com.nexuslabs.hr.domain.leave.dto.TeamLeaveRow;
 import com.nexuslabs.hr.domain.leave.entity.LeaveRequest;
 import com.nexuslabs.hr.domain.leave.entity.LeaveStatus;
 import com.nexuslabs.hr.domain.leave.entity.LeaveType;
@@ -189,6 +190,34 @@ public class LeaveRequestService {
                 ? page(user.companyId(), "", List.of(), filter, pageable)
                 : page(user.companyId(), " AND r.employee_id = ANY(?)",
                         List.of((Object) scope.employeeIds().toArray(Long[]::new)), filter, pageable);
+    }
+
+    /**
+     * 팀 휴가 캘린더 — 권한 없이 누구나. 나와 같은 조직(하위 제외)의 재직 · 휴직자가 낸 진행 중 휴가(승인대기 · 승인완료 ·
+     * 취소요청) 중 기간이 from · to 에 걸치는 것. 시작일 → 이름 순.
+     */
+    @Transactional(readOnly = true)
+    public List<TeamLeaveRow> teamLeaves(LoginUser user, LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw BusinessException.invalidFields(Map.of("to", "종료일은 시작일 이후여야 합니다"));
+        }
+        return jdbc.query("""
+                        SELECT e.id AS employee_id, e.name AS employee_name, t.name AS type_name,
+                               r.start_date, r.end_date, r.status::text AS status
+                        FROM leave_request r
+                        JOIN employee e ON e.id = r.employee_id AND e.company_id = r.company_id
+                        JOIN leave_type t ON t.id = r.leave_type_id AND t.company_id = r.company_id
+                        WHERE r.company_id = ?
+                          AND e.org_unit_id = (SELECT org_unit_id FROM employee WHERE id = ? AND company_id = ?)
+                          AND e.status <> 'RESIGNED'
+                          AND r.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
+                          AND r.start_date <= ? AND r.end_date >= ?
+                        ORDER BY r.start_date, e.name, r.id
+                        """,
+                (rs, i) -> new TeamLeaveRow(rs.getLong("employee_id"), rs.getString("employee_name"),
+                        rs.getString("type_name"), rs.getObject("start_date", LocalDate.class),
+                        rs.getObject("end_date", LocalDate.class), LeaveStatus.valueOf(rs.getString("status"))),
+                user.companyId(), user.employeeId(), user.companyId(), Date.valueOf(to), Date.valueOf(from));
     }
 
     /**
