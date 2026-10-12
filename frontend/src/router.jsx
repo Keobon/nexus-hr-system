@@ -11,6 +11,7 @@ import MyLeavePage from './pages/me/leave/MyLeavePage';
 import MyWorkRequestsPage from './pages/me/work/MyWorkRequestsPage';
 import MyPayrollPage from './pages/me/payroll/MyPayrollPage';
 import MyEvaluationPage from './pages/me/evaluation/MyEvaluationPage';
+import OrgChartPage from './pages/me/org/OrgChartPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -27,6 +28,7 @@ const PAGES = {
   'my-work-requests': MyWorkRequestsPage,
   'my-payroll': MyPayrollPage,
   'my-evaluations': MyEvaluationPage,
+  'org-chart': OrgChartPage,
 };
 
 const OWNER = {
