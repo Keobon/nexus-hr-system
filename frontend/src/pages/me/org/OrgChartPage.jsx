@@ -6,6 +6,7 @@ import { useMe } from '../../../auth/useMe';
 import { useFileUrl } from '../../../components/common/useFileUrl';
 import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
+import { officePhone } from './officePhone';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import iconChevronDown from '../../../assets/figma/icon-chevron-down.svg';
 import iconChevronRight from '../../../assets/figma/icon-chevron-right.svg';
@@ -163,7 +164,11 @@ function ProfileCard({ member, deptName }) {
               <span>{gradeTitle(member)}</span>
             </div>
             <div className="org-row">
-              <span>연락처 · 이메일 · 좌석</span>
+              <span>사내 전화번호</span>
+              <span>{officePhone(member.id)}</span>
+            </div>
+            <div className="org-row">
+              <span>이메일</span>
               <span className="is-muted">준비 중</span>
             </div>
           </div>
