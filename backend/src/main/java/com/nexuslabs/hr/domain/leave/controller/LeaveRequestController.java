@@ -5,6 +5,7 @@ import com.nexuslabs.hr.domain.leave.dto.LeavePreview;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestCreate;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestResponse;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestRow;
+import com.nexuslabs.hr.domain.leave.dto.TeamLeaveRow;
 import com.nexuslabs.hr.domain.leave.entity.LeaveStatus;
 import com.nexuslabs.hr.domain.leave.service.LeaveRequestService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /** API 설계서 8장 — 휴가 신청 · 조회 · 철회 · 취소 요청(F-LEAVE-03·04·06). */
 @RestController
@@ -60,6 +62,14 @@ public class LeaveRequestController {
                                                            @RequestParam(required = false) LeaveStatus status,
                                                            @PageableDefault(size = 20) Pageable pageable) {
         return ApiResponse.ok(PageResponse.of(leaveRequestService.mine(user, leaveYear, status, pageable)));
+    }
+
+    /** 팀 휴가 캘린더 — 같은 조직(하위 제외) 동료의 진행 중 휴가. 권한 없이 로그인한 직원 누구나. */
+    @GetMapping("/api/me/team-leaves")
+    public ApiResponse<List<TeamLeaveRow>> teamLeaves(@CurrentUser LoginUser user,
+                                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(leaveRequestService.teamLeaves(user, from, to));
     }
 
     /** 다른 직원의 휴가 목록. 팀 범위면 내 팀 직원 것만. from · to 는 기간이 걸치는 휴가, orgUnitId 는 하위 조직 포함. */
