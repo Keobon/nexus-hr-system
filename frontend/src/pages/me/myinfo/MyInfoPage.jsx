@@ -29,8 +29,8 @@ const TABS = [
 
 // 기본정보 탭만 문장으로, 나머지 탭은 세 가지 수정 방식 요약(Figma 그대로)
 const SUBTITLE = {
-  basic: '본인 관리 항목은 즉시 반영되며, 증빙 제출 항목은 승인 후 반영되고, 인사팀 전결 항목은 조회 전용입니다.',
-  other: '본인 관리: 즉시 반영  ·  증빙 제출: 승인 후 반영  ·  인사팀 전결: 조회 전용',
+  basic: '본인 관리 항목은 즉시 반영되고, 개명 · 부양가족은 인사팀에 문의하며, 인사팀 전결 항목은 조회 전용입니다.',
+  other: '본인 관리: 즉시 반영  ·  개명 · 부양가족: 인사팀 문의  ·  인사팀 전결: 조회 전용',
 };
 
 /** 프로필 사진 변경 — 본인 관리 항목이라 바로 반영(추가사항 ①): POST /files(PROFILE) → PATCH /me/profile */
@@ -99,7 +99,7 @@ function Summary({ profile, isBasic, onRename }) {
             {photo.isPending ? '올리는 중…' : '프로필 사진 변경'}
           </button>
           <button type="button" className="mi-btn is-gray" onClick={onRename}>
-            개명 신청
+            개명 안내
           </button>
         </div>
       )}

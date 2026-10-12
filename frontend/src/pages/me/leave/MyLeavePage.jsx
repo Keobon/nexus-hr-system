@@ -46,6 +46,8 @@ function period(start, end) {
   if (start.slice(0, 7) === end.slice(0, 7)) return `${dot(start)}–${end.slice(8)}`;
   return `${dot(start)}–${dot(end).slice(5)}`;
 }
+/** 결재선 단계 — 미리보기에 stepLabel(조직장 · 직책명 등)이 오면 "조직장(윤서연)", 없으면 이름만(노션 수정사항 95) */
+const stepName = (s) => (s.stepLabel ? `${s.stepLabel}(${s.approverName})` : s.approverName);
 const fmtDays = (n) => `${Number.isInteger(n) ? n : n.toFixed(1)}일`;
 
 function readDraft() {
@@ -229,7 +231,7 @@ function RequestForm({ types, schedule, dailyHours }) {
             {p?.steps.map((s, i) => (
               <span key={s.stepOrder}>
                 {i > 0 && <span style={{ marginRight: '0.75rem' }}>→</span>}
-                {s.skipped ? <s>{`${'①②③④⑤'[i]} ${s.approverName}`}</s> : `${'①②③④⑤'[i]} ${s.approverName}`}
+                {s.skipped ? <s>{`${'①②③④⑤'[i]} ${stepName(s)}`}</s> : `${'①②③④⑤'[i]} ${stepName(s)}`}
               </span>
             ))}
           </div>
@@ -331,6 +333,7 @@ function DetailModal({ id, onClose }) {
           {asking && (
             <div className="lv-field">
               <label htmlFor="lv-cancel">취소 사유</label>
+              <span className="lv-muted">날짜를 바꾸려면 취소 요청이 승인된 뒤 새로 신청해 주세요.</span>
               <Input.TextArea id="lv-cancel" rows={2} maxLength={500} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
               <div className="lv-buttons">
                 <button type="button" className="lv-btn" onClick={() => setAsking(false)}>
@@ -401,7 +404,7 @@ function HistoryCard({ requests, onOpen }) {
           <div key={r.id} className="lv-tr is-click" role="button" tabIndex={0} onClick={() => onOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && onOpen(r.id)}>
             <span>{period(r.startDate, r.endDate)}</span>
             <span>{`${r.leaveTypeName} · ${fmtDays(r.days)}`}</span>
-            <span className={`lv-reason${r.status === 'REJECTED' ? ' is-red' : ''}`}>{r.reason || '-'}</span>
+            <span className={`lv-reason${r.status === 'REJECTED' ? ' is-red' : ''}`}>{(r.status === 'REJECTED' && r.rejectReason) || r.reason || '-'}</span>
             <span>
               <span className={`lv-status ${r.status}`}>{STATUS_LABEL[r.status]}</span>
             </span>
@@ -409,7 +412,7 @@ function HistoryCard({ requests, onOpen }) {
           </div>
         ))}
       </div>
-      <p className="lv-muted" style={{ margin: 0 }}>승인된 휴가는 취소·변경 요청 후 재결재가 필요합니다.</p>
+      <p className="lv-muted" style={{ margin: 0 }}>승인된 휴가는 바꿀 수 없어요. 변경은 취소 요청 후 다시 신청해 주세요.</p>
     </section>
   );
 }
@@ -675,7 +678,7 @@ export default function MyLeavePage() {
           </p>
           <span className={`lv-muted lv-ellipsis${upcoming?.status === 'PENDING' ? ' lv-amber' : ''}`}>
             {upcoming?.status === 'PENDING' && upcoming.currentStep
-              ? `승인 대기 · ${upcoming.currentStep.stepOrder}단계 ${upcoming.currentStep.approverName} 결재 중`
+              ? `결재 중 · ${upcoming.currentStep.approverName}(${upcoming.currentStep.stepOrder}/${upcoming.currentStep.totalSteps}단계)`
               : upcoming
                 ? STATUS_LABEL[upcoming.status]
                 : '휴가 신청에서 새로 신청할 수 있습니다'}
