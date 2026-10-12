@@ -13,7 +13,7 @@
 }
 
 .home-sub {
-  margin: 2rem 0 0;
+  margin: 0.5rem 0 0;
   color: #0f172a;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -24,17 +24,18 @@
 .home-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr));
-  gap: 2.125rem;
+  gap: 1.25rem;
   margin-top: 0.8125rem;
 }
 
 .home-stat {
   box-sizing: border-box;
-  height: 6.25rem;
-  padding: 0.875rem 1rem 0;
+  min-height: 6.25rem;
+  padding: 1rem;
   border: 1px solid #e2e8f0;
-  border-radius: 0.625rem;
+  border-radius: 1rem;
   background: #fff;
+  box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
 }
 
 .home-stat-label {
@@ -45,8 +46,8 @@
 }
 
 .home-stat-value {
-  margin: 0.4375rem 0 0;
-  color: #000;
+  margin: 0.25rem 0 0;
+  color: #0f172a;
   font-size: 1.5rem;
   font-weight: 700;
   line-height: normal;
@@ -56,7 +57,7 @@
 }
 
 .home-stat-sub {
-  margin: 0.375rem 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.6875rem;
   font-weight: 300;
   white-space: nowrap;
@@ -81,26 +82,192 @@
 }
 
 /* 오늘 근태(430) · 나의 휴가 현황(566) — 높이 342 */
+/* Figma EMP_home(84:4558) — 왼쪽 440 · 오른쪽 644, 간격 28 · 줄 간격 24 */
 .home-panels {
   display: grid;
-  grid-template-columns: 430fr 566fr;
-  gap: 2.8125rem;
-  margin-top: 2rem;
+  grid-template-columns: 440fr 644fr;
+  gap: 1.5rem 1.75rem;
+  margin-top: 1.75rem;
 }
 
 .home-card {
   position: relative;
   box-sizing: border-box;
   border: 1px solid #e2e8f0;
-  border-radius: 0.625rem;
+  border-radius: 1rem;
   background: #fff;
+  box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
 }
 
 .home-panel {
   display: flex;
   flex-direction: column;
   min-height: 21.375rem;
-  padding: 1.8125rem 1.4375rem 1.25rem;
+  padding: 1.5rem;
+}
+
+.home-panel.is-short {
+  min-height: 16.125rem;
+}
+
+/* 승인 대기 현황 — 이름 왼쪽, 건수 오른쪽 */
+.home-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1.25rem 0 0;
+}
+
+.home-pending a {
+  display: flex;
+  justify-content: space-between;
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-pending a:hover strong {
+  color: #0284c7;
+}
+
+.home-pending span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 300;
+}
+
+.home-pending strong {
+  color: #000;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 회사 공지 — 준비 중 */
+.home-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.home-notice strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* 그래프 카드 */
+.home-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 17.5rem;
+  padding: 1.5rem;
+}
+
+.home-chart h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.home-chart-sub {
+  margin: -0.875rem 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.home-line {
+  position: relative;
+}
+
+/* Figma 그래프 300 × 120 — 카드 가운데, 폭을 따라 글자가 커지지 않게 최대 폭 고정 */
+.home-line {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+.home-line svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.home-tip {
+  position: absolute;
+  z-index: 2;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transform: translate(-50%, -120%);
+  pointer-events: none;
+}
+
+.home-donut {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.home-donut svg {
+  flex: none;
+  width: 10rem;
+  height: 10rem;
+}
+
+.home-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-legend li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: #000;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.home-legend i {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.125rem;
+}
+
+.home-legend em {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.home-chart-empty {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.8125rem;
 }
 
 .home-card-title {
@@ -187,17 +354,18 @@
 }
 
 /* 휴가 현황 줄 — 라벨 13 · 값 16, 줄 간격 45 */
+/* Figma — 연간 부여 · 사용 완료 · 승인 대기 · 잔여 휴가를 가로 4칸(라벨 위 · 값 아래) */
 .home-leave-rows {
   display: flex;
-  flex-direction: column;
-  gap: 1.625rem;
-  margin-top: 2.0625rem;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.25rem 0 0;
 }
 
 .home-leave-row {
-  display: grid;
-  grid-template-columns: 1fr 10rem;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .home-leave-row dt {
@@ -223,8 +391,8 @@
 
 /* 내 정보(1080 × 280) */
 .home-info {
-  margin-top: 2.625rem;
-  padding: 1.4375rem 1.875rem 2.75rem;
+  margin-top: 1.75rem;
+  padding: 2rem;
 }
 
 .home-info-head {
@@ -355,12 +523,27 @@
 }
 
 @media (max-width: 767px) {
+  .home-panel,
+  .home-panel.is-short,
+  .home-chart {
+    min-height: 0;
+  }
+
+  .home-donut {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .home-legend li {
+    white-space: nowrap;
+  }
+
   .home-title {
     font-size: 1.75rem;
   }
 
   .home-sub {
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     font-size: 0.9375rem;
   }
 

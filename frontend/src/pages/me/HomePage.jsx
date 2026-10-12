@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Input, Result, Segmented, Select, Spin } from 'antd';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { changeWorkType, checkIn, checkOut, todayKey } from '../../api/attendance';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import { changeWorkType, checkIn, checkOut, getMyAttendances, myAttendancesKey, todayKey } from '../../api/attendance';
+import { getLeaveTypes, getMyLeaveRequests, leaveTypesKey, myLeaveRequestsKey } from '../../api/leaves';
+import { usePendingFeature } from '../../components/common/usePendingFeature';
 import { dashboardKey, getDashboardHome } from '../../api/dashboard';
 import { getMyProfile, myProfileKey } from '../../api/profile';
 import { useMe } from '../../auth/useMe';
@@ -210,10 +213,221 @@ function LeavePanel({ balances }) {
       )}
       <p className="home-note">휴가 신청 시 잔여일수를 초과하면 제출할 수 없습니다.</p>
       <div className="home-actions">
-        <button type="button" className="home-btn" onClick={() => navigate('/me/leaves/new')}>
+        <button type="button" className="home-btn" onClick={() => navigate('/me/leaves')}>
           휴가 신청
         </button>
       </div>
+    </section>
+  );
+}
+
+/** 승인 대기 현황 — 내가 신청해서 결재를 기다리는 건수(대시보드 me.myPending, API 13장) */
+function PendingCard({ pending }) {
+  const navigate = useNavigate();
+  const rows = [
+    ['휴가 신청', pending?.leave, '/me/leaves'],
+    ['연장근무', pending?.overtime, '/me/work-requests'],
+    ['출장 신청', pending?.businessTrip, '/me/work-requests'],
+    ['출장 경비 청구', pending?.expenseClaim, '/me/work-requests'],
+  ];
+  return (
+    <section className="home-card home-panel is-short">
+      <h2 className="home-card-title">승인 대기 현황</h2>
+      <div className="home-pending">
+        {rows.map(([label, count, to]) => (
+          <Link key={label} to={to}>
+            <span>{label}</span>
+            <strong>{`${count ?? 0}건`}</strong>
+          </Link>
+        ))}
+      </div>
+      <div className="home-actions">
+        <button type="button" className="home-btn" onClick={() => navigate('/me/work-requests')}>
+          상세 보기
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** 회사 공지사항 — 공지 기능이 아직 없다(기능명세서 v2 범위 밖 · 노션 P-107) */
+function NoticeCard() {
+  const pending = usePendingFeature();
+  return (
+    <section className="home-card home-panel is-short">
+      <h2 className="home-card-title">회사 공지사항</h2>
+      <div className="home-notice">
+        <strong>준비 중</strong>
+        <span>회사 공지 기능은 아직 제공하지 않습니다. 인사 · 근태 안내는 인사팀 공지를 확인해 주세요.</span>
+      </div>
+      <div className="home-actions">
+        <button type="button" className="home-btn" onClick={() => pending('회사 공지사항', '회사 공지')}>
+          더 보기
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const TREND_MONTHS = 4;
+const PRESENT = ['CHECKED_OUT', 'CHECKED_IN', 'MISSING_CHECKOUT', 'ON_BUSINESS_TRIP'];
+
+/**
+ * 근태 출근율 추이 — 최근 4개월 내 근태(GET /me/attendances)로 화면에서 계산.
+ * 출근율 = 출근 기록이 있는 날(출장 포함) ÷ (그 날 + 결근일). 휴가 · 휴일 · 기록 전 날은 빼고 센다
+ */
+function AttendanceTrend({ today }) {
+  const months = Array.from({ length: TREND_MONTHS }, (_, i) =>
+    dayjs(today)
+      .subtract(TREND_MONTHS - 1 - i, 'month')
+      .format('YYYY-MM'),
+  );
+  const results = useQueries({ queries: months.map((m) => ({ queryKey: myAttendancesKey(m), queryFn: () => getMyAttendances(m) })) });
+  const [hover, setHover] = useState(null);
+  const points = months.map((m, i) => {
+    const days = results[i].data?.days ?? [];
+    const present = days.filter((d) => PRESENT.includes(d.status)).length;
+    const expected = present + days.filter((d) => d.status === 'ABSENT').length;
+    return { month: m, present, expected, rate: expected ? Math.round((present / expected) * 100) : null };
+  });
+  const loading = results.some((r) => r.isLoading);
+  const W = 300;
+  const H = 140;
+  const pad = { l: 28, r: 12, t: 12, b: 24 };
+  const x = (i) => pad.l + (i * (W - pad.l - pad.r)) / (TREND_MONTHS - 1);
+  const y = (v) => pad.t + ((100 - v) * (H - pad.t - pad.b)) / 100;
+  const drawn = points.map((p, i) => ({ ...p, cx: x(i), cy: p.rate == null ? null : y(p.rate) }));
+  const path = drawn
+    .filter((p) => p.cy != null)
+    .map((p, i) => `${i ? 'L' : 'M'}${p.cx},${p.cy}`)
+    .join(' ');
+  const hasData = drawn.some((p) => p.cy != null);
+
+  return (
+    <section className="home-card home-chart">
+      <h2>근태 출근율 추이</h2>
+      <p className="home-chart-sub">최근 4개월 · 출근 기록 ÷ (출근 + 결근)일</p>
+      {loading && <Spin />}
+      {!loading && !hasData && <p className="home-chart-empty">아직 근태 기록이 없습니다.</p>}
+      {!loading && hasData && (
+        <div className="home-line">
+          <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="월별 출근율 꺾은선 그래프">
+            {[0, 50, 100].map((v) => (
+              <g key={v}>
+                <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="#e2e8f0" strokeWidth="1" />
+                <text x={pad.l - 6} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#64748b">
+                  {`${v}%`}
+                </text>
+              </g>
+            ))}
+            <path d={path} fill="none" stroke="#38bdf8" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            {drawn.map((p) => (
+              <g key={p.month}>
+                <text x={p.cx} y={H - 6} textAnchor="middle" fontSize="10" fill="#64748b">
+                  {`${Number(p.month.slice(5))}월`}
+                </text>
+                {p.cy != null && <circle cx={p.cx} cy={p.cy} r="4" fill="#38bdf8" stroke="#fff" strokeWidth="2" />}
+                {p.cy != null && (
+                  <circle cx={p.cx} cy={p.cy} r="14" fill="transparent" onMouseEnter={() => setHover(p)} onMouseLeave={() => setHover(null)} />
+                )}
+              </g>
+            ))}
+          </svg>
+          {hover && (
+            <span className="home-tip" style={{ left: `${(hover.cx / W) * 100}%`, top: `${(hover.cy / H) * 100}%` }}>
+              {`${Number(hover.month.slice(5))}월 · 출근율 ${hover.rate}% (${hover.present}/${hover.expected}일)`}
+            </span>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// 휴가 종류 순서대로 고정 색(Figma) — 넷째 종류부터는 "기타" 회색으로 묶는다
+const LEAVE_COLORS = ['#38bdf8', '#10b981', '#f9952d'];
+const OTHER_COLOR = '#94a3b8';
+
+/** 휴가 유형 분포 — 올해 승인된 내 휴가(GET /me/leave-requests)의 종류별 일수 */
+function LeaveDistribution() {
+  const year = dayjs().year();
+  const reqs = useQuery({ queryKey: myLeaveRequestsKey, queryFn: getMyLeaveRequests });
+  const types = useQuery({ queryKey: leaveTypesKey, queryFn: getLeaveTypes });
+  const [hover, setHover] = useState(null);
+  const used = (reqs.data?.content ?? []).filter((r) => (r.status === 'APPROVED' || r.status === 'CANCEL_REQUESTED') && r.leaveYear === year);
+  const order = (types.data ?? []).map((t) => t.name);
+  const byType = {};
+  used.forEach((r) => {
+    byType[r.leaveTypeName] = (byType[r.leaveTypeName] ?? 0) + r.days;
+  });
+  // 색은 순위가 아니라 종류에 붙는다 — 회사 휴가 종류 순서의 앞 세 개만 색, 나머지는 기타
+  const rank = (name) => (order.indexOf(name) < 0 ? 99 : order.indexOf(name));
+  const named = Object.keys(byType).sort((a, b) => rank(a) - rank(b));
+  const slices = [];
+  let rest = 0;
+  named.forEach((name) => {
+    const idx = rank(name);
+    if (idx < LEAVE_COLORS.length) slices.push({ name, days: byType[name], color: LEAVE_COLORS[idx] });
+    else rest += byType[name];
+  });
+  if (rest) slices.push({ name: '기타', days: rest, color: OTHER_COLOR });
+  const total = slices.reduce((a, sl) => a + sl.days, 0);
+  const R = 60;
+  const C = 2 * Math.PI * R;
+  const gap = slices.length > 1 ? 2 : 0; // 조각 사이 2px 틈
+  let offset = 0;
+  const arcs = slices.map((sl) => {
+    const len = (sl.days / total) * C;
+    const arc = { ...sl, len, offset };
+    offset += len;
+    return arc;
+  });
+  const shown = arcs.find((a) => a.name === hover);
+
+  return (
+    <section className="home-card home-chart">
+      <h2>휴가 유형 분포</h2>
+      <p className="home-chart-sub">{`${year}년 승인된 내 휴가 · 종류별 일수`}</p>
+      {(reqs.isLoading || types.isLoading) && <Spin />}
+      {!reqs.isLoading && !types.isLoading && total === 0 && <p className="home-chart-empty">올해 승인된 휴가가 없습니다.</p>}
+      {total > 0 && (
+        <div className="home-donut">
+          <svg viewBox="0 0 160 160" role="img" aria-label="휴가 종류별 사용 일수 도넛 그래프">
+            <g transform="rotate(-90 80 80)">
+              {arcs.map((a) => (
+                <circle
+                  key={a.name}
+                  cx="80"
+                  cy="80"
+                  r={R}
+                  fill="none"
+                  stroke={a.color}
+                  strokeWidth={hover === a.name ? 22 : 18}
+                  strokeDasharray={`${Math.max(0, a.len - gap)} ${C}`}
+                  strokeDashoffset={-a.offset}
+                  onMouseEnter={() => setHover(a.name)}
+                  onMouseLeave={() => setHover(null)}
+                />
+              ))}
+            </g>
+            <text x="80" y="76" textAnchor="middle" fontSize="11" fill="#64748b">
+              {shown ? shown.name : '합계'}
+            </text>
+            <text x="80" y="96" textAnchor="middle" fontSize="18" fontWeight="700" fill="#0f172a">
+              {`${shown ? shown.days : total}일`}
+            </text>
+          </svg>
+          <ul className="home-legend">
+            {arcs.map((a) => (
+              <li key={a.name}>
+                <i style={{ background: a.color }} />
+                {a.name}
+                <em>{`${a.days}일 · ${Math.round((a.days / total) * 100)}%`}</em>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
@@ -342,6 +556,10 @@ export default function HomePage() {
       <div className="home-panels">
         <AttendancePanel today={mine.today} />
         <LeavePanel balances={mine.leaveBalances ?? []} />
+        <PendingCard pending={mine.myPending} />
+        <NoticeCard />
+        <AttendanceTrend today={mine.today.workDate} />
+        <LeaveDistribution />
       </div>
 
       <InfoCard profile={profile.data} payrollEligible={me.employee?.payrollEligible} />
