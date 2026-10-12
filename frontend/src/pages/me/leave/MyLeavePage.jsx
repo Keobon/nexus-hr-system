@@ -474,14 +474,24 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
   );
 }
 
+/**
+ * 팀원 휴가를 볼 수 있는 만큼만 — 휴가 조회 권한(팀은 조직장)이 있으면 전부, 아니면 승인된 휴가만 종류 없이 "휴가"로.
+ * 승인 전 신청 · 병가 · 경조사 같은 종류는 팀장만 본다(10/12 결정, 노션 2.3 N-103 — 서버도 같은 규칙으로 바꿀 예정)
+ */
+function visibleTeamLeaves(rows, meId, full) {
+  const others = (rows ?? []).filter((r) => r.employeeId !== meId);
+  if (full) return others;
+  return others.filter((r) => r.status === 'APPROVED').map((r) => ({ ...r, leaveTypeName: '휴가' }));
+}
+
 /** 다가오는 휴가와 겹치는 팀원 휴가(GET /me/team-leaves) */
-function TeamOverlap({ leave, meId }) {
+function TeamOverlap({ leave, meId, full }) {
   const q = useQuery({
     queryKey: teamLeavesKey(leave?.startDate, leave?.endDate),
     queryFn: () => getTeamLeaves(leave.startDate, leave.endDate),
     enabled: !!leave,
   });
-  const names = [...new Set((q.data ?? []).filter((r) => r.employeeId !== meId).map((r) => r.employeeName))];
+  const names = [...new Set(visibleTeamLeaves(q.data, meId, full).map((r) => r.employeeName))];
   let text = '팀 일정과 겹침 여부를 확인하세요';
   if (leave && q.data) text = names.length ? `팀원 ${names.length}명과 겹침 · ${names.slice(0, 2).join(' · ')}${names.length > 2 ? ' 외' : ''}` : '겹치는 팀원 휴가가 없습니다';
   return (
@@ -492,7 +502,7 @@ function TeamOverlap({ leave, meId }) {
 }
 
 /* ───── 휴가 캘린더 ───── */
-function CalendarCard({ requests, me }) {
+function CalendarCard({ requests, me, full }) {
   const [month, setMonth] = useState(dayjs().format('YYYY-MM'));
   const [view, setView] = useState('mine');
   const m = dayjs(`${month}-01`);
@@ -506,11 +516,9 @@ function CalendarCard({ requests, me }) {
       .filter((r) => LIVE.includes(r.status) && r.endDate >= from && r.startDate <= to)
       .map((r) => ({ ...r, kind: r.status === 'PENDING' ? 'pending' : 'approved', who: me.employee.name }));
     if (view !== 'team') return mine.sort((x, y) => x.startDate.localeCompare(y.startDate));
-    const others = (team.data ?? [])
-      .filter((r) => r.employeeId !== me.employee.id)
-      .map((r) => ({ ...r, kind: 'team', who: r.employeeName }));
+    const others = visibleTeamLeaves(team.data, me.employee.id, full).map((r) => ({ ...r, kind: 'team', who: r.employeeName }));
     return [...mine, ...others].sort((x, y) => x.startDate.localeCompare(y.startDate));
-  }, [requests, team.data, view, from, to, me]);
+  }, [requests, team.data, view, from, to, me, full]);
 
   const kindOf = (date) => {
     const hit = events.filter((e) => e.startDate <= date && e.endDate >= date);
@@ -575,8 +583,8 @@ function CalendarCard({ requests, me }) {
       <div className="lv-events">
         {events.length === 0 && <span className="is-team">이 달의 휴가 일정이 없습니다.</span>}
         {events.slice(0, 3).map((e) => (
-          <span key={`${e.kind}-${e.id}`} className={`is-${e.kind}`}>
-            {`${e.startDate.slice(5).replace('-', '/')}${e.startDate !== e.endDate ? `–${e.endDate.slice(8)}` : ''}  ${e.who} · ${e.leaveTypeName} (${label[e.kind]})`}
+          <span key={`${e.kind}-${e.id ?? `${e.employeeId}-${e.startDate}`}`} className={`is-${e.kind}`}>
+            {`${e.startDate.slice(5).replace('-', '/')}${e.startDate !== e.endDate ? `–${e.endDate.slice(8)}` : ''}  ${e.who} · ${e.leaveTypeName} (${e.kind === 'team' && e.status === 'PENDING' ? '팀 · 승인 대기' : label[e.kind]})`}
           </span>
         ))}
       </div>
@@ -586,7 +594,8 @@ function CalendarCard({ requests, me }) {
 
 /** 휴가 신청 및 조회(F-LEAVE-03·04·05·06) — Figma EMP_휴가 */
 export default function MyLeavePage() {
-  const { me } = useMe();
+  const { me, can } = useMe();
+  const fullTeam = can('LEAVE_READ'); // 휴가 조회 권한(팀 범위는 조직장만 — makeCan)
   const pending = usePendingFeature();
   const [openId, setOpenId] = useState(null);
   const types = useQuery({ queryKey: leaveTypesKey, queryFn: getLeaveTypes });
@@ -683,7 +692,7 @@ export default function MyLeavePage() {
                 ? STATUS_LABEL[upcoming.status]
                 : '휴가 신청에서 새로 신청할 수 있습니다'}
           </span>
-          <TeamOverlap leave={upcoming} meId={me.employee.id} />
+          <TeamOverlap leave={upcoming} meId={me.employee.id} full={fullTeam} />
         </div>
       </div>
 
@@ -693,7 +702,7 @@ export default function MyLeavePage() {
           <HistoryCard requests={rows} onOpen={setOpenId} />
           <div className="lv-bottom">
             <StatsCard requests={rows} dailyHours={dailyHours} leaveYear={b.leaveYear} />
-            <CalendarCard requests={rows} me={me} />
+            <CalendarCard requests={rows} me={me} full={fullTeam} />
           </div>
         </div>
       </div>
