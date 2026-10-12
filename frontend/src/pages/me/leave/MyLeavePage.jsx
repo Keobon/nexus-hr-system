@@ -471,14 +471,31 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
   );
 }
 
+/** 다가오는 휴가와 겹치는 팀원 휴가(GET /me/team-leaves) */
+function TeamOverlap({ leave, meId }) {
+  const q = useQuery({
+    queryKey: teamLeavesKey(leave?.startDate, leave?.endDate),
+    queryFn: () => getTeamLeaves(leave.startDate, leave.endDate),
+    enabled: !!leave,
+  });
+  const names = [...new Set((q.data ?? []).filter((r) => r.employeeId !== meId).map((r) => r.employeeName))];
+  let text = '팀 일정과 겹침 여부를 확인하세요';
+  if (leave && q.data) text = names.length ? `팀원 ${names.length}명과 겹침 · ${names.slice(0, 2).join(' · ')}${names.length > 2 ? ' 외' : ''}` : '겹치는 팀원 휴가가 없습니다';
+  return (
+    <span className={`lv-muted lv-ellipsis${names.length ? ' lv-amber' : ''}`} style={{ fontWeight: 400, marginTop: '0.3125rem' }}>
+      {text}
+    </span>
+  );
+}
+
 /* ───── 휴가 캘린더 ───── */
-function CalendarCard({ requests, me, canTeam }) {
+function CalendarCard({ requests, me }) {
   const [month, setMonth] = useState(dayjs().format('YYYY-MM'));
   const [view, setView] = useState('mine');
   const m = dayjs(`${month}-01`);
   const from = m.format('YYYY-MM-DD');
   const to = m.endOf('month').format('YYYY-MM-DD');
-  const team = useQuery({ queryKey: teamLeavesKey(from, to), queryFn: () => getTeamLeaves(from, to), enabled: canTeam && view === 'team' });
+  const team = useQuery({ queryKey: teamLeavesKey(from, to), queryFn: () => getTeamLeaves(from, to), enabled: view === 'team' });
   const today = dayjs().format('YYYY-MM-DD');
 
   const events = useMemo(() => {
@@ -486,8 +503,8 @@ function CalendarCard({ requests, me, canTeam }) {
       .filter((r) => LIVE.includes(r.status) && r.endDate >= from && r.startDate <= to)
       .map((r) => ({ ...r, kind: r.status === 'PENDING' ? 'pending' : 'approved', who: me.employee.name }));
     if (view !== 'team') return mine.sort((x, y) => x.startDate.localeCompare(y.startDate));
-    const others = (team.data?.content ?? [])
-      .filter((r) => r.employeeId !== me.employee.id && LIVE.includes(r.status))
+    const others = (team.data ?? [])
+      .filter((r) => r.employeeId !== me.employee.id)
       .map((r) => ({ ...r, kind: 'team', who: r.employeeName }));
     return [...mine, ...others].sort((x, y) => x.startDate.localeCompare(y.startDate));
   }, [requests, team.data, view, from, to, me]);
@@ -525,8 +542,6 @@ function CalendarCard({ requests, me, canTeam }) {
         <button
           type="button"
           className={`lv-cal-tab${view === 'team' ? ' is-active' : ''}`}
-          disabled={!canTeam}
-          title={canTeam ? undefined : '팀 휴가는 휴가 조회 권한이 있을 때(팀 범위는 조직장) 볼 수 있습니다'}
           onClick={() => setView('team')}
         >
           팀/부서 일정
@@ -568,7 +583,7 @@ function CalendarCard({ requests, me, canTeam }) {
 
 /** 휴가 신청 및 조회(F-LEAVE-03·04·05·06) — Figma EMP_휴가 */
 export default function MyLeavePage() {
-  const { me, can } = useMe();
+  const { me } = useMe();
   const pending = usePendingFeature();
   const [openId, setOpenId] = useState(null);
   const types = useQuery({ queryKey: leaveTypesKey, queryFn: getLeaveTypes });
@@ -665,7 +680,7 @@ export default function MyLeavePage() {
                 ? STATUS_LABEL[upcoming.status]
                 : '휴가 신청에서 새로 신청할 수 있습니다'}
           </span>
-          <span className="lv-muted" style={{ fontWeight: 400, marginTop: '0.3125rem' }}>팀 일정과 겹침 여부를 확인하세요</span>
+          <TeamOverlap leave={upcoming} meId={me.employee.id} />
         </div>
       </div>
 
@@ -675,7 +690,7 @@ export default function MyLeavePage() {
           <HistoryCard requests={rows} onOpen={setOpenId} />
           <div className="lv-bottom">
             <StatsCard requests={rows} dailyHours={dailyHours} leaveYear={b.leaveYear} />
-            <CalendarCard requests={rows} me={me} canTeam={can('LEAVE_READ')} />
+            <CalendarCard requests={rows} me={me} />
           </div>
         </div>
       </div>
