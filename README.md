@@ -62,7 +62,7 @@ docker compose down -v        # 끄기 + DB 초기화(다음 실행 때 데모 �
 - **개발 DB:** `jdbc:postgresql://localhost:5432/nexus_hr` (데이터베이스 이름 `nexus_hr`)
 - **테스트 DB:** `nexus_hr_test` — 테스트(`./gradlew test`)는 이 DB를 씁니다
 - **Username (사용자 계정):** `postgres` (기본 최고 관리자 계정)
-- **Password (비밀번호):** `040416` (팀원 간 공유 필요)
+- **Password (비밀번호):** 각자 로컬 PostgreSQL 비밀번호를 환경변수 `DB_PASSWORD`로 설정합니다. 이 레포는 공개라 비밀번호 값은 README에 적지 않습니다(필요하면 팀 채팅으로 공유).
 
 ### 2. DB 만들기 (schema.sql → seed_demo.sql)
 테이블과 데모 데이터는 직접 INSERT하지 않고 `backend/` 폴더의 SQL 두 개로 만듭니다. CI도 같은 순서로 확인합니다.
