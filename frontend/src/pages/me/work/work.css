@@ -1,0 +1,529 @@
+/*
+ * 연장 근무 / 출장 — Figma EMP_연장근무(294:8679)
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale
+ * 페이지 제목 · 부제는 다른 화면과 같은 30 · 15
+ */
+
+.wr {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  color: #0f172a;
+  font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+.wr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.wr-head h1 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.wr-head p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.wr-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* 기간 선택 — Figma Date Filter(테두리 상자 + 회전한 화살표) */
+.wr-period.ant-picker {
+  height: 2.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e1e7ec;
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+.wr-period .ant-picker-input > input {
+  width: 11.5rem;
+  color: #2a2e33;
+  font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wr-period img {
+  transform: rotate(90deg);
+}
+
+/* 파란 버튼 — Figma Button(#38bdf8, 높이 36, 둥글기 8, Inter SemiBold 12) */
+.wr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 2.25rem;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wr-btn:hover {
+  background: #0ea5e9;
+}
+
+.wr-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wr-btn.is-red {
+  background: #ef4444;
+}
+
+.wr-btn.is-red:hover {
+  background: #dc2626;
+}
+
+.wr-btn.is-line {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+}
+
+.wr-btn.is-block {
+  width: 100%;
+}
+
+.wr-card {
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+/* 요약 카드 4개 */
+.wr-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.wr-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 6.25rem;
+  padding: 1rem;
+  white-space: nowrap;
+}
+
+.wr-stat > span {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.wr-stat > strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.wr-stat > em {
+  overflow: hidden;
+  color: #38bdf8;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+
+.wr-stat > em.is-amber {
+  color: #f59e0b;
+}
+
+.wr-stat > em.is-green {
+  color: #10b981;
+}
+
+.wr-stat > em.is-red {
+  color: #ef4444;
+}
+
+/* 신청 내역 + 상세 */
+.wr-main {
+  display: flex;
+  gap: 1.5rem;
+  align-items: stretch;
+  height: 23.75rem;
+}
+
+.wr-list {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wr-list-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.wr-list-head h2,
+.wr-detail h2,
+.wr-menu h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.wr-list-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 업무 종류 필터(아래 메뉴 카드에서 고름) */
+.wr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: #e0f2fe;
+  color: #0284c7;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wr-tabs {
+  display: flex;
+  flex: none;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+}
+
+.wr-tab {
+  padding: 0.375rem 0.75rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: none;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wr-tab.is-active {
+  background: #fff;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.wr-rows {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.wr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wr-row:hover {
+  background: #f8fafc;
+}
+
+.wr-row.is-active {
+  background: #f0f9ff;
+}
+
+.wr-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.wr-row-info strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.wr-row-info span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wr-empty {
+  margin: 0;
+  padding: 2.5rem 1.25rem;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* 상태 배지 — Figma Status(높이 22, 둥글기 12, Bold 11) */
+.wr-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.375rem;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  border-radius: 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wr-badge.is-green {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.wr-badge.is-blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.wr-badge.is-red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.wr-badge.is-grey {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* 상세 정보 */
+.wr-detail {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 22.5rem;
+  padding: 1.25rem;
+  overflow: hidden;
+}
+
+/* 내용만 스크롤 — 버튼은 아래에 고정 */
+.wr-detail-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.wr-buttons:empty,
+.wr-divider:has(+ .wr-buttons:empty) {
+  display: none;
+}
+
+.wr-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.wr-item > span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.wr-item > p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wr-item > p.is-text {
+  font-weight: 500;
+}
+
+.wr-divider {
+  flex: none;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.wr-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* 업무별 전용 메뉴 3칸 */
+.wr-menus {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.wr-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 20rem;
+  padding: 1.125rem;
+  line-height: 1.5;
+}
+
+.wr-menu h2 {
+  font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+.wr-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wr-link strong {
+  color: #0284c7;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+.wr-link span {
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+.wr-link:hover strong {
+  text-decoration: underline;
+}
+
+/* 신청 모달 안 */
+.wr-form .ant-form-item {
+  margin-bottom: 0.875rem;
+}
+
+.wr-hint {
+  margin: -0.375rem 0 0.875rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.wr-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wr-line {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.wr-total {
+  margin: 0.75rem 0 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+@media (max-width: 1199px) {
+  .wr-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wr-main {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .wr-list {
+    flex: none;
+    max-height: 23.75rem;
+  }
+
+  .wr-detail {
+    width: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .wr-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wr-actions {
+    flex-wrap: wrap;
+  }
+
+  .wr-list-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wr-menus {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wr-menu {
+    min-height: 0;
+  }
+}
