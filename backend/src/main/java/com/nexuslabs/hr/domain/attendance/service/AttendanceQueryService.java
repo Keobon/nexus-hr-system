@@ -1,7 +1,11 @@
 package com.nexuslabs.hr.domain.attendance.service;
 
 import com.nexuslabs.hr.domain.attendance.dto.EmployeeMonthlySummary;
+import com.nexuslabs.hr.domain.attendance.dto.EmployeeTodayAttendance;
 import com.nexuslabs.hr.domain.attendance.dto.MonthlyAttendance;
+import com.nexuslabs.hr.domain.attendance.entity.AttendanceStatus;
+import com.nexuslabs.hr.domain.attendance.entity.WorkType;
+import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
@@ -17,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +41,15 @@ public class AttendanceQueryService {
     private final JdbcTemplate jdbc;
     private final AttendanceCalculator calculator;
     private final ScopeResolver scopeResolver;
+    private final TodayStatusReader todayStatusReader;
     private final Clock clock;
 
     public AttendanceQueryService(JdbcTemplate jdbc, AttendanceCalculator calculator, ScopeResolver scopeResolver,
-                                  Clock clock) {
+                                  TodayStatusReader todayStatusReader, Clock clock) {
         this.jdbc = jdbc;
         this.calculator = calculator;
         this.scopeResolver = scopeResolver;
+        this.todayStatusReader = todayStatusReader;
         this.clock = clock;
     }
 
@@ -120,6 +128,68 @@ public class AttendanceQueryService {
                         months.get(r.employeeId()).summary()))
                 .toList();
         return new PageImpl<>(content, pageable, total);
+    }
+
+    /**
+     * 직원들의 오늘 근태(역할 분담 2.3 K 85) — 화면이 직원마다 조회하지 않도록 한 번에 준다. 퇴직자는 빠지고 휴직자는 휴직으로 나온다.
+     * 범위와 orgUnitId 는 {@link #list}와 같다. 오늘 상태는 {@link TodayStatusReader}와 같은 규칙으로 읽는다 —
+     * 오늘 행이 없고 자정을 넘겨 어제 근무가 이어지는 중이면 어제 행을 쓴다(F-ATT-02).
+     */
+    @Transactional(readOnly = true)
+    public PageImpl<EmployeeTodayAttendance> today(LoginUser user, Long orgUnitId, Pageable pageable) {
+        Scope scope = scopeResolver.scopeOf(user, PermissionCode.ATTENDANCE_READ);
+        if (!scope.all() && scope.employeeIds().isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+        StringBuilder where = new StringBuilder(" WHERE e.company_id = ? AND e.status <> 'RESIGNED'");
+        List<Object> args = new ArrayList<>(List.of(user.companyId()));
+        if (!scope.all()) {
+            where.append(" AND e.id = ANY(?)");
+            args.add(scope.employeeIds().toArray(Long[]::new));
+        }
+        if (orgUnitId != null) {
+            where.append("""
+                     AND e.org_unit_id IN (WITH RECURSIVE sub AS (
+                         SELECT id FROM org_unit WHERE id = ? AND company_id = ?
+                         UNION
+                         SELECT o.id FROM org_unit o JOIN sub s ON o.parent_id = s.id WHERE o.company_id = ?)
+                       SELECT id FROM sub)
+                    """);
+            args.addAll(List.of(orgUnitId, user.companyId(), user.companyId()));
+        }
+        String from = " FROM employee e JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id";
+        long total = jdbc.queryForObject("SELECT count(*)" + from + where, Long.class, args.toArray());
+
+        LocalDate today = LocalDate.now(clock);
+        List<Object> rowArgs = new ArrayList<>(List.of(Date.valueOf(today), Date.valueOf(today.minusDays(1)),
+                todayStatusReader.yesterdayStillOpen(user.companyId())));
+        rowArgs.addAll(args);
+        rowArgs.addAll(List.of(pageable.getPageSize(), pageable.getOffset()));
+        List<EmployeeTodayAttendance> rows = jdbc.query("""
+                        SELECT e.id, e.name, o.name AS org_unit_name, e.status::text AS emp_status,
+                               t.status::text AS attendance_status, t.work_type::text AS work_type, t.place_memo,
+                               t.check_in_at, t.check_out_at
+                        """ + from + """
+                         LEFT JOIN attendance a ON a.employee_id = e.id AND a.company_id = e.company_id
+                                               AND a.work_date = ?
+                         LEFT JOIN attendance y ON y.employee_id = e.id AND y.company_id = e.company_id
+                                               AND y.work_date = ? AND y.status = 'CHECKED_IN' AND ?
+                         LEFT JOIN attendance t ON t.id = COALESCE(a.id, y.id) AND t.company_id = e.company_id
+                        """ + where + orderBy(pageable.getSort()) + " LIMIT ? OFFSET ?",
+                (rs, i) -> {
+                    String attendance = rs.getString("attendance_status");
+                    WorkType workType = rs.getString("work_type") == null ? null
+                            : WorkType.valueOf(rs.getString("work_type"));
+                    return new EmployeeTodayAttendance(rs.getLong("id"), rs.getString("name"),
+                            rs.getString("org_unit_name"),
+                            TodayStatusReader.resolve(EmpStatus.valueOf(rs.getString("emp_status")),
+                                    attendance == null ? null : AttendanceStatus.valueOf(attendance), workType),
+                            workType, rs.getString("place_memo"),
+                            RequestAccess.seoul(rs.getObject("check_in_at", OffsetDateTime.class)),
+                            RequestAccess.seoul(rs.getObject("check_out_at", OffsetDateTime.class)));
+                },
+                rowArgs.toArray());
+        return new PageImpl<>(rows, pageable, total);
     }
 
     private YearMonth orCurrent(YearMonth month) {

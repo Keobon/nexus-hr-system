@@ -121,6 +121,34 @@ class OvertimeTest {
     }
 
     @Test
+    void 목록과_상세에_휴일_여부와_예정_시간의_야간_분을_준다() throws Exception {
+        long night = applyOk(org.cho, DATE, "22:00", "01:30");            // 월요일, 전부 야간(22:00–06:00)
+        long evening = applyOk(org.cho, "2030-03-05", "18:00", "23:00");  // 화요일, 22시부터 60분
+        long weekend = applyOk(org.cho, "2030-03-09", "10:00", "12:00");  // 토요일
+
+        as(org.cho.id(), get("/api/overtime-requests/" + night))
+                .andExpect(jsonPath("$.data.holiday").value(false))
+                .andExpect(jsonPath("$.data.nightMinutes").value(210));
+        as(org.cho.id(), get("/api/overtime-requests/" + weekend))
+                .andExpect(jsonPath("$.data.holiday").value(true))
+                .andExpect(jsonPath("$.data.nightMinutes").value(0));
+        as(org.cho.id(), get("/api/me/overtime-requests"))                // 최근 근무일부터
+                .andExpect(jsonPath("$.data.content[*].id").value(contains((int) weekend, (int) evening, (int) night)))
+                .andExpect(jsonPath("$.data.content[*].holiday").value(contains(true, false, false)))
+                .andExpect(jsonPath("$.data.content[*].nightMinutes").value(contains(0, 60, 210)));
+
+        // 야간 시간대는 회사 설정을 따른다 — 그 근무일에 유효한 근무시간 기준(3/5부터 20시 시작)
+        jdbc.update("""
+                INSERT INTO work_schedule (company_id, effective_from, start_time, end_time, break_minutes,
+                                           late_grace_minutes, night_start, night_end, overtime_approval_required, work_days)
+                VALUES (?, DATE '2030-03-05', '09:00', '18:00', 60, 0, '20:00', '06:00', TRUE, 31)""", cid);
+        as(org.cho.id(), get("/api/overtime-requests/" + evening))
+                .andExpect(jsonPath("$.data.nightMinutes").value(180));
+        as(org.cho.id(), get("/api/overtime-requests/" + night))
+                .andExpect(jsonPath("$.data.nightMinutes").value(210));
+    }
+
+    @Test
     void 종료가_시작보다_이르거나_같으면_다음_날로_본다() throws Exception {
         long overnight = applyOk(org.cho, DATE, "22:00", "01:30");
         as(org.cho.id(), get("/api/overtime-requests/" + overnight))

@@ -257,6 +257,76 @@ class AttendanceQueryTest {
 
     // ---------------------------------------------------------------- 권한 · 범위
 
+    // ---------------------------------------------------------------- 오늘 근태 목록
+
+    private void checkedIn(long employeeId, LocalDate date, String workType, String in, String placeMemo) {
+        jdbc.update("""
+                INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, place_memo, check_in_at,
+                                        check_in_method)
+                VALUES (?, ?, ?, 'CHECKED_IN', ?::work_type, ?, (?::date + ?::time) AT TIME ZONE 'Asia/Seoul', 'WEB')
+                """, company.id(), employeeId, Date.valueOf(date), workType, placeMemo, Date.valueOf(date), in);
+    }
+
+    @Test
+    void 오늘_근태_목록은_직원마다_오늘_상태와_출퇴근_시각을_한_번에_준다() throws Exception {
+        LocalDate today = MONDAY.plusDays(4);
+        checkedIn(member.id(), today, "REMOTE", "09:05", "자택");
+        vacation(lead.id(), today);
+        worked(outsider.id(), today, "OFFICE", "08:00", "11:30");
+
+        String admin = "$.data.content[?(@.employeeId == %d)]".formatted(company.adminId());
+        String leadRow = "$.data.content[?(@.employeeId == %d)]".formatted(lead.id());
+        String memberRow = "$.data.content[?(@.employeeId == %d)]".formatted(member.id());
+        String outsiderRow = "$.data.content[?(@.employeeId == %d)]".formatted(outsider.id());
+        asAdmin("/api/attendances/today")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(4))
+                .andExpect(jsonPath(admin + ".todayStatus").value(contains("BEFORE_WORK")))
+                .andExpect(jsonPath(admin + ".checkInAt").value(contains(nullValue())))
+                .andExpect(jsonPath(leadRow + ".todayStatus").value(contains("ON_VACATION")))
+                .andExpect(jsonPath(leadRow + ".workType").value(contains(nullValue())))
+                .andExpect(jsonPath(memberRow + ".todayStatus").value(contains("REMOTE")))
+                .andExpect(jsonPath(memberRow + ".orgUnitName").value(contains("개발팀")))
+                .andExpect(jsonPath(memberRow + ".workType").value(contains("REMOTE")))
+                .andExpect(jsonPath(memberRow + ".placeMemo").value(contains("자택")))
+                .andExpect(jsonPath(memberRow + ".checkInAt").value(contains("2030-03-08T09:05:00+09:00")))
+                .andExpect(jsonPath(memberRow + ".checkOutAt").value(contains(nullValue())))
+                .andExpect(jsonPath(outsiderRow + ".todayStatus").value(contains("OFF_WORK")))
+                .andExpect(jsonPath(outsiderRow + ".checkOutAt").value(contains("2030-03-08T11:30:00+09:00")));
+
+        // 퇴직자는 빠지고 휴직자는 근태와 관계없이 휴직이다
+        jdbc.update("UPDATE employee SET status = 'RESIGNED' WHERE id = ?", outsider.id());
+        jdbc.update("UPDATE employee SET status = 'ON_LEAVE' WHERE id = ?", member.id());
+        asAdmin("/api/attendances/today?sort=name&size=2")
+                .andExpect(jsonPath("$.data.totalElements").value(3))
+                .andExpect(jsonPath("$.data.content", hasSize(2)));
+        asAdmin("/api/attendances/today?orgUnitId=" + team)
+                .andExpect(jsonPath("$.data.content[*].employeeId").value(contains((int) lead.id(), (int) member.id())))
+                .andExpect(jsonPath("$.data.content[1].todayStatus").value("ON_LEAVE"));
+    }
+
+    @Test
+    void 오늘_근태_목록은_범위_안의_직원만_주고_자정을_넘긴_근무는_어제_행을_쓴다() throws Exception {
+        checkedIn(member.id(), MONDAY.plusDays(3), "FIELD", "20:00", "고객사");
+        clock.set(MONDAY.plusDays(4).atTime(1, 30));            // 금요일 01:30 — 목요일 근무가 이어지는 중
+
+        as(lead.id(), "/api/attendances/today")
+                .andExpect(jsonPath("$.data.content[*].employeeId").value(contains((int) lead.id(), (int) member.id())))
+                .andExpect(jsonPath("$.data.content[1].todayStatus").value("FIELD"))
+                .andExpect(jsonPath("$.data.content[1].checkInAt").value("2030-03-07T20:00:00+09:00"));
+        // 상위 조직으로 좁혀도 범위 밖 직원은 안 나오고, 조직장이 아니면 아무도 안 나온다
+        as(lead.id(), "/api/attendances/today?orgUnitId=" + company.rootOrgUnitId())
+                .andExpect(jsonPath("$.data.content[*].employeeId").value(contains((int) lead.id(), (int) member.id())));
+        as(member.id(), "/api/attendances/today")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(0)));
+
+        clock.set(MONDAY.plusDays(4).atTime(7, 0));             // 야간 시간대가 끝나면 퇴근을 잊은 것으로 본다
+        as(lead.id(), "/api/attendances/today")
+                .andExpect(jsonPath("$.data.content[1].todayStatus").value("BEFORE_WORK"))
+                .andExpect(jsonPath("$.data.content[1].checkInAt").value(nullValue()));
+    }
+
     @Test
     void 팀_범위는_내가_조직장인_조직의_직원만_본다() throws Exception {
         as(lead.id(), "/api/attendances?month=2030-03")

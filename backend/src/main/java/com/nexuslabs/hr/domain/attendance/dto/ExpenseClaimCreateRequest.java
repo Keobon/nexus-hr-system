@@ -15,7 +15,7 @@ import java.util.List;
  */
 public record ExpenseClaimCreateRequest(
         @NotNull Long businessTripId,
-        @NotEmpty @Valid List<Line> lines) {
+        @NotEmpty List<@Valid Line> lines) {
 
     public record Line(
             @NotNull Long expenseTypeId,
