@@ -87,7 +87,8 @@ public class LeaveRequestService {
         return new LeavePreview(ev.days(), ev.leaveYear(), balance,
                 plan == null ? null : new LeavePreview.ApprovalLine(plan.approvalLineId(), plan.approvalLineName()),
                 plan == null ? List.of() : plan.steps().stream()
-                        .map(s -> new LeavePreview.Step(s.stepOrder(), s.approverId(), s.approverName(), s.skipped()))
+                        .map(s -> new LeavePreview.Step(s.stepOrder(), s.approverId(), s.approverName(), s.skipped(),
+                                s.stepLabel()))
                         .toList(),
                 ev.errors().stream().map(e -> e.code().name()).toList());
     }
@@ -167,10 +168,11 @@ public class LeaveRequestService {
         return detail(user.companyId(), id, user.employeeId());
     }
 
-    /** 내 휴가 목록. leaveYear · status 는 선택. 최근 시작일부터. */
+    /** 내 휴가 목록. leaveYear · status · from · to 는 선택(from · to 는 기간이 걸치는 휴가). 최근 시작일부터. */
     @Transactional(readOnly = true)
-    public PageImpl<LeaveRequestRow> mine(LoginUser user, Integer leaveYear, LeaveStatus status, Pageable pageable) {
-        Filter filter = new Filter(null, null, null, status, null, leaveYear);
+    public PageImpl<LeaveRequestRow> mine(LoginUser user, Integer leaveYear, LeaveStatus status, LocalDate from,
+                                         LocalDate to, Pageable pageable) {
+        Filter filter = new Filter(from, to, null, status, null, leaveYear);
         return page(user.companyId(), " AND r.employee_id = ?", List.of(user.employeeId()), filter, pageable);
     }
 

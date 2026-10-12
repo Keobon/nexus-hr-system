@@ -183,6 +183,7 @@ class LeaveRequestTest {
                 .andExpect(jsonPath("$.data.steps[0].approverId").value(org.seo.id()))
                 .andExpect(jsonPath("$.data.steps[1].approverId").value(org.kang.id()))
                 .andExpect(jsonPath("$.data.steps[1].skipped").value(false))
+                .andExpect(jsonPath("$.data.steps[*].stepLabel").value(contains("조직장", "1단계 위 조직장")))
                 .andExpect(jsonPath("$.data.errors").value(empty()));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM leave_request WHERE company_id = ?", Long.class, cid))
                 .isZero();
@@ -327,6 +328,20 @@ class LeaveRequestTest {
         assertThat(leaveDays(id)).isEmpty();
         as(org.cho, get("/api/me/leave-balances?leaveYear=2030"))
                 .andExpect(jsonPath("$.data.balances[0].used").value(0));
+    }
+
+    @Test
+    void 내_목록은_기간이_걸치는_휴가만_고를_수_있다() throws Exception {
+        long before = applyOk(org.cho, "2030-03-05", "2030-03-05");
+        long overlapping = applyOk(org.cho, "2030-03-11", "2030-03-12");
+        long after = applyOk(org.cho, "2030-03-20", "2030-03-20");
+
+        as(org.cho, get("/api/me/leave-requests?from=2030-03-12&to=2030-03-19"))
+                .andExpect(jsonPath("$.data.content[*].id").value(contains((int) overlapping)));
+        as(org.cho, get("/api/me/leave-requests?from=2030-03-12"))
+                .andExpect(jsonPath("$.data.content[*].id").value(contains((int) after, (int) overlapping)));
+        as(org.cho, get("/api/me/leave-requests?to=2030-03-10"))
+                .andExpect(jsonPath("$.data.content[*].id").value(contains((int) before)));
     }
 
     @Test

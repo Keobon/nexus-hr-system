@@ -53,7 +53,7 @@ public class ApproverCalculator {
                 skip = ApprovalPlan.SkipReason.SAME_AS_PREVIOUS;
             }
             steps.add(new ApprovalPlan.PlannedStep(s.stepOrder(), approver,
-                    approver == null ? null : ctx.names().get(approver), skip));
+                    approver == null ? null : ctx.names().get(approver), skip, s.label()));
             previousApprover = approver;
         }
         return new ApprovalPlan(line.id(), line.name(), steps);
@@ -132,13 +132,26 @@ public class ApproverCalculator {
         String name = jdbc.queryForObject("SELECT name FROM approval_line WHERE id = ? AND company_id = ?",
                 String.class, lineId, companyId);
         List<LineStep> steps = jdbc.query("""
-                        SELECT step_order, approver_type::text AS approver_type, up_levels, job_title_id, employee_id
-                        FROM approval_line_step WHERE approval_line_id = ? AND company_id = ?
-                        ORDER BY step_order
+                        SELECT s.step_order, s.approver_type::text AS approver_type, s.up_levels, s.job_title_id,
+                               s.employee_id, t.name AS job_title_name, e.name AS employee_name
+                        FROM approval_line_step s
+                             LEFT JOIN job_title t ON t.id = s.job_title_id AND t.company_id = s.company_id
+                             LEFT JOIN employee e ON e.id = s.employee_id AND e.company_id = s.company_id
+                        WHERE s.approval_line_id = ? AND s.company_id = ?
+                        ORDER BY s.step_order
                         """,
-                (rs, i) -> new LineStep(rs.getInt("step_order"), ApproverType.valueOf(rs.getString("approver_type")),
-                        rs.getInt("up_levels"), rs.getObject("job_title_id", Long.class),
-                        rs.getObject("employee_id", Long.class)),
+                (rs, i) -> {
+                    ApproverType type = ApproverType.valueOf(rs.getString("approver_type"));
+                    int upLevels = rs.getInt("up_levels");
+                    String label = switch (type) {
+                        case ORG_LEAD -> "조직장";
+                        case ORG_LEAD_UP -> upLevels + "단계 위 조직장";
+                        case JOB_TITLE -> rs.getString("job_title_name");
+                        case EMPLOYEE -> rs.getString("employee_name");
+                    };
+                    return new LineStep(rs.getInt("step_order"), type, upLevels, rs.getObject("job_title_id", Long.class),
+                            rs.getObject("employee_id", Long.class), label);
+                },
                 lineId, companyId);
         return new Line(lineId, name, steps);
     }
@@ -184,7 +197,9 @@ public class ApproverCalculator {
     private record Line(long id, String name, List<LineStep> steps) {
     }
 
-    private record LineStep(int stepOrder, ApproverType type, int upLevels, Long jobTitleId, Long employeeId) {
+    /** label 은 화면에 보이는 단계 이름(PlannedStep.stepLabel). */
+    private record LineStep(int stepOrder, ApproverType type, int upLevels, Long jobTitleId, Long employeeId,
+                            String label) {
     }
 
     private record Context(Map<Long, Long> parent, Map<Long, Long> lead, Long rootOrgUnitId, Set<Long> candidates,
