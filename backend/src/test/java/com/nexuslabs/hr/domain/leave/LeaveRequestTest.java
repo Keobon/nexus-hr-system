@@ -330,6 +330,26 @@ class LeaveRequestTest {
     }
 
     @Test
+    void 목록_행의_반려_사유는_반려된_휴가에만() throws Exception {
+        long rejected = applyOk(org.cho, "2030-03-05", "2030-03-05");
+        decide(org.seo, "LEAVE", rejected, "reject", "{\"comment\": \"일정 조정 필요\"}").andExpect(status().isOk());
+        long cancelRejected = approvedLeave("2030-03-11", "2030-03-11");
+        as(org.cho, post("/api/me/leave-requests/" + cancelRejected + "/cancel-request")).andExpect(status().isOk());
+        decide(org.kang, "LEAVE_CANCEL", cancelRejected, "reject", "{\"comment\": \"대체 인력 없음\"}")
+                .andExpect(status().isOk());
+        long pending = applyOk(org.cho, "2030-03-12", "2030-03-12");
+
+        String row = "$.data.content[?(@.id == %d)].rejectReason";
+        as(org.cho, get("/api/me/leave-requests"))
+                .andExpect(jsonPath(row.formatted(rejected)).value(contains("일정 조정 필요")))
+                .andExpect(jsonPath(row.formatted(cancelRejected)).value(contains(nullValue())))
+                .andExpect(jsonPath(row.formatted(pending)).value(contains(nullValue())));
+        // 조직장 목록(GET /leave-requests)도 같은 행 모양
+        as(org.seo, get("/api/leave-requests"))
+                .andExpect(jsonPath(row.formatted(rejected)).value(contains("일정 조정 필요")));
+    }
+
+    @Test
     void 취소_요청이_반려되면_다시_승인완료이고_근태는_그대로() throws Exception {
         long id = approvedLeave("2030-03-11", "2030-03-11");
         // 사유는 선택이라 본문 없이 보내도 된다
