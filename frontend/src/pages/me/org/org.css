@@ -1,0 +1,501 @@
+/*
+ * 조직도 — Figma COMMON_org_chart(72:8365)
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale
+ * 페이지 제목 · 부제는 다른 화면과 같은 30 · 15
+ */
+
+.org {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #0f172a;
+  font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
+}
+
+.org-head h1 {
+  margin: 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.org-head p {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+}
+
+/* 조직도 메뉴 — 흰 띠 안의 탭 */
+.org-menu {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.1875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.org-menu button {
+  width: 8.75rem;
+  height: 2.125rem;
+  padding: 0 1.125rem;
+  border: none;
+  border-radius: 0.625rem;
+  background: none;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-menu button.is-active {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* 검색 줄 */
+.org-search-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.org-search {
+  display: flex;
+  flex: 1 1 0;
+  gap: 0.625rem;
+  align-items: center;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.org-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.org-search input::placeholder {
+  color: #64748b;
+}
+
+.org-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  box-sizing: border-box;
+  border: 1px solid #e1e7ec;
+  border-radius: 0.25rem;
+  background: #fff;
+}
+
+.org-select select {
+  height: 100%;
+  padding: 0 2.75rem 0 0.75rem;
+  border: none;
+  background: none;
+  color: #2a2e33;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.org-select img {
+  position: absolute;
+  right: 0.75rem;
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+
+/* 본문 — 트리 344 + 오른쪽 */
+.org-body {
+  display: grid;
+  grid-template-columns: 21.5rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.org-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  scroll-margin-top: 1rem;
+}
+
+.org-card.is-tight {
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.625rem;
+}
+
+.org-card-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.org-card-head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: normal;
+}
+
+.org-card-head p,
+.org-muted {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.org-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* 트리 */
+.org-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-height: 20rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.org-tree-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.org-tree-top strong {
+  color: #64748b;
+}
+
+.org-tree-top span {
+  color: #38bdf8;
+}
+
+.org-node {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+  width: 100%;
+  height: 2.375rem;
+  padding: 0.3125rem 0.5rem 0.3125rem 0.625rem;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-node.is-open {
+  border-color: transparent;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.org-node.is-selected {
+  outline: 2px solid #93c5fd;
+}
+
+.org-node .org-toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+}
+
+.org-node .org-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.org-count {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.org-node.is-open .org-count {
+  background: #fff;
+  color: #2563eb;
+}
+
+.org-tree-foot {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+/* 부서원 */
+.org-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border-radius: 0.875rem;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.org-members {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.org-member {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-member.is-selected {
+  background: #eff6ff;
+}
+
+.org-member > span:nth-child(2) {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.org-member strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.org-member em {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.org-lead {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.625rem;
+  border-radius: 0.75rem;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.75rem;
+}
+
+/* 아바타 — 사진 또는 성 한 글자 */
+.org-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.org-avatar.is-big {
+  width: 4.5rem;
+  height: 4.5rem;
+  font-size: 1.5rem;
+}
+
+.org-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.org-profile {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.org-profile > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.org-profile strong {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.org-profile > div span {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.org-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.org-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.8125rem;
+}
+
+.org-row span:first-child {
+  color: #64748b;
+}
+
+.org-row span:last-child {
+  font-weight: 700;
+  text-align: right;
+}
+
+.org-row span.is-muted {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.org-note {
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.org-note strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #0f172a;
+}
+
+.org-empty {
+  margin: 0;
+  padding: 1.5rem 0;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.org-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.org-btn {
+  height: 2.125rem;
+  padding: 0 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.org-btn.is-primary {
+  border-color: #0284c7;
+  background: #0284c7;
+  color: #fff;
+}
+
+@media (max-width: 1199px) {
+  .org-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .org-tree {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .org-menu {
+    overflow-x: auto;
+  }
+
+  .org-menu button {
+    flex: none;
+    width: auto;
+  }
+
+  .org-search-row {
+    flex-wrap: wrap;
+  }
+
+  .org-search {
+    flex-basis: 100%;
+  }
+}
