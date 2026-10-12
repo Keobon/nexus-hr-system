@@ -84,11 +84,12 @@ const GROUPS = [
       },
       { key: 'org-chart', path: '/org-chart', label: '조직도', icon: ApartmentOutlined, navIcon: navPeople, visible: always },
       {
+        // 결재하는 사람만 — 조직장이거나, 승인선에서 직책 · 직원으로 지정돼 지금 처리할 건이 있을 때(일반 직원 화면에는 없다)
         key: 'approvals',
         path: '/approvals',
         label: '승인함',
         icon: CheckSquareOutlined,
-        visible: always,
+        visible: ({ me }) => (me.leadOrgUnitIds?.length ?? 0) > 0 || (me.todos?.approvalsPending ?? 0) > 0,
         badge: 'approvalsPending',
       },
       {
