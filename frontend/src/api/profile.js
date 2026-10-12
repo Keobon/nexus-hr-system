@@ -18,3 +18,16 @@ export const myFamilyKey = ['me', 'family'];
 
 /** GET /me/family → { dependentsCount, childrenCount, members[] } (본인은 조회만) */
 export const getMyFamily = () => api.get('/me/family');
+
+/** PUT /me/bank-account { bankName, accountNo, holder } — 본인이 바로 수정(F-PAY-03, 노션 수정사항 10/12) */
+export const updateMyBankAccount = (body) => api.put('/me/bank-account', body);
+
+/** GET /employee-fields?activeOnly=true → [{ id, name, fieldType, options, isRequired, isMultiple, isSelfEditable, sortOrder }] */
+export const employeeFieldsKey = ['employee-fields', 'active'];
+export const getEmployeeFields = () => api.get('/employee-fields', { activeOnly: true });
+
+/**
+ * PUT /me/field-values { values: [{ fieldDefId, seq, value }] } — 본인 수정 가능 항목 **전체** 교체.
+ * 보내지 않은 본인 수정 항목의 값은 지워지므로, 한 항목만 고칠 때도 나머지 값을 같이 보낸다.
+ */
+export const updateMyFieldValues = (values) => api.put('/me/field-values', { values });

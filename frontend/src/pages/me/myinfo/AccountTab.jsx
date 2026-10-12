@@ -1,23 +1,39 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getMyBankAccount, getMyFamily, myBankAccountKey, myFamilyKey } from '../../../api/profile';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getMyBankAccount, getMyFamily, myBankAccountKey, myFamilyKey, updateMyBankAccount } from '../../../api/profile';
+import { useNotify } from '../../../components/common/useNotify';
+import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
 import { formatDate } from '../../../utils/format';
-import { EvidencePicker, InfoRow, Note, usePendingFeature } from './parts';
+import { InfoRow, Note } from './parts';
 import { rem } from '../../../utils/size';
 
 // 은행 목록은 화면 고정(역할 분담 2.3 H 58번)
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', 'SC제일은행', '카카오뱅크', '토스뱅크', '케이뱅크', '부산은행', '대구은행'];
 const ACCOUNT_RE = /^[0-9-]+$/;
 
-/** 급여 수령 계좌 — 증빙(통장 사본) 제출 후 승인(추가사항 ②). 승인 전까지 기존 계좌 유지 */
+/** 급여 수령 계좌 — 본인이 바로 수정(F-PAY-03, 노션 수정사항 10/12 — 승인 절차 없음) */
 function BankCard({ account, holderDefault }) {
-  const pending = usePendingFeature();
+  const queryClient = useQueryClient();
+  const notify = useNotify();
   const [bankName, setBankName] = useState('');
   const [accountNo, setAccountNo] = useState('');
   const [holder, setHolder] = useState(holderDefault);
-  const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
+  const save = useMutation({
+    mutationFn: () => updateMyBankAccount({ bankName, accountNo: accountNo.trim(), holder: holder.trim() }),
+    onSuccess: () => {
+      notify.success('계좌를 저장했습니다');
+      setBankName('');
+      setAccountNo('');
+      queryClient.invalidateQueries({ queryKey: myBankAccountKey });
+    },
+    onError: (err) => {
+      // 필드 오류는 한 줄로 모아 보여 준다(이 카드는 AntD Form 이 아님)
+      if (err?.code === 'VALIDATION_ERROR' && err.fields) return setError(Object.values(err.fields).join(' · '));
+      return setError(errorMessage(err));
+    },
+  });
 
   const submit = () => {
     const digits = accountNo.replace(/-/g, '');
@@ -26,20 +42,19 @@ function BankCard({ account, holderDefault }) {
       return setError('계좌번호는 숫자와 하이픈으로, 숫자 6–20자리로 입력해 주세요');
     }
     if (!holder.trim()) return setError('예금주를 입력해 주세요');
-    if (!file) return setError('통장 사본을 첨부해 주세요');
     setError(null);
-    return pending('계좌 변경 승인 요청');
+    return save.mutate();
   };
 
   return (
     <section className="mi-card" style={{ minHeight: rem(278) }}>
       <div className="mi-section" style={{ gap: rem(8) }}>
         <h2 className="mi-card-title">급여 수령 계좌</h2>
-        <p className="mi-text">증빙 필수 · 인사팀/관리자 승인 후 반영</p>
+        <p className="mi-text">본인 관리 · 저장하면 바로 반영</p>
       </div>
 
       <div className="mi-section">
-        <h3 className="mi-subhead">기존 계좌</h3>
+        <h3 className="mi-subhead">현재 계좌</h3>
         <div className="mi-box">
           <div className="mi-rows is-tight">
             <InfoRow label="은행명">{account?.bankName}</InfoRow>
@@ -50,13 +65,13 @@ function BankCard({ account, holderDefault }) {
       </div>
 
       <div className="mi-section">
-        <h3 className="mi-subhead">변경 요청</h3>
+        <h3 className="mi-subhead">{account ? '계좌 변경' : '계좌 등록'}</h3>
         <div className="mi-box" style={{ gap: rem(16) }}>
           <div className="mi-rows is-tight">
             <label className="mi-stacked">
               <span>은행명</span>
               <select value={bankName} onChange={(e) => setBankName(e.target.value)}>
-                <option value="">변경할 은행명 입력</option>
+                <option value="">은행 선택</option>
                 {BANKS.map((b) => (
                   <option key={b} value={b}>
                     {b}
@@ -68,7 +83,7 @@ function BankCard({ account, holderDefault }) {
               <span>계좌번호</span>
               <input
                 inputMode="numeric"
-                placeholder="변경할 계좌번호 입력"
+                placeholder="숫자와 하이픈(-)으로 입력"
                 maxLength={30}
                 value={accountNo}
                 onChange={(e) => setAccountNo(e.target.value)}
@@ -79,27 +94,20 @@ function BankCard({ account, holderDefault }) {
               <input maxLength={50} value={holder} onChange={(e) => setHolder(e.target.value)} />
             </label>
           </div>
-          <div className="mi-section" style={{ gap: rem(8) }}>
-            <h3 className="mi-subhead">통장 사본 첨부</h3>
-            <EvidencePicker value={file} onChange={setFile} variant="center" title="통장 사본 PDF 또는 JPG를 업로드해주세요" />
-          </div>
         </div>
       </div>
 
       <div className="mi-box">
-        <h3>변경 신청 안내</h3>
+        <h3>계좌 변경 안내</h3>
         <p className="mi-text is-14">
-          급여 수령 계좌는 법적·재무적 증빙이 필요한 항목으로, 변경 내용과 통장 사본 증빙을 함께 업로드해야 합니다. 인사팀/관리자 승인 후 기존 계좌가 변경됩니다.
+          저장하면 다음 급여부터 새 계좌로 지급됩니다. 이미 확정된 달의 명세서 계좌는 바뀌지 않습니다. 계좌번호는 뒤 4자리만 보여 드립니다.
         </p>
       </div>
 
       {error && <p className="mi-error">{error}</p>}
       <div className="mi-actions is-divided">
-        <button type="button" className="mi-btn" style={{ width: rem(132) }} onClick={submit}>
-          승인 요청
-        </button>
-        <button type="button" className="mi-btn is-secondary" style={{ width: rem(132) }} onClick={() => pending('요청 내역')}>
-          요청 내역
+        <button type="button" className="mi-btn" style={{ width: rem(132) }} disabled={save.isPending} onClick={submit}>
+          {save.isPending ? '저장 중…' : '저장'}
         </button>
       </div>
     </section>
@@ -108,7 +116,6 @@ function BankCard({ account, holderDefault }) {
 
 /** 계좌 및 정산 탭 — Figma EMP_계좌및정산 */
 export default function AccountTab({ profile }) {
-  const pending = usePendingFeature();
   const bank = useQuery({ queryKey: myBankAccountKey, queryFn: getMyBankAccount });
   const family = useQuery({ queryKey: myFamilyKey, queryFn: getMyFamily });
   const members = family.data?.members ?? [];
@@ -128,13 +135,8 @@ export default function AccountTab({ profile }) {
             <InfoRow label="거주자 구분">확인 필요</InfoRow>
           </div>
           <div className="mi-box">
-            <h3>변경 신청 안내</h3>
-            <p className="mi-text is-14">기본 인적 정보의 변경은 기존 담당자 확인 절차에 따라 신청해 주세요.</p>
-          </div>
-          <div className="mi-actions is-divided">
-            <button type="button" className="mi-btn" style={{ width: rem(132) }} onClick={() => pending('정보 변경 신청')}>
-              정보 변경 신청
-            </button>
+            <h3>변경 안내</h3>
+            <p className="mi-text is-14">성명 · 생년월일 같은 기본 인적 정보는 인사팀이 직원 정보를 고쳐 반영합니다. 바꿀 내용이 있으면 인사팀에 문의해 주세요.</p>
           </div>
         </section>
       </div>
@@ -159,18 +161,13 @@ export default function AccountTab({ profile }) {
             ))
           )}
         </div>
-        <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: rem(158) }} onClick={() => pending('부양가족 등록 신청')}>
-            부양가족 등록 신청
-          </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: rem(158) }} onClick={() => pending('부양가족 변경 신청')}>
-            부양가족 변경 신청
-          </button>
-        </div>
+        <p className="mi-text" style={{ margin: 0 }}>
+          부양가족 등록 · 변경은 인사팀에서 처리합니다(기능명세서 F-EMP-09). 바뀐 내용이 있으면 인사팀에 문의해 주세요.
+        </p>
       </section>
 
       <Note variant="page">
-        본인 관리 항목은 직원이 수정하면 즉시 반영되고, 증빙 제출이 필요한 항목은 변경 내용과 증빙 서류를 업로드한 뒤 인사팀/관리자 승인 후 반영됩니다. 기존 계좌는 승인 전까지 유지되며, 승인 완료 후 변경 내용이 반영됩니다.
+        급여 계좌는 본인이 저장하면 바로 반영됩니다. 성명 · 생년월일 · 부양가족은 인사팀이 직원 정보를 고쳐 반영하니 인사팀에 문의해 주세요.
       </Note>
     </div>
   );

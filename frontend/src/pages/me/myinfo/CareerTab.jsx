@@ -1,277 +1,200 @@
 import { useState } from 'react';
-import { Badge, EvidencePicker, Note, usePendingFeature } from './parts';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { employeeFieldsKey, getEmployeeFields, myProfileKey, updateMyFieldValues } from '../../../api/profile';
+import { useNotify } from '../../../components/common/useNotify';
+import { errorMessage } from '../../../constants/errors';
+import { Badge, Note } from './parts';
 import { rem } from '../../../utils/size';
 
 /**
- * 학력 · 이전 직장 경력 · 자격증은 증빙 제출 후 승인(추가사항 ②) — 백엔드 API 가 생기기 전이라 보내기만 막는다.
- * 지금 보여 줄 값: 회사가 만든 "추가 항목"(GET /me/profile 의 fieldValues) 중 이름이 맞는 것(예: 데모 회사 '학력' · '기술 스택').
+ * 학력 · 경력 · 자격증 · 어학 · 보유 기술은 회사가 만든 "추가 항목"(여러 건 허용)으로 받고, 본인 수정 가능 항목이면 바로 고친다.
+ * 노션 수정사항(10/12) — 전용 테이블 · 승인 절차 없이 PUT /me/field-values(교수님 요구 #2의 예시와 같은 방식).
+ * 회사에 그 이름의 항목이 없으면 "회사 설정에서 만들면 입력할 수 있다"고 안내한다.
  */
 const SECTIONS = [
-  {
-    key: 'education',
-    title: '학력',
-    fieldNames: ['학력'],
-    columns: ['학교명', '전공', '졸업여부'],
-    empty: '등록된 학력 정보가 없습니다.',
-    requestTitle: '학력 변경 신청',
-    fields: [
-      { name: 'school', label: '학교명', placeholder: '학교명 입력' },
-      { name: 'major', label: '전공', placeholder: '전공 입력' },
-      { name: 'graduated', label: '졸업여부', type: 'select', placeholder: '졸업 여부 선택', options: ['졸업', '졸업예정', '재학', '휴학', '중퇴', '수료'] },
-    ],
-    evidenceTitle: '학력 증빙 파일을 첨부해주세요',
-    evidenceHint: '졸업증명서, 성적증명서, 재학증명서 등 PDF 또는 JPG 파일',
-    buttons: ['학력 등록 승인 요청', '학력 변경 승인 요청'],
-    buttonWidth: 132,
-  },
-  {
-    key: 'career',
-    title: '이전 직장 경력',
-    fieldNames: ['이전 직장 경력', '경력'],
-    columns: ['회사명', '근무기간', '담당업무'],
-    empty: '등록된 이전 직장 경력 정보가 없습니다.',
-    requestTitle: '이전 직장 경력 변경 신청',
-    fields: [
-      { name: 'company', label: '회사명', placeholder: '회사명 입력' },
-      { name: 'period', label: '근무기간', type: 'period' },
-      { name: 'duty', label: '담당업무', placeholder: '담당업무 입력' },
-    ],
-    evidenceTitle: '경력 증빙 파일을 첨부해주세요',
-    evidenceHint: '재직증명서, 경력증명서, 퇴사확인서 등 PDF 또는 JPG 파일',
-    buttons: ['이전 직장 경력 등록 승인 요청', '이전 직장 경력 변경 승인 요청'],
-    buttonWidth: 210,
-  },
-  {
-    key: 'license',
-    title: '자격증',
-    fieldNames: ['자격증'],
-    columns: ['자격증명', '발급기관', '취득일'],
-    empty: '등록된 자격증 정보가 없습니다.',
-    requestTitle: '자격증 변경 신청',
-    fields: [
-      { name: 'licenseName', label: '자격증명', placeholder: '자격증명 입력' },
-      { name: 'issuer', label: '발급기관', placeholder: '발급기관 입력' },
-      { name: 'acquiredOn', label: '취득일', type: 'date' },
-    ],
-    evidenceTitle: '자격증 증빙 파일을 첨부해주세요',
-    evidenceHint: '자격증 사본, 발급 확인서 등 PDF 또는 JPG 파일',
-    buttons: ['자격증 등록 승인 요청', '자격증 변경 승인 요청'],
-    buttonWidth: 145,
-  },
+  { key: 'education', title: '학력', fieldNames: ['학력'], placeholder: '예: 한국대학교 · 컴퓨터공학 · 졸업' },
+  { key: 'career', title: '이전 직장 경력', fieldNames: ['이전 직장 경력', '경력'], placeholder: '예: OO전자 · 2020.03–2023.02 · 백엔드 개발' },
+  { key: 'license', title: '자격증', fieldNames: ['자격증'], placeholder: '예: 정보처리기사 · 한국산업인력공단 · 2021.06' },
+  { key: 'language', title: '어학 점수', fieldNames: ['어학 점수', '어학'], placeholder: '예: TOEIC · 900 · 2024.05' },
+  { key: 'skills', title: '보유 기술', fieldNames: ['보유 기술', '기술 스택'], placeholder: '예: React', chips: true },
 ];
+const KNOWN = SECTIONS.flatMap((s) => s.fieldNames);
 
-function valuesOf(profile, names) {
-  return (profile.fieldValues ?? []).filter((v) => names.includes(v.name) && v.value);
-}
-
-function RequestForm({ section }) {
-  const pending = usePendingFeature();
-  const [values, setValues] = useState({});
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState(null);
-  const set = (name, value) => setValues((v) => ({ ...v, [name]: value }));
-
-  const submit = (title) => {
-    const missing = section.fields.find((f) =>
-      f.type === 'period' ? !values.periodFrom || !values.periodTo : !String(values[f.name] ?? '').trim(),
-    );
-    if (missing) return setError(`${missing.label}을(를) 입력해 주세요`);
-    if (section.fields.some((f) => f.type === 'period') && values.periodFrom > values.periodTo) {
-      return setError('종료일이 시작일보다 빠릅니다');
-    }
-    if (!file) return setError('증빙 파일을 첨부해 주세요');
-    setError(null);
-    return pending(title);
-  };
-
-  return (
-    <div className="mi-box is-request">
-      <div className="mi-card-head">
-        <h3 className="mi-subhead">{section.requestTitle}</h3>
-        <span className="mi-text" style={{ fontSize: rem(12) }}>
-          변경 내용과 증빙을 첨부한 뒤 승인 요청합니다.
-        </span>
-      </div>
-      <div className="mi-section">
-        {section.fields.map((f) => (
-          <div key={f.name} className="mi-field is-small">
-            <label htmlFor={`${section.key}-${f.name}`}>{f.label}</label>
-            {f.type === 'select' && (
-              <select
-                id={`${section.key}-${f.name}`}
-                className="mi-input is-40"
-                value={values[f.name] ?? ''}
-                onChange={(e) => set(f.name, e.target.value)}
-              >
-                <option value="">{f.placeholder}</option>
-                {f.options.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            )}
-            {f.type === 'period' && (
-              <div className="mi-split">
-                <input
-                  id={`${section.key}-${f.name}`}
-                  className="mi-input is-40"
-                  type="date"
-                  aria-label="시작일 선택"
-                  value={values.periodFrom ?? ''}
-                  onChange={(e) => set('periodFrom', e.target.value)}
-                />
-                <input
-                  className="mi-input is-40"
-                  type="date"
-                  aria-label="종료일 선택"
-                  value={values.periodTo ?? ''}
-                  onChange={(e) => set('periodTo', e.target.value)}
-                />
-              </div>
-            )}
-            {f.type === 'date' && (
-              <input
-                id={`${section.key}-${f.name}`}
-                className="mi-input is-40"
-                type="date"
-                value={values[f.name] ?? ''}
-                onChange={(e) => set(f.name, e.target.value)}
-              />
-            )}
-            {!f.type && (
-              <input
-                id={`${section.key}-${f.name}`}
-                className="mi-input is-40"
-                placeholder={f.placeholder}
-                maxLength={100}
-                value={values[f.name] ?? ''}
-                onChange={(e) => set(f.name, e.target.value)}
-              />
-            )}
-          </div>
+/** 값 입력칸 — 항목 타입(텍스트 · 긴 텍스트 · 숫자 · 날짜 · 선택)에 맞춰 */
+function ValueInput({ def, value, onChange, placeholder, id }) {
+  const common = { id, className: 'mi-input is-40', value, onChange: (e) => onChange(e.target.value) };
+  if (def.fieldType === 'SELECT') {
+    return (
+      <select {...common}>
+        <option value="">선택</option>
+        {(def.options ?? []).map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
         ))}
-        <div className="mi-field is-small">
-          <label>증빙 업로드</label>
-          <EvidencePicker value={file} onChange={setFile} variant="tall" title={section.evidenceTitle} hint={section.evidenceHint} />
-        </div>
-      </div>
-      {error && <p className="mi-error">{error}</p>}
-      <div className="mi-actions">
-        <button type="button" className="mi-btn" style={{ minWidth: rem(section.buttonWidth) }} onClick={() => submit(section.buttons[0])}>
-          {section.buttons[0]}
-        </button>
-        <button
-          type="button"
-          className="mi-btn is-secondary"
-          style={{ minWidth: rem(section.buttonWidth) }}
-          onClick={() => submit(section.buttons[1])}
-        >
-          {section.buttons[1]}
-        </button>
-      </div>
-      <Note variant="plain">
-        변경 내용과 증빙을 첨부한 뒤 승인 요청하면 기존 공식 정보는 유지되며, 인사팀/관리자 승인 후에 반영됩니다.
-      </Note>
-    </div>
-  );
+      </select>
+    );
+  }
+  if (def.fieldType === 'DATE') return <input {...common} type="date" />;
+  if (def.fieldType === 'NUMBER') return <input {...common} type="number" />;
+  return <input {...common} maxLength={def.fieldType === 'LONG_TEXT' ? 1000 : 200} placeholder={placeholder} />;
 }
 
-function ApprovalSection({ section, profile }) {
-  const rows = valuesOf(profile, section.fieldNames);
+/**
+ * 본인 수정 항목 저장 — 서버가 본인 수정 항목 전체를 교체하므로 다른 항목 값도 같이 보낸다.
+ * save(defId, ['값1', '값2']) → 그 항목만 바꾼 전체 목록을 PUT
+ */
+function useSaveField(profile, defs) {
+  const queryClient = useQueryClient();
+  const notify = useNotify();
+  const editable = new Set(defs.filter((d) => d.isSelfEditable).map((d) => d.id));
+  const m = useMutation({
+    mutationFn: ({ defId, values }) => {
+      const others = (profile.fieldValues ?? [])
+        .filter((v) => editable.has(v.fieldDefId) && v.fieldDefId !== defId)
+        .map((v) => ({ fieldDefId: v.fieldDefId, seq: v.seq, value: v.value }));
+      const mine = values.map((value, i) => ({ fieldDefId: defId, seq: i + 1, value }));
+      return updateMyFieldValues([...others, ...mine]);
+    },
+    onSuccess: () => {
+      notify.success('저장했습니다');
+      queryClient.invalidateQueries({ queryKey: myProfileKey });
+    },
+  });
+  return m;
+}
+
+function FieldSection({ section, def, profile, save }) {
+  const rows = def ? (profile.fieldValues ?? []).filter((v) => v.fieldDefId === def.id).map((v) => v.value) : [];
+  const [draft, setDraft] = useState('');
+  const [editing, setEditing] = useState(null); // { index, value }
+  const [error, setError] = useState(null);
+  const canEdit = def?.isSelfEditable;
+  const canAdd = canEdit && (def.isMultiple || rows.length === 0);
+
+  const commit = (values, after) => {
+    setError(null);
+    save.mutate({ defId: def.id, values }, { onSuccess: after, onError: (err) => setError(errorMessage(err)) });
+  };
+  const add = () => {
+    if (!draft.trim()) return setError('내용을 입력해 주세요');
+    return commit([...rows, draft.trim()], () => setDraft(''));
+  };
+  const update = () => {
+    if (!editing.value.trim()) return setError('내용을 입력해 주세요');
+    return commit(rows.map((r, i) => (i === editing.index ? editing.value.trim() : r)), () => setEditing(null));
+  };
+  const remove = (index) => commit(rows.filter((_, i) => i !== index));
+
+  let badge = <Badge>회사 항목 없음</Badge>;
+  if (def) badge = canEdit ? <Badge tone="green">본인 수정</Badge> : <Badge>인사팀 수정</Badge>;
+
   return (
     <section className="mi-card">
       <div className="mi-card-head">
         <h2 className="mi-card-title">{section.title}</h2>
         <div className="mi-badges">
-          <Badge tone="green">증빙 승인</Badge>
-          <Badge>{rows.length ? `등록 ${rows.length}건` : '미등록'}</Badge>
+          {badge}
+          {def && <Badge>{rows.length ? `등록 ${rows.length}건` : '미등록'}</Badge>}
         </div>
       </div>
-      <div>
-        <div className="mi-list-head">
-          {section.columns.map((c) => (
-            <span key={c}>{c}</span>
+
+      {!def && (
+        <p className="mi-list-empty">
+          {`회사 설정 › 직원 정보 항목에 "${section.fieldNames[0]}" 항목이 만들어지면 여기서 바로 입력할 수 있습니다.`}
+        </p>
+      )}
+
+      {def && section.chips && (
+        <div className="mi-chips">
+          {rows.length === 0 && <p className="mi-list-empty" style={{ width: '100%' }}>{`등록된 ${section.title} 정보가 없습니다.`}</p>}
+          {rows.map((r, i) => (
+            <span key={`${r}-${i}`} className="mi-badge" style={{ gap: rem(6) }}>
+              {r}
+              {canEdit && (
+                <button type="button" className="mi-link" aria-label={`${r} 삭제`} disabled={save.isPending} onClick={() => remove(i)}>
+                  ✕
+                </button>
+              )}
+            </span>
           ))}
         </div>
-        {rows.length === 0 ? (
-          <p className="mi-list-empty">{section.empty}</p>
-        ) : (
-          // 추가 항목은 글자 한 칸이라 첫 칸에 그대로 보여 준다
-          rows.map((r) => (
-            <div key={`${r.fieldDefId}-${r.seq}`} className="mi-list-row">
-              <span style={{ gridColumn: '1 / -1' }}>{r.value}</span>
-            </div>
-          ))
-        )}
-      </div>
-      <RequestForm section={section} />
+      )}
+
+      {def && !section.chips && (
+        <div>
+          {rows.length === 0 && <p className="mi-list-empty">{`등록된 ${section.title} 정보가 없습니다.`}</p>}
+          {rows.map((r, i) =>
+            editing?.index === i ? (
+              <div key={`edit-${i}`} className="mi-list-row" style={{ display: 'flex', gap: rem(8), alignItems: 'center' }}>
+                <ValueInput def={def} value={editing.value} onChange={(value) => setEditing({ index: i, value })} placeholder={section.placeholder} id={`${section.key}-edit`} />
+                <button type="button" className="mi-btn" style={{ flex: 'none', width: rem(72) }} disabled={save.isPending} onClick={update}>
+                  저장
+                </button>
+                <button type="button" className="mi-btn is-secondary" style={{ flex: 'none', width: rem(72) }} onClick={() => setEditing(null)}>
+                  취소
+                </button>
+              </div>
+            ) : (
+              <div key={`${r}-${i}`} className="mi-list-row" style={{ display: 'flex', justifyContent: 'space-between', gap: rem(12) }}>
+                <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r}</span>
+                {canEdit && (
+                  <span className="mi-cert-links" style={{ flex: 'none' }}>
+                    <button type="button" className="mi-link" onClick={() => setEditing({ index: i, value: r })}>
+                      수정
+                    </button>
+                    <button type="button" className="mi-link" style={{ color: '#ef4444' }} disabled={save.isPending} onClick={() => remove(i)}>
+                      삭제
+                    </button>
+                  </span>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
+      {canAdd && (
+        <div className="mi-field is-small">
+          <label htmlFor={`${section.key}-new`}>{`${section.title} 추가`}</label>
+          <div style={{ display: 'flex', gap: rem(8) }}>
+            <ValueInput def={def} value={draft} onChange={setDraft} placeholder={section.placeholder} id={`${section.key}-new`} />
+            <button type="button" className="mi-btn" style={{ flex: 'none', width: rem(96) }} disabled={save.isPending} onClick={add}>
+              추가
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="mi-error">{error}</p>}
     </section>
   );
 }
 
 /** 학력 및 경력 탭 — Figma EMP_학력및경력 */
 export default function CareerTab({ profile }) {
-  const pending = usePendingFeature();
-  const skills = valuesOf(profile, ['보유 기술', '기술 스택']);
+  const fields = useQuery({ queryKey: employeeFieldsKey, queryFn: getEmployeeFields });
+  const defs = fields.data ?? [];
+  const save = useSaveField(profile, defs);
+  const defOf = (names) => defs.find((d) => names.includes(d.name));
+  // 위 다섯 칸에 없는 회사 추가 항목도 같은 방식으로 아래에 보여 준다
+  const others = defs.filter((d) => !KNOWN.includes(d.name));
 
   return (
     <div className="mi-stack">
       {SECTIONS.map((s) => (
-        <ApprovalSection key={s.key} section={s} profile={profile} />
+        <FieldSection key={s.key} section={s} def={defOf(s.fieldNames)} profile={profile} save={save} />
       ))}
-
-      <section className="mi-card">
-        <h2 className="mi-card-title">어학 점수</h2>
-        <div>
-          <div className="mi-list-head">
-            <span>시험명</span>
-            <span>점수</span>
-            <span>취득일</span>
-          </div>
-          <p className="mi-list-empty">등록된 어학 점수 정보가 없습니다.</p>
-        </div>
-        <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: rem(171) }} onClick={() => pending('어학 점수 등록 신청')}>
-            어학 점수 등록 신청
-          </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('어학 점수 변경 신청')}>
-            어학 점수 변경 신청
-          </button>
-        </div>
-      </section>
-
-      <section className="mi-card">
-        <h2 className="mi-card-title">보유 기술</h2>
-        {skills.length === 0 ? (
-          <div className="mi-box is-borderless" style={{ padding: rem(24) }}>
-            <p className="mi-list-empty" style={{ padding: 0 }}>
-              등록된 보유 기술 정보가 없습니다.
-            </p>
-          </div>
-        ) : (
-          <div className="mi-chips">
-            {skills.map((s) => (
-              <Badge key={`${s.fieldDefId}-${s.seq}`}>{s.value}</Badge>
-            ))}
-          </div>
-        )}
-        <div className="mi-actions is-divided">
-          <button type="button" className="mi-btn" style={{ width: rem(171) }} onClick={() => pending('보유 기술 등록 신청')}>
-            보유 기술 등록 신청
-          </button>
-          <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('보유 기술 변경 신청')}>
-            보유 기술 변경 신청
-          </button>
-        </div>
-      </section>
+      {others.map((d) => (
+        <FieldSection key={d.id} section={{ key: `f${d.id}`, title: d.name, fieldNames: [d.name], placeholder: '' }} def={d} profile={profile} save={save} />
+      ))}
 
       <Note variant="page">
         <p>
-          • <strong>직원 본인 수정 항목</strong>: 휴대폰 번호, 비상연락처, 거주지 주소, 사내 프로필 사진, 비밀번호 등은 직원이 수정하면 즉시 반영됩니다.
+          • <strong>직원 본인 수정 항목</strong>: 휴대폰 번호, 비상연락처, 거주지 주소, 사내 프로필 사진, 비밀번호, 급여 계좌, 그리고 회사가
+          &quot;본인 수정 가능&quot;으로 정한 학력 · 경력 · 자격증 같은 항목은 수정하면 바로 반영됩니다.
         </p>
         <p>
-          • <strong>증빙 제출 항목</strong>: 학력, 이전 직장 경력, 자격증 등은 변경 내용과 증빙 서류를 업로드한 뒤 인사팀/관리자 승인 후 반영됩니다.
+          • <strong>인사팀 처리 항목</strong>: 개명(이름 변경)은 인사팀에 문의해 주세요. 인사 담당이 직원 정보를 고쳐 반영합니다.
         </p>
         <p>
           • <strong>인사팀 전결 항목</strong>: 사번, 부서, 직급/직책, 입사일, 계약 형태 등은 인사발령이나 인사이동을 통해서만 변경됩니다.

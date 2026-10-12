@@ -103,7 +103,6 @@ function useNow() {
 function TodaySection({ today, todayRow, schedule, updatedAt }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
-  const pending = usePendingFeature();
   const now = useNow();
   const [workType, setWorkType] = useState('OFFICE');
   const [placeMemo, setPlaceMemo] = useState('');
@@ -219,20 +218,6 @@ function TodaySection({ today, todayRow, schedule, updatedAt }) {
               <Stat label="예정 퇴근 시각" value={schedule?.endTime ?? '-'} />
               <Stat label="인정 근무 시간" value={working ? '퇴근 후 확정' : todayRow?.workMinutes != null ? hm(todayRow.workMinutes) : '-'} />
             </div>
-          </div>
-        </div>
-
-        <div className="att-two is-24">
-          <div className="att-block">
-            <div className="att-block-head">
-              <h3>근무시간 변경 신청</h3>
-              <Badge>없음</Badge>
-            </div>
-            <Stat label="근무시간 변경 내역" value={schedule ? `현재 ${schedule.startTime} ~ ${schedule.endTime} · 신청 내역 없음` : '-'} text />
-            <Stat label="신청 상태" value="신청 없음" text />
-            <button type="button" className="att-btn" onClick={() => pending('근무시간 변경 신청', '개인 근무시간 변경')}>
-              근무시간 변경 신청
-            </button>
           </div>
         </div>
       </div>
