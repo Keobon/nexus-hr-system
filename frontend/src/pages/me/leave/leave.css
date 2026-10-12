@@ -279,7 +279,11 @@
 }
 
 .lv-select input::-webkit-calendar-picker-indicator {
-  opacity: 0;
+  display: none;
+}
+
+.lv-select.is-date,
+.lv-select.is-date input {
   cursor: pointer;
 }
 

@@ -66,6 +66,16 @@ function useDebounced(value, ms = 300) {
   return v;
 }
 
+/** 날짜 칸 어디를 눌러도 브라우저 달력을 연다(달력 아이콘 자리를 Figma 화살표가 대신함) */
+function openPicker(e) {
+  const input = e.currentTarget.querySelector("input");
+  try {
+    input.showPicker();
+  } catch {
+    input.focus();
+  }
+}
+
 /* ───── 휴가 신청 폼 ───── */
 function RequestForm({ types, schedule, dailyHours }) {
   const queryClient = useQueryClient();
@@ -155,14 +165,14 @@ function RequestForm({ types, schedule, dailyHours }) {
         <div className="lv-split">
           <div className="lv-field">
             <label htmlFor="lv-start">시작일</label>
-            <div className="lv-select">
+            <div className="lv-select is-date" onClick={openPicker}>
               <input id="lv-start" type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); if (!endDate || e.target.value > endDate) setEndDate(e.target.value); }} />
               <img src={iconChevron} alt="" />
             </div>
           </div>
           <div className="lv-field">
             <label htmlFor="lv-end">종료일</label>
-            <div className="lv-select">
+            <div className="lv-select is-date" onClick={openPicker}>
               <input id="lv-end" type="date" min={startDate || undefined} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               <img src={iconChevron} alt="" />
             </div>
