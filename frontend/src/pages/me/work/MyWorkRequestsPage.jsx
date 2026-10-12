@@ -66,15 +66,22 @@ function otRange(row) {
   const end = row.plannedEnd.slice(0, 10) !== row.workDate ? `다음 날 ${hm(row.plannedEnd)}` : hm(row.plannedEnd);
   return `${hm(row.plannedStart)} - ${end}`;
 }
+/** 연장 종류 — 서버 값 holiday · nightMinutes 로 "(휴일)" · "(야간)"(노션 수정사항 102, PR #67) */
+function otKind(row) {
+  const kinds = [row.holiday && '휴일', row.nightMinutes > 0 && '야간'].filter(Boolean);
+  return kinds.length ? ` (${kinds.join(' · ')})` : '';
+}
+
 /**
- * 요청 · 승인 · 인정 시간. 승인된 건은 그날 근태의 overtimeMinutes(실제 연장과 승인 시간 중 작은 값 — 수당 기준)를 같이
- * "승인 2시간 · 인정 1시간 40분"(노션 수정사항 98). 승인이 요청보다 적으면 "2시간 → 1시간 30분 승인"
- * ("야간" 표시는 회사마다 야간 시각이 달라 서버 값이 생길 때까지 뺀다 — 수정사항 102)
+ * 요청 · 승인 · 인정 시간. 승인된 건은 그날 근태로 "승인 2시간 · 인정 1시간 40분"(노션 수정사항 98, 백엔드 팀원 답 10/12):
+ * 인정 = overtimeMinutes + holidayMinutes + holidayOvertimeMinutes(휴일은 overtimeMinutes 가 0), 승인 = approvedOvertimeMinutes.
+ * 승인 전이고 승인이 요청보다 적으면 "2시간 → 1시간 30분 승인"
  */
 function otMinutes(row, day) {
   if (row.status === 'APPROVED' && row.approvedMinutes != null) {
-    const done = day?.checkOutAt && day.overtimeMinutes != null;
-    return `승인 ${formatMinutes(row.approvedMinutes)} · ${done ? `인정 ${formatMinutes(day.overtimeMinutes)}` : '근무 후 인정 시간 확정'}`;
+    const approved = day?.approvedOvertimeMinutes ?? row.approvedMinutes;
+    const recognized = (day?.overtimeMinutes ?? 0) + (day?.holidayMinutes ?? 0) + (day?.holidayOvertimeMinutes ?? 0);
+    return `승인 ${formatMinutes(approved)} · ${day?.checkOutAt ? `인정 ${formatMinutes(recognized)}` : '근무 후 인정 시간 확정'}`;
   }
   if (row.approvedMinutes != null && row.approvedMinutes < row.requestedMinutes) {
     return `${formatMinutes(row.requestedMinutes)} → ${formatMinutes(row.approvedMinutes)} 승인`;
@@ -97,7 +104,7 @@ function buildItems({ overtimes, trips, expenses, month, dayOf }) {
       key: `ot-${r.id}`,
       kind: 'overtime',
       id: r.id,
-      title: '연장 근무 신청',
+      title: `연장 근무 신청${otKind(r)}`,
       sub: `${dot(r.workDate)} · ${otRange(r)} · ${otMinutes(r, dayOf(r.workDate))}`,
       day: dayOf(r.workDate),
       status: r.status,
@@ -182,7 +189,7 @@ function DetailCard({ item, onOpen }) {
   const row = item.row;
   const fields = [];
   if (kind === 'overtime') {
-    fields.push(['신청 유형', '연장 근무']);
+    fields.push(['신청 유형', `연장 근무${otKind(row)}`]);
     fields.push(['신청 시간', `${dot(row.workDate)} ${otRange(row)}`]);
     fields.push([row.approvedMinutes != null ? '승인 · 인정 시간' : '요청 시간', otMinutes(row, item.day)]);
     fields.push(['상세 사유', row.reason, true]);

@@ -35,3 +35,8 @@ export const getMyOvertimes = (month) => api.get('/me/overtime-requests', { mont
 export const myTripsKey = ['trips', 'me'];
 export const getMyTrips = () => api.get('/me/business-trips', { size: 50 });
 export const getTrip = (id) => api.get(`/business-trips/${id}`);
+
+/** GET /attendances/today?orgUnitId= — 직원들의 오늘 근태(ATTENDANCE_READ 범위, 하위 조직 포함, 퇴직자 제외)
+ * 행 { employeeId, name, orgUnitName, todayStatus, workType, placeMemo, checkInAt, checkOutAt } — 페이징 */
+export const teamTodayKey = (orgUnitId) => ['attendance', 'team-today', orgUnitId];
+export const getTeamToday = (orgUnitId) => api.get('/attendances/today', { orgUnitId, size: 50 });

@@ -1,28 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { App, Result, Select, Spin } from 'antd';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
   changeWorkType,
   checkIn,
   checkOut,
-  employeeAttendancesKey,
-  getEmployeeAttendances,
   getMyAttendances,
   getMyOvertimes,
   getMyTrips,
+  getTeamToday,
   getToday,
   getTrip,
   getWorkSchedules,
   myAttendancesKey,
   myOvertimesKey,
   myTripsKey,
+  teamTodayKey,
   todayKey,
   workSchedulesKey,
 } from '../../../api/attendance';
 import { dashboardKey, getDashboardHome } from '../../../api/dashboard';
-import { employeesKey, getEmployees } from '../../../api/employees';
 import { useMe } from '../../../auth/useMe';
 import { useNotify } from '../../../components/common/useNotify';
 import { usePendingFeature } from '../../../components/common/usePendingFeature';
@@ -463,18 +462,20 @@ function CalendarSection({ today }) {
 }
 
 /* ───── 6. 부서원 근태 현황 — 직원 조회 · 근태 조회 권한(팀은 조직장)이 있을 때만 ───── */
-function TeamSection({ me, month, today }) {
+/** 부서원 오늘 근태의 비고 — 자정 넘긴 퇴근 · 근무 장소 */
+function teamNote(row, today) {
+  if (row.checkOutAt && row.checkOutAt.slice(0, 10) !== today) return '자정 넘긴 퇴근';
+  if (row.placeMemo) return row.placeMemo;
+  if (row.workType === 'REMOTE') return '재택 근무';
+  if (row.workType === 'FIELD') return '외근';
+  return '-';
+}
+
+/** 부서원 근태 — GET /attendances/today 한 번(노션 2.3 K-85, PR #67). 하위 조직 포함, 퇴직자 제외 */
+function TeamSection({ me, today }) {
   const orgUnitId = me.leadOrgUnitIds?.[0] ?? me.employee.orgUnitId;
-  const params = { orgUnitId, status: 'ACTIVE', size: 20 };
-  const list = useQuery({ queryKey: employeesKey(params), queryFn: () => getEmployees(params) });
+  const list = useQuery({ queryKey: teamTodayKey(orgUnitId), queryFn: () => getTeamToday(orgUnitId), staleTime: 60_000 });
   const members = list.data?.content ?? [];
-  const days = useQueries({
-    queries: members.map((e) => ({
-      queryKey: employeeAttendancesKey(e.id, month),
-      queryFn: () => getEmployeeAttendances(e.id, month),
-      staleTime: 60_000,
-    })),
-  });
 
   return (
     <section className="att-section">
@@ -491,22 +492,19 @@ function TeamSection({ me, month, today }) {
             <span>비고</span>
           </div>
           {members.length === 0 && <p className="att-empty">{list.isLoading ? '불러오는 중…' : '표시할 부서원이 없습니다.'}</p>}
-          {members.map((e, i) => {
-            const day = days[i]?.data?.days?.find((d) => d.date === today);
-            return (
-              <div key={e.id} className="att-tr is-team">
-                <span className="is-strong">{e.name}</span>
-                <span>{e.orgUnitName}</span>
-                <span>
-                  <Badge tone={TODAY_TONE[e.todayStatus]}>{labelOf('todayStatus', e.todayStatus)}</Badge>
-                </span>
-                <span>{day?.workType ? <Badge>{labelOf('workType', day.workType)}</Badge> : '-'}</span>
-                <span>{clock(day?.checkInAt)}</span>
-                <span>{clock(day?.checkOutAt)}</span>
-                <span className="is-muted">{dayNote(day)}</span>
-              </div>
-            );
-          })}
+          {members.map((e) => (
+            <div key={e.employeeId} className="att-tr is-team">
+              <span className="is-strong">{e.name}</span>
+              <span>{e.orgUnitName}</span>
+              <span>
+                <Badge tone={TODAY_TONE[e.todayStatus]}>{labelOf('todayStatus', e.todayStatus)}</Badge>
+              </span>
+              <span>{e.workType ? <Badge>{labelOf('workType', e.workType)}</Badge> : '-'}</span>
+              <span>{clock(e.checkInAt)}</span>
+              <span>{clock(e.checkOutAt)}</span>
+              <span className="is-muted">{teamNote(e, today)}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -556,7 +554,7 @@ export default function MyAttendancePage() {
   const pendingTrips = tripRows.filter((r) => r.status === 'PENDING');
   const nextPending = pendingTrips.sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
   const weekLevel = week.work >= WEEK_LIMIT ? ['red', '초과'] : week.work >= 44 * 60 ? ['red', '주의'] : ['blue', '정상'];
-  const showTeam = can('ATTENDANCE_READ') && can('EMPLOYEE_READ');
+  const showTeam = can('ATTENDANCE_READ'); // GET /attendances/today 권한(팀 범위는 조직장)
 
   return (
     <div className="att">
@@ -615,7 +613,7 @@ export default function MyAttendancePage() {
       />
       <TripSection trips={tripRows} monthData={cur.data} today={t.workDate} />
       <CalendarSection today={t.workDate} />
-      {showTeam && <TeamSection me={me} month={month} today={t.workDate} />}
+      {showTeam && <TeamSection me={me} today={t.workDate} />}
     </div>
   );
 }
