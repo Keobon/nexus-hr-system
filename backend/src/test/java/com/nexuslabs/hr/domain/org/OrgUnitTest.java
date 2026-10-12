@@ -13,6 +13,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.sql.Date;
+import java.time.Clock;
+import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
@@ -35,6 +39,7 @@ class OrgUnitTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired TestFixture fixture;
     @Autowired OrgUnitService orgUnitService;
+    @Autowired Clock clock;
 
     TestFixture.Company company;
     long root;
@@ -499,6 +504,74 @@ class OrgUnitTest {
         asAdmin(get("/api/org-units/" + dev + "/members?includeSub=true"))
                 .andExpect(jsonPath("$.data[*].id").value(contains((int) head, (int) developer)))
                 .andExpect(jsonPath("$.data[1].jobGradeName").value(nullValue()));
+    }
+
+    private void attendance(long employeeId, String status, String workType) {
+        jdbc.update("""
+                INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, check_in_at, check_out_at,
+                                        check_in_method)
+                VALUES (?, ?, ?, ?::attendance_status, ?::work_type, now() - interval '2 hours',
+                        CASE WHEN ? = 'CHECKED_OUT' THEN now() - interval '1 hour' END, 'WEB')
+                """, company.id(), employeeId, Date.valueOf(LocalDate.now(clock)), status, workType, status);
+    }
+
+    private void vacation(long employeeId) {
+        Date today = Date.valueOf(LocalDate.now(clock));
+        long annual = jdbc.queryForObject("SELECT id FROM leave_type WHERE company_id = ? AND name = '연차'",
+                Long.class, company.id());
+        long leaveId = jdbc.queryForObject("""
+                INSERT INTO leave_request (company_id, employee_id, leave_type_id, leave_year, start_date, end_date,
+                                           days, status)
+                VALUES (?, ?, ?, ?, ?, ?, 1, 'APPROVED') RETURNING id
+                """, Long.class, company.id(), employeeId, annual, LocalDate.now(clock).getYear(), today, today);
+        jdbc.update("""
+                INSERT INTO attendance (company_id, employee_id, work_date, status, check_in_method, leave_request_id)
+                VALUES (?, ?, ?, 'ON_VACATION', 'SYSTEM', ?)
+                """, company.id(), employeeId, today, leaveId);
+    }
+
+    @Test
+    void 소속_직원마다_소속_조직_이메일_오늘_위치를_준다() throws Exception {
+        long dev = org(root, "개발본부");
+        long team = org(dev, "백엔드팀");
+        long remote = member(team);
+        long office = member(team);
+        long away = member(dev);
+        attendance(remote, "CHECKED_IN", "REMOTE");
+        attendance(office, "CHECKED_IN", null);
+        vacation(away);
+        String email = jdbc.queryForObject("SELECT email FROM employee WHERE id = ?", String.class, remote);
+
+        String row = "$.data[?(@.id == %d)]";
+        asAdmin(get("/api/org-units/" + dev + "/members?includeSub=true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(row.formatted(remote) + ".orgUnitId").value(contains((int) team)))
+                .andExpect(jsonPath(row.formatted(remote) + ".orgUnitName").value(contains("백엔드팀")))
+                .andExpect(jsonPath(row.formatted(remote) + ".email").value(contains(email)))
+                .andExpect(jsonPath(row.formatted(remote) + ".workStatus").value(contains("REMOTE")))
+                .andExpect(jsonPath(row.formatted(office) + ".workStatus").value(contains("OFFICE")))
+                .andExpect(jsonPath(row.formatted(away) + ".orgUnitName").value(contains("개발본부")))
+                .andExpect(jsonPath(row.formatted(away) + ".workStatus").value(contains("ON_VACATION")));
+    }
+
+    @Test
+    void 출근_전_퇴근_휴직은_동료에게_위치를_보이지_않는다() throws Exception {
+        long team = org(root, "백엔드팀");
+        long before = member(team);
+        long off = member(team);
+        long onLeave = member(team);
+        attendance(off, "CHECKED_OUT", "OFFICE");
+        attendance(onLeave, "CHECKED_IN", "OFFICE");
+        jdbc.update("UPDATE employee SET status = 'ON_LEAVE' WHERE id = ?", onLeave);
+
+        String row = "$.data[?(@.id == %d)].workStatus";
+        mvc.perform(get("/api/org-units/" + team + "/members")
+                        .header("Authorization", fixture.token(before, company.id())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath(row.formatted(before)).value(contains(nullValue())))
+                .andExpect(jsonPath(row.formatted(off)).value(contains(nullValue())))
+                .andExpect(jsonPath(row.formatted(onLeave)).value(contains(nullValue())));
     }
 
     // ---------------------------------------------------------------- 조직장 자동 해제(BR-ORG-003)
