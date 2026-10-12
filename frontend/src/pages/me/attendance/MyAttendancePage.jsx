@@ -246,7 +246,6 @@ function HistorySection({ rows, today }) {
             <span>출근 시각</span>
             <span>퇴근 시각</span>
             <span>근태 상태</span>
-            <span>소명 상태</span>
             <span>비고</span>
           </div>
           {rows.map(({ date, day }) => {
@@ -259,9 +258,6 @@ function HistorySection({ rows, today }) {
                 <span>
                   <Badge tone={badge.tone}>{badge.label}</Badge>
                 </span>
-                <span>
-                  <Badge>없음</Badge>
-                </span>
                 <span className="is-muted">{dayNote(day)}</span>
               </div>
             );
@@ -273,6 +269,7 @@ function HistorySection({ rows, today }) {
 }
 
 /* ───── 3. 근무시간 및 주 52시간 관리 ───── */
+/** 누적 근무시간 카드 — limit 이 있으면(주 52시간) 막대 · 남은 시간, 없으면(월간) 합계만 */
 function HoursCard({ title, totals, limit, limitLabel }) {
   const ratio = limit ? totals.work / limit : 0;
   const level = ratio >= 1 ? 'over' : ratio >= 44 / 52 ? 'warn' : 'ok';
@@ -281,40 +278,41 @@ function HoursCard({ title, totals, limit, limitLabel }) {
     <div className="att-card">
       <div className="att-block-head">
         <h3>{title}</h3>
-        <Badge tone={badge[0]}>{badge[1]}</Badge>
+        {limit ? <Badge tone={badge[0]}>{badge[1]}</Badge> : null}
       </div>
       <div className="att-rows">
         <Row label="기본 근로시간">{hm(totals.base)}</Row>
         <Row label="연장 근로시간">{hm(totals.overtime)}</Row>
         <Row label="누적 근무시간">{hm(totals.work)}</Row>
       </div>
-      <div className="att-block" style={{ gap: '0.5rem' }}>
-        <div className="att-bar">
-          <div className={level === 'ok' ? '' : `is-${level}`} style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+      {limit ? (
+        <div className="att-block" style={{ gap: '0.5rem' }}>
+          <div className="att-bar">
+            <div className={level === 'ok' ? '' : `is-${level}`} style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+          </div>
+          <p className="att-hint">
+            {limitLabel} {hm(limit)} · 남은 시간 {hm(Math.max(0, limit - totals.work))}
+          </p>
         </div>
-        <p className="att-hint">
-          {limitLabel} {hm(limit)} · 남은 시간 {hm(Math.max(0, limit - totals.work))}
-        </p>
-      </div>
+      ) : null}
     </div>
   );
 }
 
-function HoursSection({ week, month, monthData, overtimes, monthDays }) {
+/**
+ * 근무시간 — 주간 합계 · 52시간 막대는 화면 합산(K-84). "연장 근로 잔여"는 두 화면 모두 주 연장 12시간 − 이번 주 연장(Q-112).
+ * 근거 없는 지표(월 누적 기준 · 연장 승인률)는 뺐다.
+ */
+function HoursSection({ week, month, monthData, overtimes }) {
   const s = monthData.summary;
-  // 그달 52시간 기준 = 주 52시간 × (그달 일수 ÷ 7)
-  const monthLimit = Math.round(WEEK_LIMIT * (monthDays / 7));
   const live = overtimes.filter((o) => o.status === 'PENDING' || o.status === 'APPROVED');
-  const decided = overtimes.filter((o) => o.status === 'APPROVED' || o.status === 'REJECTED');
-  const approvedCount = overtimes.filter((o) => o.status === 'APPROVED').length;
-  const rate = decided.length ? `${Math.round((approvedCount / decided.length) * 100)}%` : '-';
 
   return (
     <section className="att-section">
       <SectionHead title="근무시간 및 주 52시간 관리" sub="주간/월간 누적시간" />
       <div className="att-two">
         <HoursCard title="주간 누적 근무시간" totals={week} limit={WEEK_LIMIT} limitLabel="주 52시간 기준" />
-        <HoursCard title="월간 누적 근무시간" totals={month} limit={monthLimit} limitLabel="월 누적 기준" />
+        <HoursCard title="월간 누적 근무시간" totals={month} />
       </div>
       <div className="att-card">
         <div className="att-block-head">
@@ -327,11 +325,9 @@ function HoursSection({ week, month, monthData, overtimes, monthDays }) {
           <Stat label="야간 근무시간" value={hm(s.nightMinutes)} />
           <Stat label="휴일 근무시간" value={hm(s.holidayMinutes + s.holidayOvertimeMinutes)} />
         </div>
-        <div className="att-stats is-4">
-          <Stat label="잔여 연장 가능시간(주)" value={hm(Math.max(0, WEEK_OT_LIMIT - week.overtime))} />
+        <div className="att-stats">
+          <Stat label="연장 근로 잔여(주 12시간)" value={hm(Math.max(0, WEEK_OT_LIMIT - week.overtime))} />
           <Stat label="주 52시간까지" value={hm(Math.max(0, WEEK_LIMIT - week.work))} />
-          <Stat label="월 누적 기준까지" value={hm(Math.max(0, monthLimit - month.work))} />
-          <Stat label="연장 근무 승인률" value={rate} />
         </div>
       </div>
     </section>
@@ -609,7 +605,6 @@ export default function MyAttendancePage() {
         month={monthTotals}
         monthData={cur.data}
         overtimes={overtimes.data?.content ?? []}
-        monthDays={dayjs(`${month}-01`).daysInMonth()}
       />
       <TripSection trips={tripRows} monthData={cur.data} today={t.workDate} />
       <CalendarSection today={t.workDate} />

@@ -130,9 +130,6 @@ export default function AccountTab({ profile }) {
           <div className="mi-rows">
             <InfoRow label="성명">{profile.name}</InfoRow>
             <InfoRow label="생년월일">{profile.birthDate ? formatDate(profile.birthDate, false) : null}</InfoRow>
-            {/* 주민등록번호는 받지 않는 항목이라(기능명세서 2.3) 저장된 값이 없다 */}
-            <InfoRow label="주민등록번호">{null}</InfoRow>
-            <InfoRow label="거주자 구분">확인 필요</InfoRow>
           </div>
           <div className="mi-box">
             <h3>변경 안내</h3>

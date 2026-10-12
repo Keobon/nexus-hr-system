@@ -42,7 +42,7 @@ import { usePendingFeature } from '../../../components/common/usePendingFeature'
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { formatMinutes, formatMoney } from '../../../utils/format';
-import { WEEK_LIMIT, sumMinutes, weekDates } from '../attendance/logic';
+import { WEEK_OT_LIMIT, sumMinutes, weekDates } from '../attendance/logic';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import './work.css';
 
@@ -741,7 +741,8 @@ export default function MyWorkRequestsPage() {
   const weekLoaded = attendances.every((a) => a.data);
   const byDate = Object.fromEntries(attendances.flatMap((a) => a.data?.days ?? []).map((d) => [d.date, d]));
   const weekSum = sumMinutes(week.map((d) => byDate[d]));
-  const remain = WEEK_LIMIT - weekSum.work;
+  // 연장 근로 잔여 = 주 연장 12시간 − 이번 주 연장(출퇴근 화면과 같은 정의, 노션 Q-112)
+  const remain = WEEK_OT_LIMIT - weekSum.overtime;
   const h = (min) => `${Math.round((min / 60) * 10) / 10}시간`;
 
   const pick = (kind) => {
@@ -758,7 +759,7 @@ export default function MyWorkRequestsPage() {
         ['연장 근무 신청', '근무 일자 · 예정 시간 · 업무 사유', () => setOpen({ type: 'overtime' })],
         ['연장 근무 결재 현황', '결재 대기 · 승인 · 반려 상태 확인', () => pick('overtime')],
         ['실제 연장 근무 소명 / 확인', '사전 신청과 실제 수행 시간 차이 소명', () => pending('실제 연장 근무 소명', '연장 근무 소명')],
-        ['주간 연장 근로 잔여 시간', '주 52시간 한도 초과 방지용 시간 조회', () => navigate('/me/attendance')],
+        ['주간 연장 근로 잔여 시간', '주 연장 12시간 기준 · 출퇴근 화면에서 조회', () => navigate('/me/attendance')],
       ],
     },
     {
@@ -830,7 +831,7 @@ export default function MyWorkRequestsPage() {
           <strong>{weekLoaded ? h(Math.max(0, remain)) : '-'}</strong>
           <em
             className={remain < 0 ? 'is-red' : 'is-green'}
-          >{`주 52시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
+          >{`주 연장 12시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
         </div>
       </div>
 

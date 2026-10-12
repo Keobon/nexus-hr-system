@@ -271,7 +271,7 @@ function InfoCard({ profile, payrollEligible }) {
                     <Link to="/me/evaluations" className="home-link">
                       평가 결과 보기 →
                     </Link>
-                    <Link to="/me/evaluations?tab=assignments" className="home-link">
+                    <Link to="/me/evaluations?tab=assign" className="home-link">
                       인사발령 이력 →
                     </Link>
                   </span>

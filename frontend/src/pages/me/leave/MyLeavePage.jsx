@@ -220,7 +220,7 @@ function RequestForm({ types, schedule, dailyHours }) {
             <img src={iconPaperclip} alt="" />
             <span>파일을 선택해 주세요</span>
           </button>
-          <p className="lv-hint">병가·경조휴가 신청 시 증빙 필수 (PDF, JPG)</p>
+          <p className="lv-hint">증빙 서류 첨부는 준비 중입니다.</p>
         </div>
 
         <div className="lv-field">
@@ -254,7 +254,7 @@ function RequestForm({ types, schedule, dailyHours }) {
           {submit.isPending ? '요청 중…' : '결재 요청'}
         </button>
       </div>
-      <p className="lv-muted" style={{ margin: 0 }}>결재 완료 후 잔여 연차에 반영됩니다.</p>
+      <p className="lv-muted" style={{ margin: 0 }}>신청하면 승인 대기 일수만큼 잔여에서 바로 빠지고, 반려 · 철회되면 돌아옵니다.</p>
     </section>
   );
 }
