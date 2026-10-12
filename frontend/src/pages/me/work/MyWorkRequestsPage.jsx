@@ -42,7 +42,7 @@ import { usePendingFeature } from '../../../components/common/usePendingFeature'
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { formatMinutes, formatMoney } from '../../../utils/format';
-import { WEEK_LIMIT, sumMinutes, weekDates } from '../attendance/logic';
+import { WEEK_OT_LIMIT, sumMinutes, weekDates } from '../attendance/logic';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import './work.css';
 
@@ -66,15 +66,22 @@ function otRange(row) {
   const end = row.plannedEnd.slice(0, 10) !== row.workDate ? `다음 날 ${hm(row.plannedEnd)}` : hm(row.plannedEnd);
   return `${hm(row.plannedStart)} - ${end}`;
 }
+/** 연장 종류 — 서버 값 holiday · nightMinutes 로 "(휴일)" · "(야간)"(노션 수정사항 102, PR #67) */
+function otKind(row) {
+  const kinds = [row.holiday && '휴일', row.nightMinutes > 0 && '야간'].filter(Boolean);
+  return kinds.length ? ` (${kinds.join(' · ')})` : '';
+}
+
 /**
- * 요청 · 승인 · 인정 시간. 승인된 건은 그날 근태의 overtimeMinutes(실제 연장과 승인 시간 중 작은 값 — 수당 기준)를 같이
- * "승인 2시간 · 인정 1시간 40분"(노션 수정사항 98). 승인이 요청보다 적으면 "2시간 → 1시간 30분 승인"
- * ("야간" 표시는 회사마다 야간 시각이 달라 서버 값이 생길 때까지 뺀다 — 수정사항 102)
+ * 요청 · 승인 · 인정 시간. 승인된 건은 그날 근태로 "승인 2시간 · 인정 1시간 40분"(노션 수정사항 98, 백엔드 팀원 답 10/12):
+ * 인정 = overtimeMinutes + holidayMinutes + holidayOvertimeMinutes(휴일은 overtimeMinutes 가 0), 승인 = approvedOvertimeMinutes.
+ * 승인 전이고 승인이 요청보다 적으면 "2시간 → 1시간 30분 승인"
  */
 function otMinutes(row, day) {
   if (row.status === 'APPROVED' && row.approvedMinutes != null) {
-    const done = day?.checkOutAt && day.overtimeMinutes != null;
-    return `승인 ${formatMinutes(row.approvedMinutes)} · ${done ? `인정 ${formatMinutes(day.overtimeMinutes)}` : '근무 후 인정 시간 확정'}`;
+    const approved = day?.approvedOvertimeMinutes ?? row.approvedMinutes;
+    const recognized = (day?.overtimeMinutes ?? 0) + (day?.holidayMinutes ?? 0) + (day?.holidayOvertimeMinutes ?? 0);
+    return `승인 ${formatMinutes(approved)} · ${day?.checkOutAt ? `인정 ${formatMinutes(recognized)}` : '근무 후 인정 시간 확정'}`;
   }
   if (row.approvedMinutes != null && row.approvedMinutes < row.requestedMinutes) {
     return `${formatMinutes(row.requestedMinutes)} → ${formatMinutes(row.approvedMinutes)} 승인`;
@@ -97,7 +104,7 @@ function buildItems({ overtimes, trips, expenses, month, dayOf }) {
       key: `ot-${r.id}`,
       kind: 'overtime',
       id: r.id,
-      title: '연장 근무 신청',
+      title: `연장 근무 신청${otKind(r)}`,
       sub: `${dot(r.workDate)} · ${otRange(r)} · ${otMinutes(r, dayOf(r.workDate))}`,
       day: dayOf(r.workDate),
       status: r.status,
@@ -182,7 +189,7 @@ function DetailCard({ item, onOpen }) {
   const row = item.row;
   const fields = [];
   if (kind === 'overtime') {
-    fields.push(['신청 유형', '연장 근무']);
+    fields.push(['신청 유형', `연장 근무${otKind(row)}`]);
     fields.push(['신청 시간', `${dot(row.workDate)} ${otRange(row)}`]);
     fields.push([row.approvedMinutes != null ? '승인 · 인정 시간' : '요청 시간', otMinutes(row, item.day)]);
     fields.push(['상세 사유', row.reason, true]);
@@ -734,7 +741,8 @@ export default function MyWorkRequestsPage() {
   const weekLoaded = attendances.every((a) => a.data);
   const byDate = Object.fromEntries(attendances.flatMap((a) => a.data?.days ?? []).map((d) => [d.date, d]));
   const weekSum = sumMinutes(week.map((d) => byDate[d]));
-  const remain = WEEK_LIMIT - weekSum.work;
+  // 연장 근로 잔여 = 주 연장 12시간 − 이번 주 연장(출퇴근 화면과 같은 정의, 노션 Q-112)
+  const remain = WEEK_OT_LIMIT - weekSum.overtime;
   const h = (min) => `${Math.round((min / 60) * 10) / 10}시간`;
 
   const pick = (kind) => {
@@ -751,7 +759,7 @@ export default function MyWorkRequestsPage() {
         ['연장 근무 신청', '근무 일자 · 예정 시간 · 업무 사유', () => setOpen({ type: 'overtime' })],
         ['연장 근무 결재 현황', '결재 대기 · 승인 · 반려 상태 확인', () => pick('overtime')],
         ['실제 연장 근무 소명 / 확인', '사전 신청과 실제 수행 시간 차이 소명', () => pending('실제 연장 근무 소명', '연장 근무 소명')],
-        ['주간 연장 근로 잔여 시간', '주 52시간 한도 초과 방지용 시간 조회', () => navigate('/me/attendance')],
+        ['주간 연장 근로 잔여 시간', '주 연장 12시간 기준 · 출퇴근 화면에서 조회', () => navigate('/me/attendance')],
       ],
     },
     {
@@ -823,7 +831,7 @@ export default function MyWorkRequestsPage() {
           <strong>{weekLoaded ? h(Math.max(0, remain)) : '-'}</strong>
           <em
             className={remain < 0 ? 'is-red' : 'is-green'}
-          >{`주 52시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
+          >{`주 연장 12시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
         </div>
       </div>
 

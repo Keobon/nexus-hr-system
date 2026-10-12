@@ -403,7 +403,7 @@
 }
 
 .att-tr.is-history {
-  grid-template-columns: 7.5rem 8.75rem 8.75rem 7.5rem 7.5rem minmax(0, 1fr);
+  grid-template-columns: 7.5rem 8.75rem 8.75rem 7.5rem minmax(0, 1fr);
 }
 
 .att-tr.is-team {

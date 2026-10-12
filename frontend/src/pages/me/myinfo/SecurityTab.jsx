@@ -48,7 +48,6 @@ export default function SecurityTab() {
           <p className="mi-text is-14" style={{ lineHeight: 'normal' }}>
             본인 관리 · 별도 승인 없이 즉시 반영
           </p>
-          <InfoRow label="보안 상태">설정 확인 필요</InfoRow>
           <div className="mi-field">
             <label htmlFor="pw-current">현재 비밀번호</label>
             <input
@@ -96,11 +95,8 @@ export default function SecurityTab() {
 
         <section className="mi-card">
           <h2 className="mi-card-title">2차 인증</h2>
-          <div className="mi-rows">
-            <InfoRow label="설정 상태">설정 확인 필요</InfoRow>
-            <InfoRow label="인증 수단">확인 필요</InfoRow>
-          </div>
-          <p className="mi-text">2차 인증 등록·변경은 기존 담당자 확인 절차에 따라 처리됩니다.</p>
+          <InfoRow label="제공 여부">준비 중</InfoRow>
+          <p className="mi-text">2차 인증은 아직 제공하지 않습니다. 로그인은 사내 계정과 비밀번호로 합니다.</p>
           <div className="mi-actions is-divided">
             <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('2차 인증 등록 신청', '2차 인증')}>
               2차 인증 등록 신청
@@ -114,8 +110,8 @@ export default function SecurityTab() {
 
       <section className="mi-card">
         <h2 className="mi-card-title">로그인 보안 설정</h2>
-        <InfoRow label="설정 상태">설정 확인 필요</InfoRow>
-        <p className="mi-text is-14">로그인 보안 설정은 기존 담당자 확인 절차에 따라 변경을 신청해 주세요.</p>
+        <InfoRow label="제공 여부">준비 중</InfoRow>
+        <p className="mi-text is-14">로그인 보안 설정(접속 기기 · 알림 등)은 아직 제공하지 않습니다.</p>
         <div className="mi-actions is-divided">
           <button
             type="button"
@@ -129,7 +125,7 @@ export default function SecurityTab() {
       </section>
 
       <Note variant="page">
-        비밀번호는 별도 승인 없이 변경 즉시 반영됩니다. 2차 인증과 로그인 보안 설정은 기존 담당자 확인 절차를 유지합니다.
+        비밀번호는 별도 승인 없이 변경 즉시 반영됩니다. 2차 인증과 로그인 보안 설정은 준비 중입니다.
       </Note>
     </div>
   );
