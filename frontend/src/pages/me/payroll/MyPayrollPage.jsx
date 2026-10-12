@@ -1,62 +1,58 @@
-import { useEffect, useState } from "react";
-import { Result, Spin } from "antd";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import {
-  getMyPayslip,
-  getMyPayslips,
-  getMySalaries,
-  myPayslipKey,
-  myPayslipsKey,
-  mySalariesKey,
-} from "../../../api/payroll";
-import { usePendingFeature } from "../../../components/common/usePendingFeature";
-import { errorMessage } from "../../../constants/errors";
-import { LABELS } from "../../../constants/labels";
-import { formatMoney } from "../../../utils/format";
-import iconChevron from "../../../assets/figma/icon-chevron.svg";
-import "./payroll.css";
+import { useEffect, useState } from 'react';
+import { Result, Spin } from 'antd';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { getMyPayslip, getMyPayslips, getMySalaries, myPayslipKey, myPayslipsKey, mySalariesKey } from '../../../api/payroll';
+import { downloadFile, openFile } from '../../../api/files';
+import { getMyDocuments, myDocumentsKey } from '../../../api/profile';
+import { useNotify } from '../../../components/common/useNotify';
+import { usePendingFeature } from '../../../components/common/usePendingFeature';
+import { errorMessage } from '../../../constants/errors';
+import { LABELS } from '../../../constants/labels';
+import { formatMoney } from '../../../utils/format';
+import iconChevron from '../../../assets/figma/icon-chevron.svg';
+import './payroll.css';
 
-const dot = (d) => (d ? d.replaceAll("-", ".") : "-");
+const dot = (d) => (d ? d.replaceAll('-', '.') : '-');
 /** '2026-09' → '2026년 9월' */
-const ym = (m) => (m ? `${m.slice(0, 4)}년 ${Number(m.slice(5, 7))}월` : "-");
+const ym = (m) => (m ? `${m.slice(0, 4)}년 ${Number(m.slice(5, 7))}월` : '-');
 
 const MENU = [
-  ["monthly", "월별 급여 명세서"],
-  ["bonus", "상여 및 성과급"],
-  ["tax", "원천징수·연말정산"],
-  ["contract", "연봉 계약·퇴직금"],
-  ["history", "급여 변경 이력"],
+  ['monthly', '월별 급여 명세서'],
+  ['bonus', '직접 입력 지급'],
+  ['tax', '원천징수·연말정산'],
+  ['contract', '연봉 계약·퇴직금'],
+  ['history', '급여 변경 이력'],
 ];
 
 /** 지급 줄의 과세 구분 — 과세 · 비과세 · 일부 비과세 */
 function taxLabel(line) {
-  if (line.itemKind !== "EARNING") return null;
-  if (line.nonTaxableAmount > 0 && line.taxableAmount === 0) return "비과세";
-  if (line.nonTaxableAmount > 0) return "일부 비과세";
-  return "과세";
+  if (line.itemKind !== 'EARNING') return null;
+  if (line.nonTaxableAmount > 0 && line.taxableAmount === 0) return '비과세';
+  if (line.nonTaxableAmount > 0) return '일부 비과세';
+  return '과세';
 }
 
 /** 명세서 값 칸 — 기본급(줄이 아니라 basePay) → 지급 줄 → 소득세 · 지방소득세 → 공제 줄 → 실수령액 (근태 연동 줄은 산식을 같이, F-PAY-06) */
 function payslipTiles(p) {
-  const earnings = p.lines.filter((l) => l.itemKind === "EARNING");
-  const deductions = p.lines.filter((l) => l.itemKind === "DEDUCTION");
+  const earnings = p.lines.filter((l) => l.itemKind === 'EARNING');
+  const deductions = p.lines.filter((l) => l.itemKind === 'DEDUCTION');
   return [
-    { key: "base", label: "기본급 · 과세", value: formatMoney(p.basePay) },
+    { key: 'base', label: '기본급 · 과세', value: formatMoney(p.basePay) },
     ...earnings.map((l) => ({
       key: `e${l.payItemId}`,
       label: `${l.name} · ${taxLabel(l)}`,
       value: formatMoney(l.amount),
       note: l.formulaNote,
     })),
-    { key: "income", label: "소득세", value: formatMoney(p.incomeTax) },
-    { key: "local", label: "지방소득세", value: formatMoney(p.localIncomeTax) },
+    { key: 'income', label: '소득세', value: formatMoney(p.incomeTax) },
+    { key: 'local', label: '지방소득세', value: formatMoney(p.localIncomeTax) },
     ...deductions.map((l) => ({
       key: `d${l.payItemId}`,
       label: l.name,
       value: formatMoney(l.amount),
       note: l.formulaNote,
     })),
-    { key: "net", label: "실수령액", value: formatMoney(p.netPay), blue: true },
+    { key: 'net', label: '실수령액', value: formatMoney(p.netPay), blue: true },
   ];
 }
 
@@ -79,7 +75,7 @@ function MonthlySection({ rows, selectedId, onSelect }) {
             <label className="ps-select">
               <select
                 aria-label="귀속연월"
-                value={selectedId ?? ""}
+                value={selectedId ?? ''}
                 disabled={!rows.length}
                 onChange={(e) => onSelect(Number(e.target.value))}
               >
@@ -93,20 +89,10 @@ function MonthlySection({ rows, selectedId, onSelect }) {
               <img src={iconChevron} alt="" />
             </label>
             {/* 브라우저 인쇄 창 — "PDF로 저장"을 고르면 PDF 로 받는다 */}
-            <button
-              type="button"
-              className="ps-btn"
-              disabled={!p}
-              onClick={() => window.print()}
-            >
+            <button type="button" className="ps-btn" disabled={!p} onClick={() => window.print()}>
               PDF 다운로드
             </button>
-            <button
-              type="button"
-              className="ps-btn is-gray"
-              disabled={!p}
-              onClick={() => window.print()}
-            >
+            <button type="button" className="ps-btn is-gray" disabled={!p} onClick={() => window.print()}>
               출력
             </button>
           </div>
@@ -114,28 +100,26 @@ function MonthlySection({ rows, selectedId, onSelect }) {
         <div className="ps-tiles">
           <div className="ps-tile is-big">
             <span>총 지급액</span>
-            <strong>{p ? formatMoney(p.grossPay) : "-"}</strong>
+            <strong>{p ? formatMoney(p.grossPay) : '-'}</strong>
           </div>
           <div className="ps-tile is-big">
             <span>총 공제액</span>
-            <strong>{p ? formatMoney(p.totalDeduction) : "-"}</strong>
+            <strong>{p ? formatMoney(p.totalDeduction) : '-'}</strong>
           </div>
           <div className="ps-tile is-big">
             <span>실수령액</span>
-            <strong className="is-blue">
-              {p ? formatMoney(p.netPay) : row ? formatMoney(row.netPay) : "-"}
-            </strong>
+            <strong className="is-blue">{p ? formatMoney(p.netPay) : row ? formatMoney(row.netPay) : '-'}</strong>
           </div>
           <div className="ps-tile is-big">
             <span>지급일</span>
-            <strong>{row ? dot(row.payDate) : "-"}</strong>
+            <strong>{row ? dot(row.payDate) : '-'}</strong>
           </div>
         </div>
       </section>
 
       <section className="ps-card">
         <div className="ps-card-head">
-          <h2>{row ? `${ym(row.payMonth)} 급여 명세서` : "급여 명세서"}</h2>
+          <h2>{row ? `${ym(row.payMonth)} 급여 명세서` : '급여 명세서'}</h2>
           {p && (
             <span className="ps-meta">
               {[
@@ -146,48 +130,32 @@ function MonthlySection({ rows, selectedId, onSelect }) {
                 `부양가족 ${p.dependentsCount}명(자녀 ${p.childrenCount})`,
               ]
                 .filter(Boolean)
-                .join(" · ")}
+                .join(' · ')}
             </span>
           )}
         </div>
-        {!rows.length && (
-          <p className="ps-empty">
-            아직 정산된 급여 명세서가 없습니다. 급여가 확정되면 여기에
-            표시됩니다.
-          </p>
-        )}
-        {rows.length > 0 &&
-          !p &&
-          (q.isLoading ? (
-            <Spin />
-          ) : (
-            <p className="ps-empty">{errorMessage(q.error)}</p>
-          ))}
+        {!rows.length && <p className="ps-empty">아직 정산된 급여 명세서가 없습니다. 급여가 확정되면 여기에 표시됩니다.</p>}
+        {rows.length > 0 && !p && (q.isLoading ? <Spin /> : <p className="ps-empty">{errorMessage(q.error)}</p>)}
         {p && (
           <div className="ps-tiles">
             {payslipTiles(p).map((t) => (
               <div key={t.key} className="ps-tile">
                 <span title={t.label}>{t.label}</span>
-                <strong className={t.blue ? "is-blue" : undefined}>
-                  {t.value}
-                </strong>
+                <strong className={t.blue ? 'is-blue' : undefined}>{t.value}</strong>
                 {t.note && <em>{t.note}</em>}
               </div>
             ))}
           </div>
         )}
         {p?.expenseClaimIds?.length > 0 && (
-          <p
-            className="ps-meta"
-            style={{ margin: 0 }}
-          >{`출장 경비 ${p.expenseClaimIds.length}건이 이 달 급여에 반영되었습니다.`}</p>
+          <p className="ps-meta" style={{ margin: 0 }}>{`출장 경비 ${p.expenseClaimIds.length}건이 이 달 급여에 반영되었습니다.`}</p>
         )}
       </section>
     </>
   );
 }
 
-/* ───── 상여 및 성과급 — 최근 3개월 명세서의 수동 입력 지급 줄(상여 · 성과급처럼 달마다 정하는 항목) ───── */
+/* ───── 직접 입력 지급 — 최근 3개월 명세서의 수동 입력 지급 줄. 성과급만이 아니라 소급 조정 등도 있어 항목 이름을 그대로(노션 수정사항 105) ───── */
 function BonusCard({ rows }) {
   const recent = rows.slice(0, 3);
   const details = useQueries({
@@ -200,10 +168,7 @@ function BonusCard({ rows }) {
   const sums = {};
   details.forEach((d) =>
     (d.data?.lines ?? [])
-      .filter(
-        (l) =>
-          l.itemKind === "EARNING" && l.calcMethod === "MANUAL" && l.amount > 0,
-      )
+      .filter((l) => l.itemKind === 'EARNING' && l.calcMethod === 'MANUAL' && l.amount > 0)
       .forEach((l) => {
         sums[l.name] = (sums[l.name] ?? 0) + l.amount;
       }),
@@ -213,14 +178,10 @@ function BonusCard({ rows }) {
 
   return (
     <section className="ps-card is-side ps-print-hide" id="ps-bonus">
-      <h2>상여 및 성과급 명세</h2>
+      <h2>직접 입력 지급 명세</h2>
       <div className="ps-rows">
         {loading && <Spin />}
-        {!loading && items.length === 0 && (
-          <p className="ps-empty">
-            최근 3개월 동안 지급된 상여 · 성과급이 없습니다.
-          </p>
-        )}
+        {!loading && items.length === 0 && <p className="ps-empty">최근 3개월 동안 직접 입력된 지급 항목이 없습니다.</p>}
         {items.map(([name, amount]) => (
           <div key={name} className="ps-row">
             <span>{name}</span>
@@ -229,9 +190,9 @@ function BonusCard({ rows }) {
         ))}
       </div>
       <div className="ps-total">
-        <span>특별 급여 합계</span>
+        <span>직접 입력 지급 합계</span>
         <strong>{formatMoney(total)}</strong>
-        <em>최근 3개월 명세서의 수동 입력 지급 항목 합계</em>
+        <em>최근 3개월 명세서에서 달마다 직접 입력한 지급 항목(성과급 · 소급 조정 등) 합계</em>
       </div>
     </section>
   );
@@ -243,10 +204,7 @@ function TaxCard() {
     <section className="ps-card is-grow ps-print-hide" id="ps-tax">
       <h2>원천징수영수증 및 연말정산</h2>
       <div className="ps-rows">
-        {[
-          "근로소득 원천징수영수증 발급",
-          "연말정산 예상 결과 · 환급 예정일",
-        ].map((t) => (
+        {['근로소득 원천징수영수증 발급', '연말정산 예상 결과 · 환급 예정일'].map((t) => (
           <div key={t} className="ps-row">
             <span>{t}</span>
             <span className="is-muted">준비 중</span>
@@ -256,9 +214,8 @@ function TaxCard() {
       <div className="ps-note">
         <strong>연말정산 안내</strong>
         <p>
-          원천징수영수증 발급과 연말정산은 이 시스템에서 아직 제공하지 않습니다.
-          필요하면 인사 · 급여 담당자에게 문의해 주세요. 월별 명세서의 소득세 ·
-          지방소득세는 위 명세서에서 확인할 수 있습니다.
+          원천징수영수증 발급과 연말정산은 이 시스템에서 아직 제공하지 않습니다. 필요하면 인사 · 급여 담당자에게 문의해 주세요. 월별
+          명세서의 소득세 · 지방소득세는 위 명세서에서 확인할 수 있습니다.
         </p>
       </div>
     </section>
@@ -268,6 +225,11 @@ function TaxCard() {
 /* ───── 연봉 계약 · 퇴직금 ───── */
 function ContractCard({ salaries, onHistory }) {
   const pending = usePendingFeature();
+  const notify = useNotify();
+  const docs = useQuery({ queryKey: myDocumentsKey, queryFn: getMyDocuments });
+  const labor = (docs.data ?? []).find((g) => g.docType === 'LABOR_CONTRACT');
+  const doc = labor?.current;
+  const fileAction = (fn) => () => fn(doc.fileId).catch((err) => notify.error(err));
   const cur = salaries?.current;
   const past = Math.max(0, (salaries?.salaries?.length ?? 0) - 1);
   return (
@@ -280,47 +242,49 @@ function ContractCard({ salaries, onHistory }) {
               <span>현재 급여</span>
               <span>
                 {cur
-                  ? `${LABELS.salaryType[cur.salaryType]?.label ?? ""} · ${cur.annualSalary != null ? `연 ${formatMoney(cur.annualSalary)}` : `월 ${formatMoney(cur.monthlyBase)}`}`
-                  : "등록 전"}
+                  ? `${LABELS.salaryType[cur.salaryType]?.label ?? ''} · ${cur.annualSalary != null ? `연 ${formatMoney(cur.annualSalary)}` : `월 ${formatMoney(cur.monthlyBase)}`}`
+                  : '등록 전'}
               </span>
             </div>
             <div className="ps-row">
               <span>적용 시작일</span>
-              <span>{cur ? dot(cur.effectiveFrom) : "-"}</span>
+              <span>{cur ? dot(cur.effectiveFrom) : '-'}</span>
             </div>
             <div className="ps-row">
               <span>월 기본급</span>
-              <span>{cur ? formatMoney(cur.monthlyBase) : "-"}</span>
+              <span>{cur ? formatMoney(cur.monthlyBase) : '-'}</span>
             </div>
             <div className="ps-row">
-              <span>과거 계약 내역</span>
+              <span>과거 급여 내역</span>
               <span className="is-blue">{`${past}건`}</span>
+            </div>
+            <div className="ps-row">
+              <span>근로계약서</span>
+              <span className={doc ? undefined : 'is-muted'}>
+                {docs.isLoading ? '…' : doc ? `${doc.issuedDate ? `${dot(doc.issuedDate)} · ` : ''}v${doc.versionNo}${labor.versions?.length > 1 ? ` (이전 ${labor.versions.length - 1}건)` : ''}` : '등록된 계약서 없음'}
+              </span>
             </div>
           </div>
           <div className="ps-note">
             <strong>계약 조회 안내</strong>
             <p>
-              인사 담당이 등록한 급여 기준(연봉 · 월 기본급)입니다. 계약서 파일
-              조회와 전자서명은 아직 제공하지 않습니다.
+              급여는 인사 담당이 등록한 기준(연봉 · 월 기본급)이고, 근로계약서는 인사 담당이 올린 최신본입니다. 전자서명은 아직 제공하지
+              않습니다.
             </p>
           </div>
           <div className="ps-links">
-            <button
-              type="button"
-              onClick={onHistory}
-            >{`과거 계약 ${past}건`}</button>
-            <button
-              type="button"
-              onClick={() =>
-                pending("연봉 계약서 조회", "연봉 계약서 · 전자서명")
-              }
-            >
-              계약서 조회
-            </button>
-            <button
-              type="button"
-              onClick={() => pending("전자서명", "연봉 계약서 · 전자서명")}
-            >
+            <button type="button" onClick={onHistory}>{`과거 급여 ${past}건`}</button>
+            {doc && (
+              <>
+                <button type="button" onClick={fileAction(openFile)}>
+                  계약서 보기
+                </button>
+                <button type="button" onClick={fileAction(downloadFile)}>
+                  내려받기
+                </button>
+              </>
+            )}
+            <button type="button" onClick={() => pending('전자서명', '연봉 계약서 · 전자서명')}>
               전자서명
             </button>
           </div>
@@ -328,7 +292,7 @@ function ContractCard({ salaries, onHistory }) {
         <div>
           <h2>예상 퇴직금</h2>
           <div className="ps-rows">
-            {["현재 기준 예상 퇴직금", "퇴직연금 가입 유형"].map((t) => (
+            {['현재 기준 예상 퇴직금', '퇴직연금 가입 유형'].map((t) => (
               <div key={t} className="ps-row">
                 <span>{t}</span>
                 <span className="is-muted">준비 중</span>
@@ -338,8 +302,7 @@ function ContractCard({ salaries, onHistory }) {
           <div className="ps-note">
             <strong>예상 퇴직금 안내</strong>
             <p>
-              퇴직금 추정 · 퇴직연금 정보는 아직 제공하지 않습니다(기능명세서 v2
-              범위 밖). 필요하면 인사 · 급여 담당자에게 문의해 주세요.
+              퇴직금 추정 · 퇴직연금 정보는 아직 제공하지 않습니다(기능명세서 v2 범위 밖). 필요하면 인사 · 급여 담당자에게 문의해 주세요.
             </p>
           </div>
         </div>
@@ -374,11 +337,9 @@ function HistoryCard({ salaries }) {
                 <tr key={r.id}>
                   <td className="is-num">{dot(r.effectiveFrom)}</td>
                   <td>{LABELS.salaryType[r.salaryType]?.label}</td>
-                  <td className="is-num">
-                    {r.annualSalary != null ? formatMoney(r.annualSalary) : "-"}
-                  </td>
+                  <td className="is-num">{r.annualSalary != null ? formatMoney(r.annualSalary) : '-'}</td>
                   <td className="is-num">{formatMoney(r.monthlyBase)}</td>
-                  <td>{r.reason || "-"}</td>
+                  <td>{r.reason || '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -403,7 +364,7 @@ function HistoryCard({ salaries }) {
                     <td>{i.name}</td>
                     <td className="is-num">{dot(h.effectiveFrom)}</td>
                     <td className="is-num">{formatMoney(h.amount)}</td>
-                    <td>{h.reason || "-"}</td>
+                    <td>{h.reason || '-'}</td>
                   </tr>
                 )),
               )}
@@ -418,7 +379,7 @@ function HistoryCard({ salaries }) {
 /** 내 급여 명세서(F-PAY-06 본인 · F-PAY-04 본인 급여) — Figma COMMON_my_payslip */
 export default function MyPayrollPage() {
   const [selectedId, setSelectedId] = useState(null);
-  const [active, setActive] = useState("monthly");
+  const [active, setActive] = useState('monthly');
   const payslips = useQuery({
     queryKey: myPayslipsKey,
     queryFn: getMyPayslips,
@@ -436,63 +397,42 @@ export default function MyPayrollPage() {
 
   if (payslips.isLoading || salaries.isLoading) {
     return (
-      <div className="page-center" style={{ minHeight: "25rem" }}>
+      <div className="page-center" style={{ minHeight: '25rem' }}>
         <Spin size="large" />
       </div>
     );
   }
   const error = payslips.error ?? salaries.error;
-  if (error)
-    return (
-      <Result
-        status="warning"
-        title="급여 정보를 불러오지 못했습니다"
-        subTitle={errorMessage(error)}
-      />
-    );
+  if (error) return <Result status="warning" title="급여 정보를 불러오지 못했습니다" subTitle={errorMessage(error)} />;
 
   const go = (key) => {
     setActive(key);
-    document
-      .getElementById(`ps-${key}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(`ps-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
     <div className="ps">
       <header className="ps-head">
         <h1>내 급여 명세서</h1>
-        <p>
-          월별 급여 명세서와 급여 변경 이력을 확인하세요. 금액은 정산 당시
-          저장된 값입니다.
-        </p>
+        <p>월별 급여 명세서와 급여 변경 이력을 확인하세요. 금액은 정산 당시 저장된 값입니다.</p>
       </header>
 
       <nav className="ps-menu" aria-label="급여 메뉴">
         {MENU.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={active === key ? "is-active" : undefined}
-            onClick={() => go(key)}
-          >
+          <button key={key} type="button" className={active === key ? 'is-active' : undefined} onClick={() => go(key)}>
             {label}
           </button>
         ))}
       </nav>
 
-      <MonthlySection
-        rows={rows}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-      />
+      <MonthlySection rows={rows} selectedId={selectedId} onSelect={setSelectedId} />
 
       <div className="ps-bottom">
         <BonusCard rows={rows} />
         <TaxCard />
       </div>
 
-      <ContractCard salaries={salaries.data} onHistory={() => go("history")} />
+      <ContractCard salaries={salaries.data} onHistory={() => go('history')} />
       <HistoryCard salaries={salaries.data} />
     </div>
   );

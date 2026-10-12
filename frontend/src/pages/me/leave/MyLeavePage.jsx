@@ -481,7 +481,10 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
 function visibleTeamLeaves(rows, meId, full) {
   const others = (rows ?? []).filter((r) => r.employeeId !== meId);
   if (full) return others;
-  return others.filter((r) => r.status === 'APPROVED').map((r) => ({ ...r, leaveTypeName: '휴가' }));
+  // 취소요청 중인 휴가도 취소가 승인되기 전까지는 승인된 휴가(노션 수정사항 103)
+  return others
+    .filter((r) => r.status === 'APPROVED' || r.status === 'CANCEL_REQUESTED')
+    .map((r) => ({ ...r, status: 'APPROVED', leaveTypeName: '휴가' }));
 }
 
 /** 다가오는 휴가와 겹치는 팀원 휴가(GET /me/team-leaves) */
