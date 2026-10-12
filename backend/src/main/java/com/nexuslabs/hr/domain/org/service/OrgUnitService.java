@@ -1,5 +1,7 @@
 package com.nexuslabs.hr.domain.org.service;
 
+import com.nexuslabs.hr.domain.attendance.service.TodayStatus;
+import com.nexuslabs.hr.domain.attendance.service.TodayStatusReader;
 import com.nexuslabs.hr.domain.employee.entity.Employee;
 import com.nexuslabs.hr.domain.org.dto.LeadSummary;
 import com.nexuslabs.hr.domain.org.dto.OrgMemberResponse;
@@ -21,11 +23,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 조직 관리와 조직도(F-ORG-01·02). 등록·수정은 JPA, 재귀 트리·인원 집계·다른 영역 참조 확인은 JDBC 로 한다.
@@ -35,17 +39,22 @@ import java.util.Optional;
 @Service
 public class OrgUnitService {
 
+    private static final Set<TodayStatus> COLLEAGUE_VISIBLE = EnumSet.of(TodayStatus.OFFICE, TodayStatus.REMOTE,
+            TodayStatus.FIELD, TodayStatus.BUSINESS_TRIP, TodayStatus.ON_VACATION);
+
     private final OrgUnitRepository orgUnitRepository;
     private final JdbcTemplate jdbc;
     private final EntityManager em;
     private final PermissionReader permissionReader;
+    private final TodayStatusReader todayStatusReader;
 
     public OrgUnitService(OrgUnitRepository orgUnitRepository, JdbcTemplate jdbc, EntityManager em,
-                          PermissionReader permissionReader) {
+                          PermissionReader permissionReader, TodayStatusReader todayStatusReader) {
         this.orgUnitRepository = orgUnitRepository;
         this.jdbc = jdbc;
         this.em = em;
         this.permissionReader = permissionReader;
+        this.todayStatusReader = todayStatusReader;
     }
 
     /**
@@ -100,27 +109,38 @@ public class OrgUnitService {
         return toNode(root, childrenOf, directCounts, manager);
     }
 
-    /** 그 조직의 직속 직원(퇴직자 제외). includeSub 면 하위 조직 직원까지. */
+    /** 그 조직의 직속 직원(퇴직자 제외). includeSub 면 하위 조직 직원까지. 오늘 상태는 직원 수와 관계없이 한 번 더 조회한다. */
     @Transactional(readOnly = true)
     public List<OrgMemberResponse> members(LoginUser user, long orgUnitId, boolean includeSub) {
         get(orgUnitId);
-        return jdbc.query("""
+        List<OrgMemberResponse> rows = jdbc.query("""
                         WITH RECURSIVE sub AS (
                             SELECT id FROM org_unit WHERE company_id = ? AND id = ?
                             UNION
                             SELECT o.id FROM org_unit o JOIN sub s ON o.parent_id = s.id
                             WHERE o.company_id = ? AND ?
                         )
-                        SELECT e.id, e.name, g.name AS job_grade_name, t.name AS job_title_name, e.profile_file_id
+                        SELECT e.id, e.name, g.name AS job_grade_name, t.name AS job_title_name, e.profile_file_id,
+                               e.org_unit_id, o.name AS org_unit_name, e.email
                         FROM employee e
+                             JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id
                              LEFT JOIN job_grade g ON g.id = e.job_grade_id AND g.company_id = e.company_id
                              LEFT JOIN job_title t ON t.id = e.job_title_id AND t.company_id = e.company_id
                         WHERE e.company_id = ? AND e.status <> 'RESIGNED' AND e.org_unit_id IN (SELECT id FROM sub)
                         ORDER BY g.sort_order NULLS LAST, e.name, e.id
                         """,
                 (rs, i) -> new OrgMemberResponse(rs.getLong("id"), rs.getString("name"), rs.getString("job_grade_name"),
-                        rs.getString("job_title_name"), rs.getObject("profile_file_id", Long.class)),
+                        rs.getString("job_title_name"), rs.getObject("profile_file_id", Long.class),
+                        rs.getLong("org_unit_id"), rs.getString("org_unit_name"), rs.getString("email"), null),
                 user.companyId(), orgUnitId, user.companyId(), includeSub, user.companyId());
+        Map<Long, TodayStatus> today = todayStatusReader.today(user.companyId(),
+                rows.stream().map(OrgMemberResponse::id).toList());
+        return rows.stream().map(m -> m.withWorkStatus(visibleToColleagues(today.get(m.id())))).toList();
+    }
+
+    /** 동료에게는 어디서 일하는지만 보인다(역할 분담 2.3 R-115). 출근 전 · 퇴근 · 휴직은 근태 · 재직 정보라 숨긴다. */
+    private static TodayStatus visibleToColleagues(TodayStatus status) {
+        return status != null && COLLEAGUE_VISIBLE.contains(status) ? status : null;
     }
 
     @Transactional
