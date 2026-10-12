@@ -172,6 +172,30 @@ public class ApprovalService {
         return result;
     }
 
+    /**
+     * 목록 행의 반려 사유 — 그 건의 가장 최근 반려 단계 comment 를 한 번에(역할 분담 2.1 "반려 사유 묶음").
+     * 반려 단계가 없는 ID 는 맵에 없다. 휴가는 LEAVE 만 본다 — 취소 반려(LEAVE_CANCEL)는 휴가가 승인완료로 돌아가므로
+     * 반려 사유가 아니다. 부르는 쪽은 행 상태가 반려일 때만 쓴다.
+     */
+    public Map<Long, String> rejectReasons(long companyId, ApprovalWorkType workType, Collection<Long> targetIds) {
+        Map<Long, String> result = new HashMap<>();
+        if (targetIds.isEmpty()) {
+            return result;
+        }
+        jdbc.query("""
+                        SELECT DISTINCT ON (target_id) target_id, comment
+                        FROM approval_step
+                        WHERE company_id = ? AND work_type = ?::approval_work_type AND target_id = ANY(?)
+                          AND status = 'REJECTED'
+                        ORDER BY target_id, round DESC, step_order DESC
+                        """,
+                rs -> {
+                    result.put(rs.getLong("target_id"), rs.getString("comment"));
+                },
+                companyId, workType.name(), targetIds.toArray(Long[]::new));
+        return result;
+    }
+
     /** 승인자가 퇴직·비활성이 됐을 때(B-10 퇴직 처리, 계정 비활성화) — 대기 중인 단계를 재지정 필요로 표시. */
     @Transactional(propagation = Propagation.MANDATORY)
     public void markReassignNeeded(long companyId, long employeeId) {
