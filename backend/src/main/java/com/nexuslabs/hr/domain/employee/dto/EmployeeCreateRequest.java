@@ -38,5 +38,5 @@ public record EmployeeCreateRequest(
         LocalDate probationEndDate,
         Long profileFileId,
         String hrMemo,
-        @Valid List<FieldValueInput> fieldValues) {
+        List<@Valid FieldValueInput> fieldValues) {
 }

@@ -251,8 +251,8 @@ public class AttendanceCalculator {
                 null, null, null, null, null, null);
     }
 
-    /** 출근~퇴근이 야간 시간대와 겹치는 분. 야간 시간대는 보통 자정을 넘는다(22:00–06:00). */
-    private static int nightMinutes(LocalDateTime checkIn, LocalDateTime checkOut, LocalTime nightStart,
+    /** 출근~퇴근이 야간 시간대와 겹치는 분. 야간 시간대는 보통 자정을 넘는다(22:00–06:00). 연장근무 신청의 예정 시간에도 쓴다. */
+    static int nightMinutes(LocalDateTime checkIn, LocalDateTime checkOut, LocalTime nightStart,
                                     LocalTime nightEnd) {
         long total = 0;
         for (LocalDate d = checkIn.toLocalDate().minusDays(1); !d.isAfter(checkOut.toLocalDate()); d = d.plusDays(1)) {
