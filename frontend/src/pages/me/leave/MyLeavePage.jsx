@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { App, Input, Modal, Result, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -79,7 +80,8 @@ function openPicker(e) {
 }
 
 /* ───── 휴가 신청 폼 ───── */
-function RequestForm({ types, schedule, dailyHours }) {
+/** 휴가 신청 폼 — [휴가 신청] 버튼으로 여는 창 안에 들어간다. 신청이 끝나면 onDone */
+function RequestForm({ types, schedule, dailyHours, onDone }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
   const pending = usePendingFeature();
@@ -118,6 +120,7 @@ function RequestForm({ types, schedule, dailyHours }) {
       queryClient.invalidateQueries({ queryKey: myLeaveRequestsKey });
       queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
+      onDone?.();
     },
     onError: (err) => notify.error(err),
   });
@@ -136,8 +139,7 @@ function RequestForm({ types, schedule, dailyHours }) {
   const hours = p ? p.days * dailyHours : null;
 
   return (
-    <section className="lv-card lv-form">
-      <h2>휴가 신청</h2>
+    <div className="lv-form is-modal">
       <div className="lv-fields">
         <div className="lv-field">
           <span className="lv-label">휴가 종류</span>
@@ -255,7 +257,7 @@ function RequestForm({ types, schedule, dailyHours }) {
         </button>
       </div>
       <p className="lv-muted" style={{ margin: 0 }}>신청하면 승인 대기 일수만큼 잔여에서 바로 빠지고, 반려 · 철회되면 돌아옵니다.</p>
-    </section>
+    </div>
   );
 }
 
@@ -357,7 +359,7 @@ function DetailModal({ id, onClose }) {
 }
 
 /* ───── 신청 내역 ───── */
-function HistoryCard({ requests, onOpen }) {
+function HistoryCard({ requests, onOpen, onApply }) {
   const [months, setMonths] = useState(3);
   const [tab, setTab] = useState('ALL');
   const from = months ? dayjs().subtract(months, 'month').format('YYYY-MM-DD') : null;
@@ -377,7 +379,12 @@ function HistoryCard({ requests, onOpen }) {
     <section className="lv-card lv-history">
       <div className="lv-history-head">
         <h2 className="lv-title">휴가 신청 내역</h2>
-        <Select value={months} options={PERIODS} onChange={setMonths} />
+        <div className="lv-history-actions">
+          <Select value={months} options={PERIODS} onChange={setMonths} />
+          <button type="button" className="lv-btn is-primary lv-apply" onClick={onApply}>
+            휴가 신청
+          </button>
+        </div>
       </div>
       <div className="lv-tabs">
         {[
@@ -601,6 +608,13 @@ export default function MyLeavePage() {
   const fullTeam = can('LEAVE_READ'); // 휴가 조회 권한(팀 범위는 조직장만 — makeCan)
   const pending = usePendingFeature();
   const [openId, setOpenId] = useState(null);
+  // 휴가 신청 창 — 대시보드 [휴가 신청]은 ?apply=1 로 들어와 바로 연다
+  const [params, setParams] = useSearchParams();
+  const [applyOpen, setApplyOpen] = useState(params.get('apply') === '1');
+  const closeApply = () => {
+    setApplyOpen(false);
+    if (params.get('apply')) setParams({}, { replace: true });
+  };
   const types = useQuery({ queryKey: leaveTypesKey, queryFn: getLeaveTypes });
   const balances = useQuery({ queryKey: myLeaveBalancesKey(), queryFn: () => getMyLeaveBalances() });
   const requests = useQuery({ queryKey: myLeaveRequestsKey, queryFn: getMyLeaveRequests });
@@ -693,22 +707,22 @@ export default function MyLeavePage() {
               ? `결재 중 · ${upcoming.currentStep.approverName}(${upcoming.currentStep.stepOrder}/${upcoming.currentStep.totalSteps}단계)`
               : upcoming
                 ? STATUS_LABEL[upcoming.status]
-                : '휴가 신청에서 새로 신청할 수 있습니다'}
+                : '[휴가 신청]으로 새로 신청할 수 있습니다'}
           </span>
           <TeamOverlap leave={upcoming} meId={me.employee.id} full={fullTeam} />
         </div>
       </div>
 
-      <div className="lv-main">
-        <RequestForm types={types.data} schedule={schedule} dailyHours={dailyHours} />
-        <div className="lv-right">
-          <HistoryCard requests={rows} onOpen={setOpenId} />
-          <div className="lv-bottom">
-            <StatsCard requests={rows} dailyHours={dailyHours} leaveYear={b.leaveYear} />
-            <CalendarCard requests={rows} me={me} full={fullTeam} />
-          </div>
-        </div>
+      {/* 신청 폼은 창으로 — 신청 내역은 위 요약 카드 줄과 같은 폭 */}
+      <HistoryCard requests={rows} onOpen={setOpenId} onApply={() => setApplyOpen(true)} />
+      <div className="lv-bottom">
+        <StatsCard requests={rows} dailyHours={dailyHours} leaveYear={b.leaveYear} />
+        <CalendarCard requests={rows} me={me} full={fullTeam} />
       </div>
+
+      <Modal open={applyOpen} title="휴가 신청" footer={null} onCancel={closeApply} width={520}>
+        <RequestForm types={types.data} schedule={schedule} dailyHours={dailyHours} onDone={closeApply} />
+      </Modal>
 
       {openId && <DetailModal id={openId} onClose={() => setOpenId(null)} />}
     </div>

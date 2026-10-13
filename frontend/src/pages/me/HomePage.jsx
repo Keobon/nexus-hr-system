@@ -213,7 +213,7 @@ function LeavePanel({ balances }) {
       )}
       <p className="home-note">휴가 신청 시 잔여일수를 초과하면 제출할 수 없습니다.</p>
       <div className="home-actions">
-        <button type="button" className="home-btn" onClick={() => navigate('/me/leaves')}>
+        <button type="button" className="home-btn" onClick={() => navigate('/me/leaves?apply=1')}>
           휴가 신청
         </button>
       </div>
