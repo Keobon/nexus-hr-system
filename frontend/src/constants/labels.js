@@ -47,6 +47,14 @@ export const LABELS = {
     ON_LEAVE: L('휴직'),
     OFF_WORK: L('퇴근', 'green'),
   },
+  // 조직도 부서원의 오늘 근무 위치(GET /org-units/{id}/members workStatus — 동료에게는 어디서 일하는지만, R-115)
+  orgWorkStatus: {
+    OFFICE: L('재석', 'green'),
+    REMOTE: L('재택', 'geekblue'),
+    FIELD: L('외근', 'orange'),
+    BUSINESS_TRIP: L('출장', 'orange'),
+    ON_VACATION: L('휴가', 'purple'),
+  },
   workType: {
     OFFICE: L('사내'),
     REMOTE: L('재택'),

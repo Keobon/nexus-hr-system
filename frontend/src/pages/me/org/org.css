@@ -345,6 +345,50 @@
   font-size: 0.75rem;
 }
 
+/* 오늘 근무 위치 — Figma 재석(초록) · 외근 · 회의 중(주황) 배지 */
+.org-work {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.625rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.org-work.is-office {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.org-work.is-remote {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.org-work.is-field,
+.org-work.is-business_trip {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.org-work.is-on_vacation {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.org-mail {
+  color: #0284c7;
+  font-weight: 700;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.org-mail:hover {
+  text-decoration: underline;
+}
+
 /* 아바타 — 사진 또는 성 한 글자 */
 .org-avatar {
   display: inline-flex;
@@ -463,6 +507,27 @@
   font-family: inherit;
   font-size: 0.8125rem;
   cursor: pointer;
+}
+
+.org-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 부서 전체 선택 — Figma 18px 체크박스 + 13px 글자 */
+.org-check {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  color: #334155;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.org-check input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
 }
 
 .org-btn.is-primary {

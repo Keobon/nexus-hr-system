@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Result, Spin } from 'antd';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getOrgMembers, getOrgTree, orgMembersKey, orgTreeKey } from '../../../api/org';
 import { useMe } from '../../../auth/useMe';
 import { useFileUrl } from '../../../components/common/useFileUrl';
 import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
+import { LABELS } from '../../../constants/labels';
 import { officePhone } from './officePhone';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import iconChevronDown from '../../../assets/figma/icon-chevron-down.svg';
@@ -37,6 +38,14 @@ function pathTo(flat, id) {
 }
 
 const gradeTitle = (m) => [m.jobGradeName, m.jobTitleName].filter(Boolean).join(' / ') || '-';
+const STATUS_FILTER = [['ALL', '전체 상태'], ...Object.entries(LABELS.orgWorkStatus).map(([k, v]) => [k, v.label]), ['NONE', '근무 위치 없음']];
+
+/** 오늘 근무 위치 배지 — 출근 전 · 퇴근 · 휴직은 서버가 null 로 준다(표시 안 함) */
+function WorkBadge({ status }) {
+  const item = LABELS.orgWorkStatus[status];
+  if (!item) return null;
+  return <span className={`org-work is-${status.toLowerCase()}`}>{item.label}</span>;
+}
 
 function Avatar({ member, big }) {
   const url = useFileUrl(member.profileFileId);
@@ -127,6 +136,7 @@ function DeptCard({ node, members, loading, includeSub, setIncludeSub, selectedM
               <em>{`${m.orgUnitName ?? node.name} · ${gradeTitle(m)}`}</em>
             </span>
             {node.lead?.id === m.id && <span className="org-lead">조직장</span>}
+            <WorkBadge status={m.workStatus} />
           </button>
         ))}
       </div>
@@ -143,6 +153,7 @@ function ProfileCard({ member, deptName }) {
           <h2>임직원 프로필 카드</h2>
           <p>동료 찾기 / 직원 기본 정보</p>
         </div>
+        {member && <WorkBadge status={member.workStatus} />}
       </div>
       {!member && <p className="org-empty">부서원이나 검색 결과에서 직원을 고르면 기본 정보가 보입니다.</p>}
       {member && (
@@ -169,11 +180,68 @@ function ProfileCard({ member, deptName }) {
             </div>
             <div className="org-row">
               <span>이메일</span>
-              <span className="is-muted">준비 중</span>
+              {member.email ? (
+                <a href={`mailto:${member.email}`} className="org-mail">
+                  {member.email}
+                </a>
+              ) : (
+                <span className="is-muted">-</span>
+              )}
             </div>
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+/**
+ * 연락 · 소통 — [메일 보내기]는 회사 메일(email)로 메일 앱의 새 메일 창을 연다(mailto, 서버 발송 아님).
+ * 수신: "부서 전체 선택"이면 그 부서원(나 제외), 아니면 프로필 카드의 직원. 메신저 · 알림은 준비 중
+ */
+function ContactCard({ node, members, selected, meId, onPending }) {
+  const [whole, setWhole] = useState(false);
+  const deptMails = members.filter((m) => m.email && m.id !== meId).map((m) => m.email);
+  const to = whole ? deptMails : selected?.email ? [selected.email] : [];
+  let target = '받는 사람을 고르세요';
+  if (whole) target = `${node?.name ?? '부서'} ${deptMails.length}명`;
+  else if (selected) target = selected.email ? `${selected.name} (${selected.email})` : `${selected.name} · 메일 주소 없음`;
+
+  return (
+    <section className="org-card is-tight" id="org-contact">
+      <div className="org-card-head">
+        <div>
+          <h2>연락·소통</h2>
+          <p>메일 · 메신저 · 알림 발송</p>
+        </div>
+      </div>
+      {node && (
+        <label className="org-check">
+          <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
+          {`${node.name} 전체 선택 (${deptMails.length}명)`}
+        </label>
+      )}
+      <div className="org-btns">
+        <button
+          type="button"
+          className="org-btn is-primary"
+          disabled={to.length === 0}
+          onClick={() => {
+            window.location.href = `mailto:${to.join(',')}`;
+          }}
+        >
+          메일 보내기
+        </button>
+        {['메신저 연결', '알림 발송'].map((t) => (
+          <button key={t} type="button" className="org-btn" onClick={() => onPending(t)}>
+            {t}
+          </button>
+        ))}
+        <span className="org-muted" style={{ margin: 0 }}>{`수신 대상: ${target}`}</span>
+      </div>
+      <p className="org-muted" style={{ margin: 0 }}>
+        메일 보내기는 이 컴퓨터의 메일 앱으로 새 메일을 엽니다. 메신저 연결 · 알림 발송은 준비 중입니다.
+      </p>
     </section>
   );
 }
@@ -191,6 +259,7 @@ export default function OrgChartPage() {
   const [includeSub, setIncludeSub] = useState(false);
   const [member, setMember] = useState(null);
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState('ALL');
 
   // 처음에는 내 조직을 고르고 그 경로를 펼친다
   useEffect(() => {
@@ -207,22 +276,22 @@ export default function OrgChartPage() {
     enabled: selectedId != null,
   });
 
-  // 동료 찾기 — 조직마다 직속 직원을 받아 소속 이름을 붙인다(검색할 때만)
+  // 동료 찾기 — 루트 조직 + 하위 포함 한 번(행에 소속 이름이 온다, R-116). 검색 · 상태 필터를 쓸 때만
   const term = q.trim().toLowerCase();
-  const all = useQueries({
-    queries: flat.map((f) => ({
-      queryKey: orgMembersKey(f.node.id, false),
-      queryFn: () => getOrgMembers(f.node.id, false),
-      enabled: term.length > 0,
-      staleTime: 60_000,
-    })),
+  const rootId = flat[0]?.node.id;
+  const filtering = term.length > 0 || status !== 'ALL';
+  const all = useQuery({
+    queryKey: orgMembersKey(rootId, true),
+    queryFn: () => getOrgMembers(rootId, true),
+    enabled: filtering && rootId != null,
+    staleTime: 60_000,
   });
-  const people = term
-    ? all.flatMap((r, i) => (r.data ?? []).map((m) => ({ ...m, orgUnitId: flat[i].node.id, orgUnitName: flat[i].node.name })))
+  const byStatus = (m) => status === 'ALL' || (status === 'NONE' ? !m.workStatus : m.workStatus === status);
+  const hits = filtering
+    ? (all.data ?? []).filter((m) => byStatus(m) && (!term || [m.name, m.jobGradeName, m.jobTitleName, m.orgUnitName, m.email].some((v) => v?.toLowerCase().includes(term))))
     : [];
-  const hits = people.filter((m) => [m.name, m.jobGradeName, m.jobTitleName, m.orgUnitName].some((v) => v?.toLowerCase().includes(term)));
   const deptHits = term ? flat.filter((f) => f.node.name.toLowerCase().includes(term)) : [];
-  const searching = all.some((r) => r.isLoading);
+  const searching = all.isLoading && filtering;
 
   if (tree.isLoading) {
     return (
@@ -252,9 +321,7 @@ export default function OrgChartPage() {
     else document.getElementById(`org-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   // 조직장을 맨 위로
-  const memberList = (members.data ?? [])
-    .map((m) => (includeSub ? m : { ...m, orgUnitName: node?.name }))
-    .sort((x, y) => (y.id === node?.lead?.id) - (x.id === node?.lead?.id));
+  const memberList = [...(members.data ?? [])].sort((x, y) => (y.id === node?.lead?.id) - (x.id === node?.lead?.id));
   const shownMember = member ?? memberList.find((m) => m.id === node?.lead?.id) ?? memberList[0] ?? null;
 
   return (
@@ -287,20 +354,41 @@ export default function OrgChartPage() {
           </select>
           <img src={iconChevron} alt="" />
         </span>
+        <span className="org-select">
+          <select aria-label="근무 상태" value={status} onChange={(e) => setStatus(e.target.value)}>
+            {STATUS_FILTER.map(([k, l]) => (
+              <option key={k} value={k}>
+                {l}
+              </option>
+            ))}
+          </select>
+          <img src={iconChevron} alt="" />
+        </span>
       </div>
 
       <div className="org-body">
         <TreeCard flat={flat} open={open} toggle={toggle} selectedId={selectedId} onSelect={select} total={tree.data.totalCount} />
 
         <div className="org-right">
-          {term ? (
+          {filtering ? (
             <section className="org-card is-tight" id="org-dept">
               <div className="org-card-head">
                 <div>
                   <h2>검색 결과</h2>
-                  <p>{`"${q.trim()}" · 부서 ${deptHits.length}곳 · 직원 ${hits.length}명`}</p>
+                  <p>
+                    {[term && `"${q.trim()}"`, status !== 'ALL' && STATUS_FILTER.find(([k]) => k === status)[1], `부서 ${deptHits.length}곳 · 직원 ${hits.length}명`]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 </div>
-                <button type="button" className="org-btn" onClick={() => setQ('')}>
+                <button
+                  type="button"
+                  className="org-btn"
+                  onClick={() => {
+                    setQ('');
+                    setStatus('ALL');
+                  }}
+                >
                   검색 지우기
                 </button>
               </div>
@@ -327,6 +415,7 @@ export default function OrgChartPage() {
                       <strong>{m.name}</strong>
                       <em>{`${m.orgUnitName} · ${gradeTitle(m)}`}</em>
                     </span>
+                    <WorkBadge status={m.workStatus} />
                   </button>
                 ))}
                 {!searching && !deptHits.length && !hits.length && <p className="org-empty">검색 결과가 없습니다.</p>}
@@ -346,26 +435,15 @@ export default function OrgChartPage() {
             )
           )}
 
-          <ProfileCard member={term ? member : shownMember} deptName={node?.name} />
+          <ProfileCard member={filtering ? member : shownMember} deptName={node?.name} />
 
-          <section className="org-card is-tight" id="org-contact">
-            <div className="org-card-head">
-              <div>
-                <h2>연락·소통</h2>
-                <p>메일 · 메신저 · 알림 발송</p>
-              </div>
-            </div>
-            <div className="org-btns">
-              {['메일 보내기', '메신저 연결', '알림 발송'].map((t, i) => (
-                <button key={t} type="button" className={`org-btn${i === 0 ? ' is-primary' : ''}`} onClick={() => pending(t, '조직도 연락 · 소통')}>
-                  {t}
-                </button>
-              ))}
-              <span className="org-muted" style={{ margin: 0 }}>
-                메일 · 메신저 · 알림 발송은 준비 중입니다.
-              </span>
-            </div>
-          </section>
+          <ContactCard
+            node={node}
+            members={memberList}
+            selected={filtering ? member : shownMember}
+            meId={me?.employee?.id}
+            onPending={(t) => pending(t, '조직도 연락 · 소통')}
+          />
         </div>
       </div>
     </div>
