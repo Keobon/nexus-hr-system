@@ -509,6 +509,27 @@
   cursor: pointer;
 }
 
+.org-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 부서 전체 선택 — Figma 18px 체크박스 + 13px 글자 */
+.org-check {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  color: #334155;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.org-check input {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+}
+
 .org-btn.is-primary {
   border-color: #0284c7;
   background: #0284c7;

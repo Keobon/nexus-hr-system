@@ -195,6 +195,57 @@ function ProfileCard({ member, deptName }) {
   );
 }
 
+/**
+ * 연락 · 소통 — [메일 보내기]는 회사 메일(email)로 메일 앱의 새 메일 창을 연다(mailto, 서버 발송 아님).
+ * 수신: "부서 전체 선택"이면 그 부서원(나 제외), 아니면 프로필 카드의 직원. 메신저 · 알림은 준비 중
+ */
+function ContactCard({ node, members, selected, meId, onPending }) {
+  const [whole, setWhole] = useState(false);
+  const deptMails = members.filter((m) => m.email && m.id !== meId).map((m) => m.email);
+  const to = whole ? deptMails : selected?.email ? [selected.email] : [];
+  let target = '받는 사람을 고르세요';
+  if (whole) target = `${node?.name ?? '부서'} ${deptMails.length}명`;
+  else if (selected) target = selected.email ? `${selected.name} (${selected.email})` : `${selected.name} · 메일 주소 없음`;
+
+  return (
+    <section className="org-card is-tight" id="org-contact">
+      <div className="org-card-head">
+        <div>
+          <h2>연락·소통</h2>
+          <p>메일 · 메신저 · 알림 발송</p>
+        </div>
+      </div>
+      {node && (
+        <label className="org-check">
+          <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
+          {`${node.name} 전체 선택 (${deptMails.length}명)`}
+        </label>
+      )}
+      <div className="org-btns">
+        <button
+          type="button"
+          className="org-btn is-primary"
+          disabled={to.length === 0}
+          onClick={() => {
+            window.location.href = `mailto:${to.join(',')}`;
+          }}
+        >
+          메일 보내기
+        </button>
+        {['메신저 연결', '알림 발송'].map((t) => (
+          <button key={t} type="button" className="org-btn" onClick={() => onPending(t)}>
+            {t}
+          </button>
+        ))}
+        <span className="org-muted" style={{ margin: 0 }}>{`수신 대상: ${target}`}</span>
+      </div>
+      <p className="org-muted" style={{ margin: 0 }}>
+        메일 보내기는 이 컴퓨터의 메일 앱으로 새 메일을 엽니다. 메신저 연결 · 알림 발송은 준비 중입니다.
+      </p>
+    </section>
+  );
+}
+
 /** 조직도(F-ORG-01 조회) — Figma COMMON_org_chart. 로그인만 하면 본다 */
 export default function OrgChartPage() {
   const { me } = useMe();
@@ -386,24 +437,13 @@ export default function OrgChartPage() {
 
           <ProfileCard member={filtering ? member : shownMember} deptName={node?.name} />
 
-          <section className="org-card is-tight" id="org-contact">
-            <div className="org-card-head">
-              <div>
-                <h2>연락·소통</h2>
-                <p>메일 · 메신저 · 알림 발송</p>
-              </div>
-            </div>
-            <div className="org-btns">
-              {['메일 보내기', '메신저 연결', '알림 발송'].map((t, i) => (
-                <button key={t} type="button" className={`org-btn${i === 0 ? ' is-primary' : ''}`} onClick={() => pending(t, '조직도 연락 · 소통')}>
-                  {t}
-                </button>
-              ))}
-              <span className="org-muted" style={{ margin: 0 }}>
-                메일 · 메신저 · 알림 발송은 준비 중입니다.
-              </span>
-            </div>
-          </section>
+          <ContactCard
+            node={node}
+            members={memberList}
+            selected={filtering ? member : shownMember}
+            meId={me?.employee?.id}
+            onPending={(t) => pending(t, '조직도 연락 · 소통')}
+          />
         </div>
       </div>
     </div>
