@@ -40,16 +40,17 @@
   white-space: pre;
 }
 
-/* 공통 */
+/* 공통 — Figma 갱신(10/13): 카드 둥글기 16 · 테두리 #e6ebf2 · 아주 옅은 그림자 */
 .lv-card {
   box-sizing: border-box;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.625rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 1rem;
   background: #fff;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.02);
 }
 
 .lv-muted {
-  color: #53647c;
+  color: #64748b;
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.125rem;
@@ -59,7 +60,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: #16a9e8;
+  color: #3b82f6;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
@@ -71,65 +72,58 @@
 
 .lv-title {
   margin: 0;
-  color: #172235;
-  font-size: 1.1875rem;
+  color: #0f172a;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.78rem;
+  line-height: normal;
 }
 
-.lv-title.is-18 {
-  font-size: 1.125rem;
-  line-height: 1.6875rem;
-}
-
-/* 요약 카드 4개(272 × 112) */
+/* 요약 카드 4개(272 × 176, 간격 16) */
 .lv-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .lv-sum {
   display: flex;
   flex-direction: column;
-  min-height: 7rem;
-  padding: 0.6875rem 0.9375rem;
+  gap: 0.5rem;
+  min-height: 11rem;
+  padding: 1rem;
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
 }
 
 .lv-sum-cols {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.625rem;
-  margin-top: 0.375rem;
+  gap: 0.5rem;
+}
+
+.lv-sum-cols > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .lv-sum-big {
   margin: 0;
-  color: #172235;
-  font-size: 1.25rem;
+  color: #0f172a;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.875rem;
   white-space: nowrap;
 }
 
-.lv-sum-big.is-19 {
-  font-size: 1.1875rem;
-  line-height: 1.78rem;
-  margin-top: 0.1875rem;
-}
-
-.lv-sum-big.is-18 {
-  font-size: 1.125rem;
-  line-height: 1.6875rem;
-}
-
 .lv-sum-big.is-blue {
-  color: #16a9e8;
+  color: #3b82f6;
 }
 
-.lv-sum-big.is-amber,
-.lv-amber {
-  color: #a96209;
+/* 다가오는 휴가 — 승인 대기 줄(보라) */
+.lv-pending-text {
+  color: #8b5cf6;
 }
 
 .lv-sum p {
@@ -142,26 +136,12 @@
   white-space: nowrap;
 }
 
-/* 본문: 신청 폼(430) | 오른쪽(686) */
-.lv-main {
-  display: grid;
-  grid-template-columns: minmax(0, 430fr) minmax(0, 686fr);
-  gap: 1.25rem;
-  align-items: start;
-}
-
-.lv-right {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  min-width: 0;
-}
-
+/* 아래 줄: 사용 이력 및 통계 | 휴가 캘린더 — 같은 폭(560 · 560) */
 .lv-bottom {
   display: grid;
-  grid-template-columns: minmax(0, 354fr) minmax(0, 312fr);
-  gap: 1.25rem;
-  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
 }
 
 /* 신청 폼 — [휴가 신청] 창 안 */
@@ -427,22 +407,28 @@
   cursor: not-allowed;
 }
 
-/* 신청 내역 */
+/* 신청 내역 — 패딩 24 · 간격 16, 탭은 알약, 표 줄 높이 44 */
 .lv-history {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.9375rem 1.1875rem 1.25rem;
+  gap: 1rem;
+  padding: 1.5rem;
 }
 
 .lv-history-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .lv-history-head .ant-select {
   width: 7.875rem;
+}
+
+.lv-history-head .ant-select-selector {
+  height: 2.5rem !important;
+  border-radius: 0.625rem !important;
 }
 
 .lv-history-actions {
@@ -454,57 +440,66 @@
 .lv-btn.lv-apply {
   flex: none;
   min-width: 6.5rem;
+  height: 2.5rem;
   padding: 0 1rem;
+  border-radius: 0.625rem;
 }
 
 .lv-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.625rem;
-  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .lv-tab {
-  height: 2rem;
-  border: 1px solid #dfe7f0;
-  border-radius: 0.3125rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
   background: #fff;
-  color: #53647c;
+  color: #64748b;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.125rem;
   cursor: pointer;
 }
 
 .lv-tab.is-active {
-  border-color: #16a9e8;
-  background: #16a9e8;
-  color: #fff;
+  border-color: #eff6ff;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .lv-table {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
 }
 
+/* Figma 열 너비 100 · 100 · 154 · 76 · 82 비율(카드가 넓어져도 같은 비율) */
 .lv-tr {
   display: grid;
-  /* Figma 열 너비(116 · 119 · 182 · 108 · 102) 비율 */
-  grid-template-columns: minmax(0, 116fr) minmax(0, 119fr) minmax(0, 182fr) minmax(0, 108fr) minmax(0, 102fr);
+  grid-template-columns: minmax(0, 100fr) minmax(0, 100fr) minmax(0, 154fr) minmax(0, 90fr) minmax(0, 82fr);
+  gap: 0.5rem;
   align-items: center;
-  min-height: 2.375rem;
-  padding: 0 0.5rem;
-  border-radius: 0.25rem;
-  background: #f6f8fc;
-  font-size: 0.75rem;
-  font-weight: 500;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid #eef2f7;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.lv-tr:last-child {
+  border-bottom: none;
 }
 
 .lv-tr.is-head {
-  min-height: 1.5rem;
-  background: none;
-  color: #53647c;
+  border-bottom: 1px solid #eef2f7;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .lv-tr.is-click {
@@ -512,7 +507,7 @@
 }
 
 .lv-tr.is-click:hover {
-  background: #eef3fa;
+  background: #f8fafc;
 }
 
 .lv-tr > span {
@@ -522,46 +517,53 @@
   white-space: nowrap;
 }
 
-.lv-reason {
-  color: #53647c;
+.lv-tr .lv-link {
+  font-size: 0.8125rem;
   font-weight: 400;
 }
 
-.lv-reason.is-red {
-  color: #c3464b;
+.lv-reason {
+  color: #64748b;
 }
 
+.lv-reason.is-red {
+  color: #dc2626;
+}
+
+/* 결재 상태 — 알약(76 × 23) */
 .lv-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 5.3125rem;
-  height: 1.5rem;
-  border-radius: 0.25rem;
+  width: 4.75rem;
+  padding: 0.1875rem 0.5rem;
+  box-sizing: border-box;
+  border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 600;
+  line-height: 1.03rem;
 }
 
-.lv-status.PENDING,
-.lv-status.CANCEL_REQUESTED { background: #fff5e5; color: #a96209; }
-.lv-status.APPROVED { background: #eaf8f1; color: #15805a; }
-.lv-status.REJECTED { background: #fff0f1; color: #c3464b; }
-.lv-status.CANCELLED { background: #f3f4f6; color: #6b7280; }
+.lv-status.PENDING { background: #eff6ff; color: #2563eb; }
+.lv-status.CANCEL_REQUESTED { background: #fff7ed; color: #c2410c; }
+.lv-status.APPROVED { background: #ecfdf5; color: #059669; }
+.lv-status.REJECTED { background: #fef2f2; color: #dc2626; }
+.lv-status.CANCELLED { background: #f1f5f9; color: #64748b; }
 
 .lv-empty {
   margin: 0;
   padding: 1.25rem;
-  color: #53647c;
+  color: #64748b;
   font-size: 0.75rem;
   text-align: center;
 }
 
-/* 사용 이력 및 통계 */
+/* 사용 이력 및 통계 — 패딩 24 · 간격 16 */
 .lv-stats {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.9375rem;
+  gap: 1rem;
+  padding: 1.5rem;
 }
 
 .lv-pickers {
@@ -576,22 +578,29 @@
 
 .lv-pickers .ant-select,
 .lv-pickers .ant-select [class*="select-"] {
-  font-size: 0.8125rem;
-  color: #53647c;
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .lv-usage {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.3125rem;
-  background: #f6f8fc;
+  padding: 1rem;
+  border: 1px solid #eef2f7;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.lv-usage > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .lv-usage strong {
   display: block;
-  color: #172235;
+  color: #0f172a;
   font-size: 1.0625rem;
   font-weight: 700;
   line-height: 1.59rem;
@@ -599,95 +608,104 @@
 }
 
 .lv-usage strong.is-blue {
-  color: #16a9e8;
+  color: #3b82f6;
 }
 
 .lv-mini {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
 }
 
 .lv-mini-tr {
   display: grid;
-  grid-template-columns: 8.125rem minmax(0, 1fr) 4.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
   align-items: center;
-  min-height: 1.625rem;
-  padding: 0 0.5rem;
-  border-radius: 0.1875rem;
-  background: #f6f8fc;
-  font-size: 0.6875rem;
-  font-weight: 500;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid #eef2f7;
+  color: #334155;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.lv-mini-tr:last-child {
+  border-bottom: none;
+}
+
+.lv-mini-tr > :last-child {
+  text-align: right;
 }
 
 .lv-mini-tr.is-head {
-  min-height: 1.25rem;
-  background: none;
-  color: #53647c;
+  background: #f8fafc;
+  color: #64748b;
   font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .lv-mini-tr .lv-reason {
-  font-weight: 400;
+  color: #64748b;
 }
 
 .lv-sub-title {
-  margin: 0.5rem 0 0;
-  color: #172235;
+  margin: 0;
+  color: #0f172a;
   font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.22rem;
 }
 
-/* 휴가 캘린더 */
+/* 휴가 캘린더 — 칸은 48px 회색 상자, 휴가는 날짜 글자색으로 */
 .lv-cal {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.9375rem;
+  gap: 1rem;
+  padding: 1.5rem;
 }
 
 .lv-cal-month {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  color: #172235;
+  gap: 2rem;
+  color: #0f172a;
   font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.3125rem;
 }
 
 .lv-cal-month button {
   padding: 0 0.25rem;
   border: none;
   background: none;
-  color: #172235;
+  color: #0f172a;
   font: inherit;
   font-size: 1rem;
   cursor: pointer;
 }
 
 .lv-cal-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  display: flex;
+  gap: 0.75rem;
 }
 
 .lv-cal-tab {
-  height: 1.875rem;
-  border: 1px solid #dfe7f0;
-  border-radius: 0.25rem;
+  padding: 0.3125rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
   background: #fff;
-  color: #53647c;
+  color: #64748b;
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.125rem;
   cursor: pointer;
 }
 
 .lv-cal-tab.is-active {
-  background: #eff8fd;
-  color: #16a9e8;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .lv-cal-tab:disabled {
@@ -698,36 +716,40 @@
 .lv-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.1875rem 0.25rem;
-  padding-top: 0.25rem;
+  gap: 0.5rem;
   text-align: center;
 }
 
 .lv-cal-grid > span {
-  height: 1.4375rem;
-  border-radius: 0.25rem;
-  color: #172235;
-  font-size: 0.6875rem;
+  box-sizing: border-box;
+  height: 3rem;
+  border: 1px solid #eef2f7;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.75rem;
   font-weight: 500;
-  line-height: 1.4375rem;
+  line-height: 2.875rem;
 }
 
 .lv-cal-grid > span.is-dow {
-  height: 1.03rem;
-  margin-bottom: 0.5rem;
-  color: #53647c;
+  height: 1.5rem;
+  border: none;
+  background: none;
+  color: #64748b;
   line-height: 1.03rem;
 }
 
-.lv-cal-grid > span.is-sun { color: #c3464b; }
-.lv-cal-grid > span.is-out { color: #9daabb; }
-.lv-cal-grid > span.is-pending { background: #eff8fd; color: #16a9e8; }
-.lv-cal-grid > span.is-approved { background: #eaf8f1; color: #15805a; }
-.lv-cal-grid > span.is-team { background: #f0eeff; color: #7361af; }
-.lv-cal-grid > span.is-today { box-shadow: inset 0 0 0 1px #16a9e8; }
+.lv-cal-grid > span.is-sun { color: #dc2626; }
+.lv-cal-grid > span.is-out { color: #cbd5e1; }
+.lv-cal-grid > span.is-pending { border: 1.5px solid #38bdf8; color: #2563eb; }
+.lv-cal-grid > span.is-approved { color: #059669; }
+.lv-cal-grid > span.is-team { color: #7c3aed; }
+.lv-cal-grid > span.is-today { border: 1.5px solid #38bdf8; }
 
 .lv-legend {
-  margin: 0.25rem 0 0;
+  margin: 0;
+  color: #64748b;
   font-size: 0.6875rem;
   font-weight: 500;
   white-space: pre;
@@ -736,22 +758,21 @@
 .lv-events {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.5rem;
   font-size: 0.6875rem;
   font-weight: 500;
   line-height: 1.03rem;
 }
 
-.lv-events .is-pending { color: #16a9e8; }
-.lv-events .is-approved { color: #15805a; }
-.lv-events .is-team { color: #53647c; }
+.lv-events .is-pending { color: #3b82f6; }
+.lv-events .is-approved { color: #059669; }
+.lv-events .is-team { color: #64748b; }
 
 @media (max-width: 1199px) {
   .lv-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .lv-main,
   .lv-bottom {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -764,6 +785,18 @@
 
   .lv-summary {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lv-sum {
+    min-height: 0;
+  }
+
+  .lv-history-head {
+    flex-wrap: wrap;
+  }
+
+  .lv-history-head .lv-title {
+    white-space: nowrap;
   }
 
   .lv-tr {

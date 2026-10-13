@@ -439,7 +439,7 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
 
   return (
     <section className="lv-card lv-stats">
-      <h2 className="lv-title is-18">휴가 사용 이력 및 통계</h2>
+      <h2 className="lv-title">휴가 사용 이력 및 통계</h2>
       <div className="lv-pickers">
         <Select size="small" variant="borderless" value={year} options={years.map((y) => ({ value: y, label: `${y}년` }))} onChange={setYear} />
         <Select size="small" variant="borderless" value={month} options={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` }))} onChange={setMonth} />
@@ -473,7 +473,7 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
       <button type="button" className="lv-link" onClick={() => pending('연차 사용 촉진 안내', '연차 사용 촉진')}>
         {'안내 내역 확인  →'}
       </button>
-      <button type="button" className="lv-link" style={{ color: '#172235', fontSize: '0.8125rem' }} onClick={() => pending('미사용 수당 정산 내역', '연차 미사용 수당 정산')}>
+      <button type="button" className="lv-link" style={{ color: '#0f172a', fontSize: '0.8125rem' }} onClick={() => pending('미사용 수당 정산 내역', '연차 미사용 수당 정산')}>
         {'미사용 수당 정산 내역  →'}
       </button>
       <span className="lv-muted">정산 내역은 준비 중입니다.</span>
@@ -505,7 +505,7 @@ function TeamOverlap({ leave, meId, full }) {
   let text = '팀 일정과 겹침 여부를 확인하세요';
   if (leave && q.data) text = names.length ? `팀원 ${names.length}명과 겹침 · ${names.slice(0, 2).join(' · ')}${names.length > 2 ? ' 외' : ''}` : '겹치는 팀원 휴가가 없습니다';
   return (
-    <span className={`lv-muted lv-ellipsis${names.length ? ' lv-amber' : ''}`} style={{ fontWeight: 400, marginTop: '0.3125rem' }}>
+    <span className={`lv-muted lv-ellipsis${names.length ? ' lv-pending-text' : ''}`}>
       {text}
     </span>
   );
@@ -546,7 +546,7 @@ function CalendarCard({ requests, me, full }) {
 
   return (
     <section className="lv-card lv-cal">
-      <h2 className="lv-title is-18">휴가 캘린더</h2>
+      <h2 className="lv-title">휴가 캘린더</h2>
       <div className="lv-cal-month">
         <button type="button" aria-label="이전 달" onClick={() => setMonth(m.subtract(1, 'month').format('YYYY-MM'))}>
           ‹
@@ -586,9 +586,9 @@ function CalendarCard({ requests, me, full }) {
         })}
       </div>
       <p className="lv-legend">
-        <span style={{ color: '#1684af' }}>● 승인 대기</span>
-        <span style={{ color: '#15805a' }}>{'   ● 승인'}</span>
-        <span style={{ color: '#7361af' }}>{'   ● 팀 휴가'}</span>
+        <span style={{ color: '#2563eb' }}>● 승인 대기</span>
+        <span style={{ color: '#059669' }}>{'   ● 승인'}</span>
+        <span style={{ color: '#7c3aed' }}>{'   ● 팀 휴가'}</span>
       </p>
       <div className="lv-events">
         {events.length === 0 && <span className="is-team">이 달의 휴가 일정이 없습니다.</span>}
@@ -675,13 +675,13 @@ export default function MyLeavePage() {
               ? extra.map((x) => (
                   <div key={x.leaveTypeId}>
                     <span className="lv-muted lv-ellipsis" style={{ display: 'block' }}>{x.leaveTypeName}</span>
-                    <p className="lv-sum-big is-19">{`${x.remaining}일`}</p>
+                    <p className="lv-sum-big">{`${x.remaining}일`}</p>
                   </div>
                 ))
               : nonDeduct.slice(0, 3).map((t) => (
                   <div key={t.id}>
                     <span className="lv-muted lv-ellipsis" style={{ display: 'block' }}>{t.name}</span>
-                    <p className="lv-sum-big is-19">사유 시</p>
+                    <p className="lv-sum-big">사유 시</p>
                   </div>
                 ))}
           </div>
@@ -690,19 +690,19 @@ export default function MyLeavePage() {
 
         <div className="lv-card lv-sum">
           <span className="lv-muted">휴가 소멸 예정일</span>
-          <p className="lv-sum-big is-amber" style={{ marginTop: '0.375rem' }}>{dot(b.endDate)}</p>
+          <p className="lv-sum-big">{dot(b.endDate)}</p>
           <span className="lv-muted lv-ellipsis">{main ? `잔여 ${main.leaveTypeName} ${main.remaining}일 · 사용 계획을 세워 주세요` : '부여된 휴가가 없습니다'}</span>
-          <button type="button" className="lv-link" style={{ marginTop: '0.25rem' }} onClick={() => pending('연차 사용 촉진 안내', '연차 사용 촉진')}>
+          <button type="button" className="lv-link" onClick={() => pending('연차 사용 촉진 안내', '연차 사용 촉진')}>
             {'연차 사용 촉진 안내 확인  →'}
           </button>
         </div>
 
         <div className="lv-card lv-sum">
           <span className="lv-muted">다가오는 휴가</span>
-          <p className="lv-sum-big is-18 lv-ellipsis" style={{ marginTop: '0.375rem' }}>
+          <p className="lv-sum-big lv-ellipsis">
             {upcoming ? `${dayjs(upcoming.startDate).format('M월 D일')} · ${upcoming.leaveTypeName} ${fmtDays(upcoming.days)}` : '예정된 휴가 없음'}
           </p>
-          <span className={`lv-muted lv-ellipsis${upcoming?.status === 'PENDING' ? ' lv-amber' : ''}`}>
+          <span className={`lv-muted lv-ellipsis${upcoming?.status === 'PENDING' ? ' lv-pending-text' : ''}`}>
             {upcoming?.status === 'PENDING' && upcoming.currentStep
               ? `결재 중 · ${upcoming.currentStep.approverName}(${upcoming.currentStep.stepOrder}/${upcoming.currentStep.totalSteps}단계)`
               : upcoming
