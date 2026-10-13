@@ -12,6 +12,14 @@ import MyWorkRequestsPage from './pages/me/work/MyWorkRequestsPage';
 import MyPayrollPage from './pages/me/payroll/MyPayrollPage';
 import MyEvaluationPage from './pages/me/evaluation/MyEvaluationPage';
 import OrgChartPage from './pages/me/org/OrgChartPage';
+import EmployeeListPage from './pages/hr/employees/EmployeeListPage';
+import EmployeeCreatePage from './pages/hr/employees/EmployeeCreatePage';
+import EmployeeDetailPage from './pages/hr/employees/EmployeeDetailPage';
+import AssignmentListPage from './pages/hr/assignments/AssignmentListPage';
+import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
+import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
+import OrgSettingsPage from './pages/settings/OrgSettingsPage';
+import TitleSettingsPage from './pages/settings/TitleSettingsPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -29,7 +37,19 @@ const PAGES = {
   'my-payroll': MyPayrollPage,
   'my-evaluations': MyEvaluationPage,
   'org-chart': OrgChartPage,
+  employees: EmployeeListPage,
+  assignments: AssignmentListPage,
+  'set-orgs': OrgSettingsPage,
+  'set-titles': TitleSettingsPage,
 };
+
+// 메뉴 아래 화면(등록 · 상세 · 정정) — 부모 메뉴와 같은 규칙으로 막는다. 버튼은 화면에서 can() 으로 감싼다
+const SUB_PAGES = [
+  { path: '/employees/new', menuKey: 'employees', Page: EmployeeCreatePage },
+  { path: '/employees/:id', menuKey: 'employees', Page: EmployeeDetailPage },
+  { path: '/assignments/new', menuKey: 'assignments', Page: AssignmentCreatePage },
+  { path: '/assignments/:id/correct', menuKey: 'assignments', Page: AssignmentCorrectionPage },
+];
 
 const OWNER = {
   home: 'FE-B · F-10',
@@ -63,6 +83,15 @@ const menuRoutes = ALL_MENU_ITEMS.filter((item) => item.key !== 'setup').map((it
   };
 });
 
+const subRoutes = SUB_PAGES.map(({ path, menuKey, Page }) => ({
+  path,
+  element: (
+    <MenuGuard menuKey={menuKey}>
+      <Page />
+    </MenuGuard>
+  ),
+}));
+
 export const router = createBrowserRouter([
   // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록은 링크 없이 /signup 주소로만(일반 직원은 등록하지 않는다)
   { path: '/welcome', element: <Navigate to="/login" replace /> },
@@ -78,6 +107,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           ...menuRoutes,
+          ...subRoutes,
           // 공통 컴포넌트 견본 — 개발 서버에서만(빌드에서는 import.meta.env.DEV 가 false 라 빠진다)
           ...(import.meta.env.DEV ? [{ path: '/dev/components', element: <ComponentsPage /> }] : []),
           { path: '/forbidden', element: <ForbiddenPage /> },
