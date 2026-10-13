@@ -5,6 +5,9 @@ import { api } from './client';
 export const orgTreeKey = ['org-units', 'tree'];
 export const getOrgTree = () => api.get('/org-units/tree');
 
-/** GET /org-units/{id}/members?includeSub= → [{ id, name, jobGradeName, jobTitleName, profileFileId }] */
+/**
+ * GET /org-units/{id}/members?includeSub= → [{ id, name, jobGradeName, jobTitleName, profileFileId,
+ *   orgUnitId, orgUnitName, email, workStatus(OFFICE · REMOTE · FIELD · BUSINESS_TRIP · ON_VACATION · null) }] (R-115 · 116, PR #74)
+ */
 export const orgMembersKey = (id, includeSub = false) => ['org-units', 'members', id, includeSub];
 export const getOrgMembers = (id, includeSub = false) => api.get(`/org-units/${id}/members`, { includeSub });
