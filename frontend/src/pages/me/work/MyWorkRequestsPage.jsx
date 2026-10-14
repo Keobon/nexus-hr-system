@@ -50,9 +50,9 @@ const dot = (d) => (d ? d.replaceAll('-', '.') : '-');
 const hm = (iso) => (iso ? iso.slice(11, 16) : '-');
 const today = () => dayjs().format('YYYY-MM-DD');
 
-// 배지 색은 Figma(결재 대기 · 완료 초록, 승인 파랑), 글자는 부록 A 라벨
+// 배지 색은 Figma(결재 대기 주황, 승인 파랑, 완료 초록), 글자는 부록 A 라벨
 const BADGE = {
-  PENDING: 'is-green',
+  PENDING: 'is-amber',
   APPROVED: 'is-blue',
   REJECTED: 'is-red',
   CANCELLED: 'is-grey',
@@ -301,7 +301,7 @@ function DetailCard({ item, onOpen }) {
           </button>
         )}
         {isPending && (
-          <button type="button" className="wr-btn is-block is-red" disabled={withdraw.isPending} onClick={confirmWithdraw}>
+          <button type="button" className="wr-btn is-block is-line" disabled={withdraw.isPending} onClick={confirmWithdraw}>
             신청 취소
           </button>
         )}
@@ -756,7 +756,7 @@ export default function MyWorkRequestsPage() {
     {
       title: '01  연장 근무 신청 및 내역',
       links: [
-        ['연장 근무 신청', '근무 일자 · 예정 시간 · 업무 사유', () => setOpen({ type: 'overtime' })],
+        ['연장 근무 신청', '야간·휴일 / 근무 일자·예정 시간·업무 사유', () => setOpen({ type: 'overtime' })],
         ['연장 근무 결재 현황', '결재 대기 · 승인 · 반려 상태 확인', () => pick('overtime')],
         ['실제 연장 근무 소명 / 확인', '사전 신청과 실제 수행 시간 차이 소명', () => pending('실제 연장 근무 소명', '연장 근무 소명')],
         ['주간 연장 근로 잔여 시간', '주 연장 12시간 기준 · 출퇴근 화면에서 조회', () => navigate('/me/attendance')],
@@ -824,15 +824,27 @@ export default function MyWorkRequestsPage() {
         <div className="wr-card wr-stat">
           <span>주간 근로 시간</span>
           <strong>{weekLoaded ? h(weekSum.work) : '-'}</strong>
-          <em className="is-amber">{weekLoaded ? `기본 ${h(weekSum.base)} + 연장 ${h(weekSum.overtime)}` : '불러오는 중'}</em>
+          <em>{weekLoaded ? `기본 ${h(weekSum.base)} + 연장 ${h(weekSum.overtime)}` : '불러오는 중'}</em>
         </div>
         <div className="wr-card wr-stat">
           <span>연장 근로 잔여</span>
           <strong>{weekLoaded ? h(Math.max(0, remain)) : '-'}</strong>
-          <em
-            className={remain < 0 ? 'is-red' : 'is-green'}
-          >{`주 연장 12시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
+          <em className={remain < 0 ? 'is-red' : undefined}>{`주 연장 12시간 한도 · ${dayjs(week[0]).format('M/D')}–${dayjs(week[6]).format('M/D')}`}</em>
         </div>
+      </div>
+
+      <div className="wr-menus">
+        {menus.map((m) => (
+          <section key={m.title} className="wr-card wr-menu">
+            <h2>{m.title}</h2>
+            {m.links.map(([label, desc, onClick]) => (
+              <button key={label} type="button" className="wr-link" onClick={onClick}>
+                <strong>{`${label}  →`}</strong>
+                <span>{desc}</span>
+              </button>
+            ))}
+          </section>
+        ))}
       </div>
 
       <div className="wr-main">
@@ -877,20 +889,6 @@ export default function MyWorkRequestsPage() {
           </div>
         </section>
         <DetailCard key={selected?.key ?? 'none'} item={selected} onOpen={setOpen} />
-      </div>
-
-      <div className="wr-menus">
-        {menus.map((m) => (
-          <section key={m.title} className="wr-card wr-menu">
-            <h2>{m.title}</h2>
-            {m.links.map(([label, desc, onClick]) => (
-              <button key={label} type="button" className="wr-link" onClick={onClick}>
-                <strong>{`${label}  →`}</strong>
-                <span>{desc}</span>
-              </button>
-            ))}
-          </section>
-        ))}
       </div>
 
       <RequestModal open={open} trips={tripRows} onClose={() => setOpen(null)} onType={(type) => setOpen({ type })} />

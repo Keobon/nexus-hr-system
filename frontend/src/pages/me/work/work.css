@@ -7,7 +7,7 @@
 .wr {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
   color: #0f172a;
   font-family: 'DM Sans', Inter, 'Pretendard Variable', Pretendard, sans-serif;
 }
@@ -42,10 +42,10 @@
 
 /* 기간 선택 — Figma Date Filter(테두리 상자 + 회전한 화살표) */
 .wr-period.ant-picker {
-  height: 2.25rem;
+  height: 2.5rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #e1e7ec;
-  border-radius: 0.25rem;
+  border: 1px solid #e6ebf2;
+  border-radius: 1rem;
   background: #fff;
 }
 
@@ -62,20 +62,20 @@
   transform: rotate(90deg);
 }
 
-/* 파란 버튼 — Figma Button(#38bdf8, 높이 36, 둥글기 8, Inter SemiBold 12) */
+/* 파란 버튼 — Figma Button(#38bdf8, 높이 40, 둥글기 10, Inter SemiBold 14) */
 .wr-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  height: 2.25rem;
-  padding: 0 1rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   background: #38bdf8;
   color: #fff;
   font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -101,7 +101,11 @@
 .wr-btn.is-line {
   border: 1px solid #e2e8f0;
   background: #fff;
-  color: #0f172a;
+  color: #334155;
+}
+
+.wr-btn.is-line:hover {
+  background: #f8fafc;
 }
 
 .wr-btn.is-block {
@@ -127,38 +131,32 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-height: 6.25rem;
+  min-height: 7rem;
   padding: 1rem;
+  border-radius: 0.875rem;
+  box-shadow: 0 1px 1px rgba(15, 23, 42, 0.04);
   white-space: nowrap;
 }
 
 .wr-stat > span {
   color: #64748b;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
 .wr-stat > strong {
-  font-size: 1.5rem;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: normal;
 }
 
 .wr-stat > em {
   overflow: hidden;
-  color: #38bdf8;
-  font-size: 0.6875rem;
+  color: #64748b;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 500;
   text-overflow: ellipsis;
-}
-
-.wr-stat > em.is-amber {
-  color: #f59e0b;
-}
-
-.wr-stat > em.is-green {
-  color: #10b981;
 }
 
 .wr-stat > em.is-red {
@@ -168,9 +166,9 @@
 /* 신청 내역 + 상세 */
 .wr-main {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   align-items: stretch;
-  height: 23.75rem;
+  min-height: 23.75rem;
 }
 
 .wr-list {
@@ -186,15 +184,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e6ebf2;
 }
 
 .wr-list-head h2,
 .wr-detail h2,
 .wr-menu h2 {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: normal;
 }
@@ -249,8 +247,10 @@
   font-weight: 600;
 }
 
+/* 줄이 많으면 목록만 스크롤(상세 카드 높이는 내용만큼) */
 .wr-rows {
   flex: 1 1 auto;
+  max-height: 27rem;
   overflow-y: auto;
 }
 
@@ -262,7 +262,7 @@
   width: 100%;
   padding: 1rem 1.25rem;
   border: none;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #eef2f7;
   background: none;
   font-family: inherit;
   text-align: left;
@@ -307,7 +307,7 @@
   text-align: center;
 }
 
-/* 상태 배지 — Figma Status(높이 22, 둥글기 12, Bold 11) */
+/* 상태 배지 — Figma Status(높이 22, 알약, Bold 11) — 결재 대기 주황 · 승인 파랑 · 완료 초록 */
 .wr-badge {
   display: inline-flex;
   flex: none;
@@ -315,10 +315,15 @@
   height: 1.375rem;
   padding: 0 0.5rem;
   box-sizing: border-box;
-  border-radius: 0.75rem;
+  border-radius: 999px;
   font-size: 0.6875rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.wr-badge.is-amber {
+  background: #fffbeb;
+  color: #d97706;
 }
 
 .wr-badge.is-green {
@@ -346,9 +351,9 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   width: 22.5rem;
-  padding: 1.25rem;
+  padding: 1.5rem;
   overflow: hidden;
 }
 
@@ -357,7 +362,7 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   min-height: 0;
   overflow-y: auto;
 }
@@ -414,26 +419,27 @@
 .wr-menu {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 20rem;
-  padding: 1.125rem;
+  gap: 1rem;
+  min-height: 27.5rem;
+  padding: 1.5rem;
   line-height: 1.5;
 }
 
 .wr-menu h2 {
   font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   white-space: pre-wrap;
 }
 
 .wr-link {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
-  padding: 0;
-  border: none;
-  background: none;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid #eef2f7;
+  border-radius: 0.75rem;
+  background: #f8fafc;
   font-family: Inter, 'Pretendard Variable', Pretendard, sans-serif;
   text-align: left;
   cursor: pointer;
@@ -451,8 +457,9 @@
   font-size: 0.6875rem;
 }
 
-.wr-link:hover strong {
-  text-decoration: underline;
+.wr-link:hover {
+  border-color: #bae6fd;
+  background: #f0f9ff;
 }
 
 /* 신청 모달 안 */
@@ -491,7 +498,7 @@
 
   .wr-main {
     flex-direction: column;
-    height: auto;
+    min-height: 0;
   }
 
   .wr-list {
