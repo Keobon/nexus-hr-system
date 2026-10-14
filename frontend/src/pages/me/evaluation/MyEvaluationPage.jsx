@@ -229,7 +229,9 @@ const SCALE = [
 ];
 const levelOf = (avg) => SCALE.find(([, min]) => avg >= min)?.[2] ?? '-';
 /** 종합 수준 — 총점 ÷ 20 = 배점으로 가중한 항목 평균(1–5). 등급(A · B)은 서버에 없어 척도 수준으로 보여 준다 */
-const overallAvg = (e) => (e?.totalScore == null ? null : Number(e.totalScore) / 20);
+const overallAvg = (e) => (e?.totalScore == null ? null : Math.round((Number(e.totalScore) / 20) * 10) / 10); // 소수 한 자리 — 보이는 숫자와 수준 이름을 같은 값으로
+/** "2026 상반기 평가" → "2026 상반기 평가 결과"(평가가 두 번 붙지 않게) */
+const resultTitle = (name) => (name.endsWith('평가') ? `${name} 결과` : `${name} 평가 결과`);
 const yearOf = (e) => e.cycleName.match(/(\d{4})/)?.[1] ?? (e.confirmedAt ?? '').slice(0, 4);
 
 function EvalTab({ evaluations, onCriteria, todoCount }) {
@@ -291,7 +293,7 @@ function EvalTab({ evaluations, onCriteria, todoCount }) {
       <section className="ev-card is-r16 ev-eval">
         <div className="ev-sec-head">
           <div>
-            <h2>{e ? `${e.cycleName} 평가 결과` : '평가 결과'}</h2>
+            <h2>{e ? resultTitle(e.cycleName) : '평가 결과'}</h2>
             <p>{e ? `${e.templateName} · 확정일 ${dot(e.confirmedAt)}` : '확정된 평가가 생기면 여기에 표시됩니다.'}</p>
           </div>
           <span className={`ev-badge${e ? ' is-green' : ''}`}>{e ? '확정' : '확정 대기 중'}</span>
@@ -302,7 +304,7 @@ function EvalTab({ evaluations, onCriteria, todoCount }) {
             <div className="ev-result">
               <div className="ev-total-box">
                 <span>종합 수준</span>
-                <strong>{avg == null ? '-' : num(Math.round(avg * 10) / 10)}</strong>
+                <strong>{avg == null ? '-' : num(avg)}</strong>
                 <span className="is-blue">{avg == null ? '-' : levelOf(avg)}</span>
               </div>
               <div className="ev-scores">

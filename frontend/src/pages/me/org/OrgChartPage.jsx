@@ -21,11 +21,14 @@ const MENU = [
   ['contact', '연락·소통'],
 ];
 const AVATAR_COLORS = ['#0ea5e9', '#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777'];
+const PREVIEW = 3; // 부서원 카드 미리보기 수(Figma "12명 중 3명 미리보기")
+
+const sorted = (node) => [...(node.children ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
 /** 트리를 [{ node, depth, parentId }] 로 펼친다(정렬 순서대로) */
 function flatten(node, depth = 0, parentId = null, out = []) {
   out.push({ node, depth, parentId });
-  [...(node.children ?? [])].sort((a, b) => a.sortOrder - b.sortOrder).forEach((c) => flatten(c, depth + 1, node.id, out));
+  sorted(node).forEach((c) => flatten(c, depth + 1, node.id, out));
   return out;
 }
 
@@ -47,20 +50,62 @@ function WorkBadge({ status }) {
   return <span className={`org-work is-${status.toLowerCase()}`}>{item.label}</span>;
 }
 
-function Avatar({ member, big }) {
+function Avatar({ member, size = 'md' }) {
   const url = useFileUrl(member.profileFileId);
   const color = AVATAR_COLORS[member.id % AVATAR_COLORS.length];
   return (
-    <span className={`org-avatar${big ? ' is-big' : ''}`} style={url ? undefined : { background: color }}>
+    <span className={`org-avatar is-${size}`} style={url ? undefined : { background: color }}>
       {url ? <img src={url} alt="" /> : member.name.slice(0, 1)}
     </span>
   );
 }
 
-/* ───── 회사 조직 구조 트리 ───── */
-function TreeCard({ flat, open, toggle, selectedId, onSelect, total }) {
-  const visible = flat.filter((f) => pathTo(flat, f.node.id).slice(0, -1).every((id) => open.has(id)));
-  const depts = flat.length - 1;
+/* ───── 회사 조직 구조 트리 — 위에서 아래로 뻗는 조직도(Figma TreeCard) ───── */
+function ChartNode({ node, isRoot, open, toggle, selectedId, onSelect }) {
+  const kids = sorted(node);
+  const isOpen = open.has(node.id);
+  const cls = isRoot ? ' is-root' : selectedId === node.id ? ' is-selected' : '';
+  return (
+    <li>
+      <button type="button" className={`org-box${cls}`} onClick={() => onSelect(node.id)} aria-pressed={selectedId === node.id}>
+        {kids.length > 0 && (
+          <span
+            className="org-box-toggle"
+            role="button"
+            aria-label={isOpen ? '접기' : '펼치기'}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggle(node.id);
+            }}
+          >
+            <img src={isOpen ? iconChevronDown : iconChevronRight} alt="" />
+          </span>
+        )}
+        <strong>{node.name}</strong>
+        <span>{node.totalCount}</span>
+      </button>
+      {kids.length > 0 && isOpen && (
+        <ul>
+          {kids.map((c) => (
+            <ChartNode key={c.id} node={c} open={open} toggle={toggle} selectedId={selectedId} onSelect={onSelect} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function TreeCard({ root, depts, open, toggle, selectedId, onSelect }) {
+  // 좁은 화면 — 고른 부서 박스가 가로 스크롤 가운데 오게
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    const box = scrollRef.current;
+    const target = box?.querySelector('.org-box.is-selected') ?? box?.querySelector('.org-box.is-root');
+    if (!box || !target || box.scrollWidth <= box.clientWidth) return;
+    const r = target.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    box.scrollLeft += r.left - b.left - (b.width - r.width) / 2;
+  }, [selectedId, open]);
   return (
     <section className="org-card" id="org-tree">
       <div className="org-card-head">
@@ -68,86 +113,132 @@ function TreeCard({ flat, open, toggle, selectedId, onSelect, total }) {
           <h2>회사 조직 구조 트리</h2>
           <p>회사 → 본부 → 팀 계층 구조</p>
         </div>
+        <span className="org-muted">{`총 ${root.totalCount}명 · ${depts}개 부서`}</span>
       </div>
-      <div className="org-tree">
-        <div className="org-tree-top">
+      <div className="org-chart">
+        <div className="org-chart-top">
           <strong>조직 구조</strong>
           <span>{`${depts}개 부서`}</span>
         </div>
-        {visible.map(({ node, depth }) => {
-          const hasKids = node.children?.length > 0;
-          const isOpen = open.has(node.id);
-          return (
-            <button
-              key={node.id}
-              type="button"
-              className={`org-node${hasKids && isOpen ? ' is-open' : ''}${selectedId === node.id ? ' is-selected' : ''}`}
-              style={{ paddingLeft: `${0.625 + depth * 0.75}rem` }}
-              onClick={() => onSelect(node.id)}
-            >
-              <span
-                className="org-toggle"
-                role={hasKids ? 'button' : undefined}
-                aria-label={hasKids ? (isOpen ? '접기' : '펼치기') : undefined}
-                onClick={(e) => {
-                  if (!hasKids) return;
-                  e.stopPropagation();
-                  toggle(node.id);
-                }}
-              >
-                {hasKids && <img src={isOpen ? iconChevronDown : iconChevronRight} alt="" />}
-              </span>
-              <span className="org-name">{node.name}</span>
-              <span className="org-count">{node.totalCount}</span>
-            </button>
-          );
-        })}
+        <div className="org-chart-scroll" ref={scrollRef}>
+          <ul className="org-chart-tree">
+            <ChartNode node={root} isRoot open={open} toggle={toggle} selectedId={selectedId} onSelect={onSelect} />
+          </ul>
+        </div>
       </div>
-      <p className="org-tree-foot">{`총 ${total}명 · ${depts}개 부서`}</p>
+      <p className="org-muted">{`상태: ${Object.values(LABELS.orgWorkStatus)
+        .map((v) => v.label)
+        .join(' · ')}`}</p>
     </section>
+  );
+}
+
+/* ───── 부서원 카드 ───── */
+function MemberCard({ member, selected, onClick }) {
+  return (
+    <button type="button" className={`org-mcard${selected ? ' is-selected' : ''}`} onClick={onClick}>
+      <Avatar member={member} />
+      <strong>{member.name}</strong>
+      <em>{[member.orgUnitName, gradeTitle(member)].filter(Boolean).join(' · ')}</em>
+      <WorkBadge status={member.workStatus} />
+    </button>
   );
 }
 
 /* ───── 부서 정보 · 팀원 구성 ───── */
 function DeptCard({ node, members, loading, includeSub, setIncludeSub, selectedMemberId, onMember }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? members : members.slice(0, PREVIEW);
+  const title = all || members.length <= PREVIEW ? `${node.name} · ${members.length}명` : `${node.name} · ${members.length}명 중 ${PREVIEW}명 미리보기`;
   return (
-    <section className="org-card is-tight" id="org-dept">
+    <section className="org-card org-dept" id="org-dept">
       <div className="org-card-head">
         <div>
-          <h2>부서 정보 · 팀원 구성</h2>
-          <p>{`${node.name} · ${node.levelName ?? ''}${node.lead ? ` · 조직장 ${node.lead.name}` : ' · 조직장 없음'}`}</p>
+          <span className="org-eyebrow">부서 정보 · 팀원 구성</span>
+          <h2 className="is-big">{title}</h2>
+          <p>{`${node.levelName ?? '조직'}${node.lead ? ` · 조직장 ${node.lead.name}` : ' · 조직장 없음'}`}</p>
         </div>
         <span className="org-badge">{`${node.totalCount}명`}</span>
       </div>
       {node.children?.length > 0 && (
-        <label className="org-muted" style={{ display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
+        <label className="org-check">
           <input type="checkbox" checked={includeSub} onChange={(e) => setIncludeSub(e.target.checked)} />
           하위 조직 직원도 보기
         </label>
       )}
-      <div className="org-members">
-        {loading && <Spin />}
-        {!loading && members.length === 0 && <p className="org-empty">이 조직에 바로 소속된 직원이 없습니다.</p>}
-        {members.map((m) => (
-          <button key={m.id} type="button" className={`org-member${selectedMemberId === m.id ? ' is-selected' : ''}`} onClick={() => onMember(m)}>
-            <Avatar member={m} />
-            <span>
-              <strong>{m.name}</strong>
-              <em>{`${m.orgUnitName ?? node.name} · ${gradeTitle(m)}`}</em>
-            </span>
-            {node.lead?.id === m.id && <span className="org-lead">조직장</span>}
-            <WorkBadge status={m.workStatus} />
-          </button>
+      {loading && <Spin />}
+      {!loading && members.length === 0 && <p className="org-empty">이 조직에 바로 소속된 직원이 없습니다.</p>}
+      <div className="org-mcards">
+        {shown.map((m) => (
+          <MemberCard key={m.id} member={{ ...m, orgUnitName: m.orgUnitName ?? node.name }} selected={selectedMemberId === m.id} onClick={() => onMember(m)} />
         ))}
+      </div>
+      {members.length > PREVIEW && (
+        <button type="button" className="org-more" onClick={() => setAll((v) => !v)}>
+          {all ? '미리보기로 접기' : `부서원 전체 보기 (${members.length}명)`}
+        </button>
+      )}
+      <div className="org-rr">
+        <strong>부서 R&amp;R</strong>
+        <span>부서 R&amp;R(역할 · 책임) 정보는 준비 중입니다.</span>
       </div>
     </section>
   );
 }
 
-/* ───── 임직원 프로필 카드 ───── */
-function ProfileCard({ member, deptName }) {
+/* ───── 검색 결과 — 부서 정보 자리에 ───── */
+function SearchCard({ q, term, status, deptHits, hits, searching, selectedMemberId, onDept, onMember, onClear }) {
   return (
-    <section className="org-card is-tight">
+    <section className="org-card org-dept" id="org-dept">
+      <div className="org-card-head">
+        <div>
+          <span className="org-eyebrow">동료 찾기</span>
+          <h2 className="is-big">검색 결과</h2>
+          <p>
+            {[term && `"${q.trim()}"`, status !== 'ALL' && STATUS_FILTER.find(([k]) => k === status)[1], `부서 ${deptHits.length}곳 · 직원 ${hits.length}명`]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
+        <button type="button" className="org-btn" onClick={onClear}>
+          검색 지우기
+        </button>
+      </div>
+      {searching && <Spin />}
+      {deptHits.length > 0 && (
+        <div className="org-chips">
+          {deptHits.map(({ node: n }) => (
+            <button key={n.id} type="button" className="org-chip" onClick={() => onDept(n.id)}>
+              {`${n.name} · ${n.totalCount}명`}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="org-mcards">
+        {hits.map((m) => (
+          <MemberCard key={m.id} member={m} selected={selectedMemberId === m.id} onClick={() => onMember(m)} />
+        ))}
+      </div>
+      {!searching && !deptHits.length && !hits.length && <p className="org-empty">검색 결과가 없습니다.</p>}
+    </section>
+  );
+}
+
+/**
+ * 임직원 프로필 카드 + 연락 · 소통(Figma ProfileCard 안 CommunicationCard).
+ * [메일 보내기]는 회사 메일(email)로 메일 앱의 새 메일 창을 연다(mailto, 서버 발송 아님).
+ * 수신: "부서 전체 선택"이면 그 부서원(나 제외), 아니면 프로필 카드의 직원. 메신저 · 알림은 준비 중
+ */
+function ProfileCard({ member, deptName, node, members, meId, onPending }) {
+  const [whole, setWhole] = useState(false);
+  const deptMails = members.filter((m) => m.email && m.id !== meId).map((m) => m.email);
+  const to = whole ? deptMails : member?.email ? [member.email] : [];
+  let target = '선택 직원 또는 부서 전체';
+  if (whole) target = `${node?.name ?? '부서'} ${deptMails.length}명`;
+  else if (member) target = member.email ? `${member.name} (${member.email})` : `${member.name} · 메일 주소 없음`;
+
+  return (
+    <section className="org-card org-profile-card">
       <div className="org-card-head">
         <div>
           <h2>임직원 프로필 카드</h2>
@@ -159,7 +250,7 @@ function ProfileCard({ member, deptName }) {
       {member && (
         <>
           <div className="org-profile">
-            <Avatar member={member} big />
+            <Avatar member={member} size="lg" />
             <div>
               <strong>{member.name}</strong>
               <span>{`${member.orgUnitName ?? deptName} · ${gradeTitle(member)}`}</span>
@@ -167,16 +258,8 @@ function ProfileCard({ member, deptName }) {
           </div>
           <div className="org-rows">
             <div className="org-row">
-              <span>소속</span>
-              <span>{member.orgUnitName ?? deptName}</span>
-            </div>
-            <div className="org-row">
-              <span>직급 / 직책</span>
-              <span>{gradeTitle(member)}</span>
-            </div>
-            <div className="org-row">
               <span>사내 전화번호</span>
-              <span>{officePhone(member.id)}</span>
+              <strong>{officePhone(member.id)}</strong>
             </div>
             <div className="org-row">
               <span>이메일</span>
@@ -185,63 +268,42 @@ function ProfileCard({ member, deptName }) {
                   {member.email}
                 </a>
               ) : (
-                <span className="is-muted">-</span>
+                <strong className="is-muted">-</strong>
               )}
             </div>
           </div>
         </>
       )}
-    </section>
-  );
-}
-
-/**
- * 연락 · 소통 — [메일 보내기]는 회사 메일(email)로 메일 앱의 새 메일 창을 연다(mailto, 서버 발송 아님).
- * 수신: "부서 전체 선택"이면 그 부서원(나 제외), 아니면 프로필 카드의 직원. 메신저 · 알림은 준비 중
- */
-function ContactCard({ node, members, selected, meId, onPending }) {
-  const [whole, setWhole] = useState(false);
-  const deptMails = members.filter((m) => m.email && m.id !== meId).map((m) => m.email);
-  const to = whole ? deptMails : selected?.email ? [selected.email] : [];
-  let target = '받는 사람을 고르세요';
-  if (whole) target = `${node?.name ?? '부서'} ${deptMails.length}명`;
-  else if (selected) target = selected.email ? `${selected.name} (${selected.email})` : `${selected.name} · 메일 주소 없음`;
-
-  return (
-    <section className="org-card is-tight" id="org-contact">
-      <div className="org-card-head">
-        <div>
-          <h2>연락·소통</h2>
-          <p>메일 · 메신저 · 알림 발송</p>
+      <div className="org-divider" />
+      <div className="org-contact" id="org-contact">
+        <div className="org-contact-head">
+          <h3>연락·소통</h3>
+          {node && (
+            <label className="org-check">
+              <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
+              {`${node.name} 전체 선택 (${deptMails.length}명)`}
+            </label>
+          )}
         </div>
-      </div>
-      {node && (
-        <label className="org-check">
-          <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
-          {`${node.name} 전체 선택 (${deptMails.length}명)`}
-        </label>
-      )}
-      <div className="org-btns">
-        <button
-          type="button"
-          className="org-btn is-primary"
-          disabled={to.length === 0}
-          onClick={() => {
-            window.location.href = `mailto:${to.join(',')}`;
-          }}
-        >
-          메일 보내기
-        </button>
-        {['메신저 연결', '알림 발송'].map((t) => (
-          <button key={t} type="button" className="org-btn" onClick={() => onPending(t)}>
-            {t}
+        <div className="org-btns">
+          <button
+            type="button"
+            className="org-btn is-primary"
+            disabled={to.length === 0}
+            onClick={() => {
+              window.location.href = `mailto:${to.join(',')}`;
+            }}
+          >
+            메일 보내기
           </button>
-        ))}
-        <span className="org-muted" style={{ margin: 0 }}>{`수신 대상: ${target}`}</span>
+          {['메신저 연결', '알림 발송'].map((t) => (
+            <button key={t} type="button" className="org-btn" onClick={() => onPending(t)}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <p className="org-muted">{`수신 대상: ${target}`}</p>
       </div>
-      <p className="org-muted" style={{ margin: 0 }}>
-        메일 보내기는 이 컴퓨터의 메일 앱으로 새 메일을 엽니다. 메신저 연결 · 알림 발송은 준비 중입니다.
-      </p>
     </section>
   );
 }
@@ -320,9 +382,9 @@ export default function OrgChartPage() {
     if (key === 'search') searchRef.current?.focus();
     else document.getElementById(`org-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  // 조직장을 맨 위로
+  // 조직장을 맨 앞으로
   const memberList = [...(members.data ?? [])].sort((x, y) => (y.id === node?.lead?.id) - (x.id === node?.lead?.id));
-  const shownMember = member ?? memberList.find((m) => m.id === node?.lead?.id) ?? memberList[0] ?? null;
+  const shownMember = filtering ? member : (member ?? memberList.find((m) => m.id === node?.lead?.id) ?? memberList[0] ?? null);
 
   return (
     <div className="org">
@@ -331,120 +393,86 @@ export default function OrgChartPage() {
         <p>{`${tree.data.name} 부서별 조직 구성을 조회합니다.`}</p>
       </header>
 
-      <nav className="org-menu" aria-label="조직도 메뉴">
-        {MENU.map(([k, l]) => (
-          <button key={k} type="button" className={menu === k ? 'is-active' : undefined} onClick={() => go(k)}>
-            {l}
-          </button>
-        ))}
-      </nav>
-
-      <div className="org-search-row">
-        <label className="org-search">
-          <img src={iconSearch} alt="" />
-          <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="부서명, 직원명, 직급 검색" aria-label="조직도 검색" />
-        </label>
-        <span className="org-select">
-          <select aria-label="부서 선택" value={selectedId ?? ''} onChange={(e) => select(Number(e.target.value))}>
-            {flat.map(({ node: n, depth }) => (
-              <option key={n.id} value={n.id}>
-                {`${'　'.repeat(depth)}${n.name}`}
-              </option>
-            ))}
-          </select>
-          <img src={iconChevron} alt="" />
-        </span>
-        <span className="org-select">
-          <select aria-label="근무 상태" value={status} onChange={(e) => setStatus(e.target.value)}>
-            {STATUS_FILTER.map(([k, l]) => (
-              <option key={k} value={k}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <img src={iconChevron} alt="" />
-        </span>
+      <div className="org-tabs-row">
+        <nav className="org-tabs" aria-label="조직도 메뉴">
+          {MENU.map(([k, l]) => (
+            <button key={k} type="button" className={menu === k ? 'is-active' : undefined} onClick={() => go(k)}>
+              {l}
+            </button>
+          ))}
+        </nav>
+        <div className="org-controls">
+          <label className="org-search">
+            <img src={iconSearch} alt="" />
+            <input ref={searchRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="부서명, 직원명, 직급 검색" aria-label="조직도 검색" />
+          </label>
+          <span className="org-select">
+            <select aria-label="부서 선택" value={selectedId ?? ''} onChange={(e) => select(Number(e.target.value))}>
+              {flat.map(({ node: n, depth }) => (
+                <option key={n.id} value={n.id}>
+                  {`${'　'.repeat(depth)}${n.name}`}
+                </option>
+              ))}
+            </select>
+            <img src={iconChevron} alt="" />
+          </span>
+          <span className="org-select">
+            <select aria-label="근무 상태" value={status} onChange={(e) => setStatus(e.target.value)}>
+              {STATUS_FILTER.map(([k, l]) => (
+                <option key={k} value={k}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <img src={iconChevron} alt="" />
+          </span>
+        </div>
       </div>
 
-      <div className="org-body">
-        <TreeCard flat={flat} open={open} toggle={toggle} selectedId={selectedId} onSelect={select} total={tree.data.totalCount} />
+      <TreeCard root={tree.data} depts={flat.length - 1} open={open} toggle={toggle} selectedId={selectedId} onSelect={select} />
 
-        <div className="org-right">
-          {filtering ? (
-            <section className="org-card is-tight" id="org-dept">
-              <div className="org-card-head">
-                <div>
-                  <h2>검색 결과</h2>
-                  <p>
-                    {[term && `"${q.trim()}"`, status !== 'ALL' && STATUS_FILTER.find(([k]) => k === status)[1], `부서 ${deptHits.length}곳 · 직원 ${hits.length}명`]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="org-btn"
-                  onClick={() => {
-                    setQ('');
-                    setStatus('ALL');
-                  }}
-                >
-                  검색 지우기
-                </button>
-              </div>
-              <div className="org-members">
-                {searching && <Spin />}
-                {deptHits.map(({ node: n }) => (
-                  <button key={`d${n.id}`} type="button" className="org-member" onClick={() => { select(n.id); setQ(''); }}>
-                    <span className="org-avatar" style={{ background: '#94a3b8' }}>부</span>
-                    <span>
-                      <strong>{n.name}</strong>
-                      <em>{`${n.levelName ?? '조직'} · ${n.totalCount}명`}</em>
-                    </span>
-                  </button>
-                ))}
-                {hits.map((m) => (
-                  <button
-                    key={`m${m.id}`}
-                    type="button"
-                    className={`org-member${shownMember?.id === m.id ? ' is-selected' : ''}`}
-                    onClick={() => setMember(m)}
-                  >
-                    <Avatar member={m} />
-                    <span>
-                      <strong>{m.name}</strong>
-                      <em>{`${m.orgUnitName} · ${gradeTitle(m)}`}</em>
-                    </span>
-                    <WorkBadge status={m.workStatus} />
-                  </button>
-                ))}
-                {!searching && !deptHits.length && !hits.length && <p className="org-empty">검색 결과가 없습니다.</p>}
-              </div>
-            </section>
-          ) : (
-            node && (
-              <DeptCard
-                node={node}
-                members={memberList}
-                loading={members.isLoading}
-                includeSub={includeSub}
-                setIncludeSub={setIncludeSub}
-                selectedMemberId={shownMember?.id}
-                onMember={setMember}
-              />
-            )
-          )}
-
-          <ProfileCard member={filtering ? member : shownMember} deptName={node?.name} />
-
-          <ContactCard
-            node={node}
-            members={memberList}
-            selected={filtering ? member : shownMember}
-            meId={me?.employee?.id}
-            onPending={(t) => pending(t, '조직도 연락 · 소통')}
+      <div className="org-main">
+        {filtering ? (
+          <SearchCard
+            q={q}
+            term={term}
+            status={status}
+            deptHits={deptHits}
+            hits={hits}
+            searching={searching}
+            selectedMemberId={shownMember?.id}
+            onDept={(id) => {
+              select(id);
+              setQ('');
+            }}
+            onMember={setMember}
+            onClear={() => {
+              setQ('');
+              setStatus('ALL');
+            }}
           />
-        </div>
+        ) : (
+          node && (
+            <DeptCard
+              key={`${node.id}-${includeSub}`}
+              node={node}
+              members={memberList}
+              loading={members.isLoading}
+              includeSub={includeSub}
+              setIncludeSub={setIncludeSub}
+              selectedMemberId={shownMember?.id}
+              onMember={setMember}
+            />
+          )
+        )}
+        <ProfileCard
+          member={shownMember}
+          deptName={node?.name}
+          node={node}
+          members={memberList}
+          meId={me?.employee?.id}
+          onPending={(t) => pending(t, '조직도 연락 · 소통')}
+        />
       </div>
     </div>
   );
