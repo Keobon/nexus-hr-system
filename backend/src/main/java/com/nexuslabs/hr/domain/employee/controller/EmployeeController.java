@@ -1,5 +1,6 @@
 package com.nexuslabs.hr.domain.employee.controller;
 
+import com.nexuslabs.hr.domain.employee.dto.EmployeeContact;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeCreateRequest;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeCreateResponse;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeDetail;
@@ -59,6 +60,15 @@ public class EmployeeController {
                                                        @PageableDefault(size = 20) Pageable pageable) {
         return ApiResponse.ok(PageResponse.of(queryService.list(user, orgUnitId, jobGradeId, jobTitleId,
                 employmentTypeId, status, keyword, pageable)));
+    }
+
+    /** 전 직원 연락처 — 전사 직원 조회 권한이 있거나 조직장이면 전사, 아니면 FORBIDDEN(권한 확인은 서비스에서). 재직 · 휴직만. */
+    @GetMapping("/contacts")
+    public ApiResponse<PageResponse<EmployeeContact>> contacts(@CurrentUser LoginUser user,
+                                                               @RequestParam(required = false) Long orgUnitId,
+                                                               @RequestParam(required = false) String keyword,
+                                                               @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(PageResponse.of(queryService.contacts(user, orgUnitId, keyword, pageable)));
     }
 
     @PostMapping
