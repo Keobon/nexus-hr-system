@@ -18,7 +18,6 @@ const num = (n) => (n == null ? '-' : Number(n).toLocaleString('ko-KR', { maximu
 const TABS = [
   ['assign', '인사발령 이력'],
   ['eval', '인사평가'],
-  ['reward', '포상·징계'],
 ];
 const PERIODS = [
   ['all', '전체 기간'],
@@ -369,36 +368,6 @@ function EvalTab({ evaluations, onCriteria, todoCount }) {
   );
 }
 
-/* ───── ③ 포상 · 징계 — 기능명세서 v2 범위 밖 ───── */
-function RewardTab() {
-  return (
-    <>
-      <div className="ev-two">
-        {[
-          ['나의 포상 이력', '우수사원 표창 · 사내 상장'],
-          ['나의 징계 · 경고 이력', '본인에게 공개된 기록'],
-        ].map(([t, s]) => (
-          <section key={t} className="ev-card">
-            <div className="ev-summary">
-              <div>
-                <span className="ev-muted">{t}</span>
-                <strong>준비 중</strong>
-                <span className="ev-muted">{s}</span>
-              </div>
-            </div>
-          </section>
-        ))}
-      </div>
-      <section className="ev-card">
-        <div className="ev-pending">
-          <strong>포상 · 징계 기능은 아직 제공하지 않습니다</strong>
-          <span>포상 · 징계 기록은 기능명세서 v2 범위에 없어 이 시스템에서 관리하지 않습니다. 필요한 내용은 인사팀에 문의해 주세요.</span>
-        </div>
-      </section>
-    </>
-  );
-}
-
 /* ───── ④ 인사평가 기준표 — Figma 348:7763 ───── */
 /** 항목 환산 점수 범위 — 환산 = 항목 평균 ÷ 5 × 배점(BR-EVAL-004) */
 const band = (weight, min) => Math.round(((weight * min) / 5) * 10) / 10;
@@ -507,7 +476,7 @@ function Criteria({ e, onBack }) {
   );
 }
 
-/** 인사발령/평가 조회(F-ASSIGN-03 본인 · F-EVAL-05) — Figma 인사발령 이력 · 인사평가 · 포상·징계 · 인사평가 기준표 */
+/** 인사발령/평가 조회(F-ASSIGN-03 본인 · F-EVAL-05) — Figma 인사발령 이력 · 인사평가 · 인사평가 기준표(포상·징계는 10/15 요청으로 뺐다) */
 export default function MyEvaluationPage() {
   const [params, setParams] = useSearchParams();
   const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'assign';
@@ -565,7 +534,6 @@ export default function MyEvaluationPage() {
           onCriteria={(id) => setParams(id ? { tab: 'eval', view: 'criteria', eval: String(id) } : { tab: 'eval', view: 'criteria' })}
         />
       )}
-      {tab === 'reward' && <RewardTab />}
 
       <div className="ev-note ev-print-hide">
         <span>본인에게 공개된 인사정보만 조회할 수 있습니다.</span>

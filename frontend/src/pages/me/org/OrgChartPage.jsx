@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getOrgMembers, getOrgTree, orgMembersKey, orgTreeKey } from '../../../api/org';
 import { useMe } from '../../../auth/useMe';
 import { useFileUrl } from '../../../components/common/useFileUrl';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { officePhone } from './officePhone';
@@ -18,7 +17,6 @@ const MENU = [
   ['tree', '조직 구조'],
   ['search', '동료 찾기'],
   ['dept', '부서 정보'],
-  ['contact', '연락·소통'],
 ];
 const AVATAR_COLORS = ['#0ea5e9', '#2563eb', '#7c3aed', '#059669', '#d97706', '#db2777'];
 const PREVIEW = 3; // 부서원 카드 미리보기 수(Figma "12명 중 3명 미리보기")
@@ -224,19 +222,8 @@ function SearchCard({ q, term, status, deptHits, hits, searching, selectedMember
   );
 }
 
-/**
- * 임직원 프로필 카드 + 연락 · 소통(Figma ProfileCard 안 CommunicationCard).
- * [메일 보내기]는 회사 메일(email)로 메일 앱의 새 메일 창을 연다(mailto, 서버 발송 아님).
- * 수신: "부서 전체 선택"이면 그 부서원(나 제외), 아니면 프로필 카드의 직원. 메신저 · 알림은 준비 중
- */
-function ProfileCard({ member, deptName, node, members, meId, onPending }) {
-  const [whole, setWhole] = useState(false);
-  const deptMails = members.filter((m) => m.email && m.id !== meId).map((m) => m.email);
-  const to = whole ? deptMails : member?.email ? [member.email] : [];
-  let target = '선택 직원 또는 부서 전체';
-  if (whole) target = `${node?.name ?? '부서'} ${deptMails.length}명`;
-  else if (member) target = member.email ? `${member.name} (${member.email})` : `${member.name} · 메일 주소 없음`;
-
+/** 임직원 프로필 카드 — 연락 · 소통(메일 보내기 · 메신저 · 알림)은 10/15 요청으로 뺐다 */
+function ProfileCard({ member, deptName }) {
   return (
     <section className="org-card org-profile-card">
       <div className="org-card-head">
@@ -274,36 +261,6 @@ function ProfileCard({ member, deptName, node, members, meId, onPending }) {
           </div>
         </>
       )}
-      <div className="org-divider" />
-      <div className="org-contact" id="org-contact">
-        <div className="org-contact-head">
-          <h3>연락·소통</h3>
-          {node && (
-            <label className="org-check">
-              <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
-              {`${node.name} 전체 선택 (${deptMails.length}명)`}
-            </label>
-          )}
-        </div>
-        <div className="org-btns">
-          <button
-            type="button"
-            className="org-btn is-primary"
-            disabled={to.length === 0}
-            onClick={() => {
-              window.location.href = `mailto:${to.join(',')}`;
-            }}
-          >
-            메일 보내기
-          </button>
-          {['메신저 연결', '알림 발송'].map((t) => (
-            <button key={t} type="button" className="org-btn" onClick={() => onPending(t)}>
-              {t}
-            </button>
-          ))}
-        </div>
-        <p className="org-muted">{`수신 대상: ${target}`}</p>
-      </div>
     </section>
   );
 }
@@ -311,7 +268,6 @@ function ProfileCard({ member, deptName, node, members, meId, onPending }) {
 /** 조직도(F-ORG-01 조회) — Figma COMMON_org_chart. 로그인만 하면 본다 */
 export default function OrgChartPage() {
   const { me } = useMe();
-  const pending = usePendingFeature();
   const searchRef = useRef(null);
   const tree = useQuery({ queryKey: orgTreeKey, queryFn: getOrgTree });
   const flat = useMemo(() => (tree.data ? flatten(tree.data) : []), [tree.data]);
@@ -468,10 +424,6 @@ export default function OrgChartPage() {
         <ProfileCard
           member={shownMember}
           deptName={node?.name}
-          node={node}
-          members={memberList}
-          meId={me?.employee?.id}
-          onPending={(t) => pending(t, '조직도 연락 · 소통')}
         />
       </div>
     </div>

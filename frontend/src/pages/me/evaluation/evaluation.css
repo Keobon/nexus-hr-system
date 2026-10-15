@@ -466,24 +466,6 @@
   white-space: pre-wrap;
 }
 
-/* 포상 · 징계 요약 */
-.ev-summary {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.ev-summary > div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.ev-summary strong {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
 /* 평가표 */
 .ev-crumb {
   display: flex;
