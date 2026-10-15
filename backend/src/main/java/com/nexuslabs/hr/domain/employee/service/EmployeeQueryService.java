@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.attendance.dto.AttendanceSummary;
 import com.nexuslabs.hr.domain.attendance.service.AttendanceCalculator;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatus;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatusReader;
+import com.nexuslabs.hr.domain.employee.dto.EmployeeContact;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeDetail;
 import com.nexuslabs.hr.domain.employee.dto.EmployeeRow;
 import com.nexuslabs.hr.domain.employee.dto.FamilyList;
@@ -68,6 +69,15 @@ public class EmployeeQueryService {
              WHERE s.company_id = e.company_id AND s.employee_id = e.id AND s.effective_from <= ?
              ORDER BY s.effective_from DESC, s.created_at DESC, s.id DESC LIMIT 1)""";
 
+    /** 고른 조직과 하위 조직 전체 — 인자는 조직 ID · 회사 ID · 회사 ID. */
+    private static final String IN_ORG_SUBTREE = """
+             AND e.org_unit_id IN (WITH RECURSIVE sub AS (
+                 SELECT id FROM org_unit WHERE id = ? AND company_id = ?
+                 UNION
+                 SELECT c.id FROM org_unit c JOIN sub s ON c.parent_id = s.id WHERE c.company_id = ?)
+               SELECT id FROM sub)
+            """;
+
     private final JdbcTemplate jdbc;
     private final ScopeResolver scopeResolver;
     private final PermissionReader permissionReader;
@@ -117,13 +127,7 @@ public class EmployeeQueryService {
             args.add(scope.employeeIds().toArray(Long[]::new));
         }
         if (orgUnitId != null) {
-            where.append("""
-                     AND e.org_unit_id IN (WITH RECURSIVE sub AS (
-                         SELECT id FROM org_unit WHERE id = ? AND company_id = ?
-                         UNION
-                         SELECT c.id FROM org_unit c JOIN sub s ON c.parent_id = s.id WHERE c.company_id = ?)
-                       SELECT id FROM sub)
-                    """);
+            where.append(IN_ORG_SUBTREE);
             args.addAll(List.of(orgUnitId, user.companyId(), user.companyId()));
         }
         if (jobGradeId != null) {
@@ -167,6 +171,45 @@ public class EmployeeQueryService {
 
         Map<Long, TodayStatus> today = todayStatusReader.today(user.companyId(), rows.stream().map(EmployeeRow::id).toList());
         return new PageImpl<>(rows.stream().map(r -> withTodayStatus(r, today.get(r.id()))).toList(), pageable, total);
+    }
+
+    /**
+     * 전 직원 연락처(10/15 시연 피드백). 전사 직원 조회 권한이 있거나 조직장이면 전사를 본다 — 조직장은 직원 목록 · 상세가
+     * 팀 범위여도 연락처만은 전사다. 그 밖에는 FORBIDDEN. 재직 · 휴직만, 사원번호 순.
+     */
+    @Transactional(readOnly = true)
+    public PageImpl<EmployeeContact> contacts(LoginUser user, Long orgUnitId, String keyword, Pageable pageable) {
+        boolean companyWide = scopeResolver.findScope(user, PermissionCode.EMPLOYEE_READ).map(Scope::all).orElse(false);
+        if (!companyWide && !scopeResolver.isOrgLead(user)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        StringBuilder where = new StringBuilder(" WHERE e.company_id = ? AND e.status::text = ANY(?)");
+        List<Object> args = new ArrayList<>();
+        args.add(user.companyId());
+        args.add(DEFAULT_STATUSES.stream().map(Enum::name).toArray(String[]::new));
+        if (orgUnitId != null) {
+            where.append(IN_ORG_SUBTREE);
+            args.addAll(List.of(orgUnitId, user.companyId(), user.companyId()));
+        }
+        if (keyword != null && !keyword.isBlank()) {
+            where.append(" AND (e.name ILIKE ? OR e.employee_no ILIKE ?)");
+            String like = "%" + keyword.trim() + "%";
+            args.addAll(List.of(like, like));
+        }
+        long total = jdbc.queryForObject("SELECT count(*)" + FROM + where, Long.class, args.toArray());
+
+        args.add(pageable.getPageSize());
+        args.add(pageable.getOffset());
+        List<EmployeeContact> rows = jdbc.query("""
+                        SELECT e.id, e.employee_no, e.name, o.name AS org_unit_name, g.name AS job_grade_name,
+                               t.name AS job_title_name, e.email, e.phone, e.address
+                        """ + FROM + where + " ORDER BY e.employee_no, e.id LIMIT ? OFFSET ?",
+                (rs, i) -> new EmployeeContact(rs.getLong("id"), rs.getString("employee_no"), rs.getString("name"),
+                        rs.getString("org_unit_name"), rs.getString("job_grade_name"), rs.getString("job_title_name"),
+                        rs.getString("email"), rs.getString("phone"), rs.getString("address")),
+                args.toArray());
+        return new PageImpl<>(rows, pageable, total);
     }
 
     /** 개인 페이지. 토큰의 직원 ID 로만 조회한다 — 주소에 다른 직원 ID 를 넣을 자리가 없다(BR-AUTH-001). */
