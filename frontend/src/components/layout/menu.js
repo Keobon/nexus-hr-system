@@ -149,7 +149,7 @@ const GROUPS = [
       {
         key: 'evaluations',
         path: '/evaluations',
-        label: '평가 운영',
+        label: '평가 관리',
         icon: StarOutlined,
         visible: ({ canAny }) => canAny('EVAL_READ', 'EVAL_MANAGE'),
       },

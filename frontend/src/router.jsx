@@ -17,6 +17,7 @@ import EmployeeCreatePage from './pages/hr/employees/EmployeeCreatePage';
 import EmployeeDetailPage from './pages/hr/employees/EmployeeDetailPage';
 import AssignmentListPage from './pages/hr/assignments/AssignmentListPage';
 import PayrollPage from './pages/hr/payroll/PayrollPage';
+import EvaluationAdminPage from './pages/hr/evaluations/EvaluationAdminPage';
 import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
@@ -42,6 +43,7 @@ const PAGES = {
   employees: EmployeeListPage,
   assignments: AssignmentListPage,
   payroll: PayrollPage,
+  evaluations: EvaluationAdminPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
