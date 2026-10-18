@@ -45,9 +45,16 @@ export default function EmployeeCreatePage() {
       jobTitleId: v.jobTitleId ?? null,
       employmentTypeId: v.employmentTypeId,
       hireDate: v.hireDate.format('YYYY-MM-DD'),
+      phone: v.phone?.trim() || null,
+      address: v.address?.trim() || null,
+      emergencyName: v.emergencyName?.trim() || null,
+      emergencyRelation: v.emergencyRelation?.trim() || null,
+      emergencyPhone: v.emergencyPhone?.trim() || null,
     });
 
   const req = (message) => [{ required: true, message }];
+  // 전화번호 — 숫자 · 하이픈만(비워 둘 수 있다)
+  const phoneRule = [{ pattern: /^[0-9-]{9,20}$/, message: '숫자와 - 만 입력하세요 (예: 010-1234-5678)' }];
 
   return (
     <div className="hr">
@@ -84,6 +91,28 @@ export default function EmployeeCreatePage() {
             <Select placeholder="고용형태를 선택하세요" options={opts(types.data)} />
           </Form.Item>
           <div />
+        </div>
+
+        <p className="hr-card-title" style={{ marginTop: '0.5rem' }}>연락처 · 주소</p>
+        <div className="hr-form-row">
+          <Form.Item name="phone" label="휴대전화" rules={phoneRule}>
+            <Input placeholder="010-0000-0000" maxLength={20} />
+          </Form.Item>
+          <div />
+        </div>
+        <Form.Item name="address" label="주소">
+          <Input placeholder="예: 서울특별시 강남구 테헤란로 123, 7층" maxLength={255} />
+        </Form.Item>
+        <div className="hr-form-row">
+          <Form.Item name="emergencyName" label="비상 연락처 이름">
+            <Input placeholder="예: 홍길순" maxLength={50} />
+          </Form.Item>
+          <Form.Item name="emergencyRelation" label="관계">
+            <Input placeholder="예: 배우자 · 부모" maxLength={20} />
+          </Form.Item>
+          <Form.Item name="emergencyPhone" label="비상 연락처 전화" rules={phoneRule}>
+            <Input placeholder="010-0000-0000" maxLength={20} />
+          </Form.Item>
         </div>
       </Form>
 
