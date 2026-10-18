@@ -244,7 +244,8 @@ public class EmployeeQueryService {
     }
 
     /**
-     * 직원 상세. 다른 회사 직원이면 404, 팀 범위 밖이면 OUT_OF_SCOPE. 팀 범위면 제한 필드만(BR-EMP-003 — 주소 · 부양가족 · 자녀 · 추가 항목 숨김),
+     * 직원 상세. 다른 회사 직원이면 404, 팀 범위 밖이면 OUT_OF_SCOPE. 팀 범위면 제한 필드만(BR-EMP-003 — 부양가족 · 자녀 · 추가 항목 숨김.
+     * 주소는 연락처에서 조직장도 보므로 10/18 부터 보인다),
      * 인사 메모는 EMPLOYEE_MANAGE 만. 두 범위 모두 오늘 상태와 이번 달 근태 요약을 붙인다.
      */
     @Transactional(readOnly = true)
@@ -280,9 +281,9 @@ public class EmployeeQueryService {
                 (rs, i) -> new EmployeeDetail(rs.getLong("id"), rs.getString("employee_no"), rs.getString("name"),
                         rs.getString("org_unit_name"), rs.getString("job_grade_name"), rs.getString("job_title_name"),
                         rs.getString("employment_type_name"), EmpStatus.valueOf(rs.getString("status")),
-                        rs.getString("email"), rs.getString("phone"), rs.getObject("profile_file_id", Long.class),
-                        todayStatus, monthSummary,
-                        !scope.all() ? null : new EmployeeDetail.Full(rs.getString("name_en"), rs.getString("address"),
+                        rs.getString("email"), rs.getString("phone"), rs.getString("address"),
+                        rs.getObject("profile_file_id", Long.class), todayStatus, monthSummary,
+                        !scope.all() ? null : new EmployeeDetail.Full(rs.getString("name_en"),
                                 rs.getObject("birth_date", LocalDate.class),
                                 rs.getString("gender") == null ? null : Gender.valueOf(rs.getString("gender")),
                                 rs.getString("emergency_name"), rs.getString("emergency_relation"),
