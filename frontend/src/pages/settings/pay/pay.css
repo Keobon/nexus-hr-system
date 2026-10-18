@@ -1,0 +1,414 @@
+/*
+ * 회사 설정 › 급여 항목·변수 — Figma 451:8943 · 453:8899 · 71:5113 · 452:9254 · 71:5717 · 항목 창들
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale. 공통 표 · 버튼 · 창은 hr.css
+ */
+
+/* 탭 — 활성은 하늘색 채움, 나머지는 흰 테두리(14 SemiBold · 16 × 8) */
+.pay-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pay-tabs button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pay-tabs button.is-on {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+/* 필터 줄 — 전체 · 지급 · 공제 + 사용 안 함 항목 보기 */
+.pay-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pay-bar.is-plain {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.pay-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pay-chips button {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pay-chips button.is-on {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+.pay-switch {
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 표 — 머리 44 · 줄 56 */
+.pay-table .hr-tr.is-head,
+.pay-card .hr-tr.is-head {
+  gap: 0.75rem;
+  height: 2.75rem;
+  font-size: 0.8125rem;
+}
+
+.pay-row {
+  gap: 0.75rem;
+  height: 3.5rem !important;
+}
+
+.pay-table .hr-tr > *,
+.pay-card .hr-tr > * {
+  padding-right: 0;
+}
+
+.pay-row.is-off {
+  color: #94a3b8;
+}
+
+.pay-row.is-off .hr-strong {
+  color: #94a3b8;
+}
+
+.pay-row.is-locked {
+  cursor: default;
+}
+
+.pay-amount {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* 지급 · 공제 배지 */
+.pay-kind {
+  display: inline-flex;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.pay-kind.is-earn {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.pay-kind.is-ded {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pay-use {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.pay-lock {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* 두 줄 칸 — 위 굵게, 아래 작게 */
+.pay-two {
+  display: inline-flex !important;
+  flex-direction: column;
+  gap: 0.125rem;
+  white-space: normal !important;
+}
+
+.pay-two em {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* 카드 머리 · 발 */
+.pay-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.pay-card-head strong {
+  color: #0f172a;
+  font-size: 0.9375rem;
+}
+
+.pay-card-head span,
+.pay-muted {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pay-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1.25rem;
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+/* 칸 너비 */
+.pay-c-name {
+  flex: 12 0 10rem;
+}
+
+.pay-c-num {
+  flex: 9 0 7rem;
+  text-align: right;
+}
+
+.pay-c-in {
+  flex: 1 0 9rem;
+}
+
+.pay-c-del {
+  flex: 0 0 3.5rem;
+  text-align: right;
+}
+
+.pay-c-var {
+  flex: 14 0 12rem;
+}
+
+.pay-c-val {
+  flex: 9 0 8rem;
+}
+
+.pay-c-btn {
+  flex: 0 0 5rem;
+}
+
+.pay-input.ant-input-number,
+.pay-input.ant-input-number-affix-wrapper {
+  width: 100%;
+}
+
+.pay-edit-table .hr-tr.is-head {
+  gap: 0.75rem;
+}
+
+.pay-add {
+  align-self: flex-start;
+  margin: 0.5rem 0;
+  font-size: 0.8125rem;
+}
+
+/* 적용 기준 줄 */
+.pay-basis {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  color: #334155;
+  font-size: 0.875rem;
+}
+
+.pay-basis > span {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.pay-basis strong {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background: #fff;
+  font-weight: 500;
+}
+
+.pay-chip-on {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.75rem;
+  background: #e0f2fe;
+  color: #0284c7;
+  font-size: 0.6875rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* 소득세 — 요약 카드 4개 · 표 + 계산 기준 */
+.pay-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.pay-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pay-stats span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pay-stats strong {
+  color: #0f172a;
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.pay-stats em {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.pay-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.pay-rule dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.pay-rule dt {
+  margin-top: 0.5rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pay-rule dd {
+  margin: 0;
+  color: #334155;
+}
+
+.pay-log {
+  gap: 1rem;
+}
+
+/* 창 */
+.pay-modal .ant-form-item {
+  margin-bottom: 0.875rem;
+}
+
+.pay-hint {
+  margin: -0.25rem 0 0.875rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pay-warn {
+  margin: -0.375rem 0 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #fed7aa;
+  border-radius: 0.375rem;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.75rem;
+}
+
+.pay-checks {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.pay-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 1rem 0;
+}
+
+.pay-field > label {
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pay-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pay-modal-foot .hr-modal-foot {
+  margin-top: 0;
+}
+
+.hr-btn.is-sm {
+  height: 2rem;
+  padding: 0 0.875rem;
+}
+
+@media (max-width: 1199px) {
+  .pay-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pay-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .pay-table,
+  .pay-card,
+  .pay-edit-table {
+    overflow-x: auto;
+  }
+
+  .pay-table > *,
+  .pay-card > .hr-tr,
+  .pay-edit-table > * {
+    min-width: 46rem;
+  }
+}

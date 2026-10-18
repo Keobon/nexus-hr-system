@@ -20,6 +20,7 @@ import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
 import TitleSettingsPage from './pages/settings/TitleSettingsPage';
+import PaySettingsPage from './pages/settings/pay/PaySettingsPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -41,6 +42,7 @@ const PAGES = {
   assignments: AssignmentListPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
+  'set-pay': PaySettingsPage,
 };
 
 // 메뉴 아래 화면(등록 · 상세 · 정정) — 부모 메뉴와 같은 규칙으로 막는다. 버튼은 화면에서 can() 으로 감싼다
