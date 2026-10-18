@@ -1,7 +1,8 @@
-// 전직원 목록(F-EMP-02) — Figma HR_employee_list(445:8343). 직원 목록 · 연락처 두 탭, 고른 직원에게 메일 보내기 · 연락처 복사
-import { useEffect, useMemo, useRef, useState } from 'react';
+// 전직원 목록(F-EMP-02) — Figma HR_employee_list(445:8343). 직원 목록 · 연락처 두 탭, 고르면 메일 아이콘 버튼으로 메일 보내기
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Checkbox, Input, Pagination, Popover, Result, Select, Skeleton } from 'antd';
+import { App, Checkbox, Input, Pagination, Popover, Result, Select, Skeleton, Tooltip } from 'antd';
+import { MailOutlined } from '@ant-design/icons';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { employeeContactsKey, employeesKey, fetchAllPages, getEmployeeContacts, getEmployees } from '../../../api/employees';
 import { employmentTypesApi, jobGradesApi, jobTitlesApi } from '../../../api/orgSettings';
@@ -174,11 +175,9 @@ export default function EmployeeListPage() {
   const scopeKey = JSON.stringify([tab, baseParams]);
   const [picked, setPicked] = useState({}); // id → 행
   const [allPicked, setAllPicked] = useState(false); // 검색 결과 전체
-  const wantAll = useRef(false); // [전체 직원에게 보내기] — 필터를 비운 뒤 전체 선택
   useEffect(() => {
     setPicked({});
-    setAllPicked(wantAll.current);
-    wantAll.current = false;
+    setAllPicked(false);
   }, [scopeKey]);
   const onPage = rows.filter((r) => picked[r.id]).length;
   const pickedTotal = Object.keys(picked).length;
@@ -200,15 +199,7 @@ export default function EmployeeListPage() {
     setPicked({});
     setAllPicked(false);
   };
-  const pickEveryone = () => {
-    const empty = FILTER_KEYS.every((k) => filters[k] === undefined);
-    setKw('');
-    if (empty) setAllPicked(true);
-    else {
-      wantAll.current = true;
-      write({ tab });
-    }
-  };
+  const hasPick = allPicked || pickedTotal > 0;
 
   // 보낼 대상 — 전체 선택이면 같은 조건으로 size=100 씩 모든 페이지를 받아 모은다
   const [busy, setBusy] = useState(false);
@@ -236,12 +227,6 @@ export default function EmployeeListPage() {
         return;
       }
       window.location.href = href;
-    });
-  const copyContacts = () =>
-    run(async (list) => {
-      if (!list.length) return;
-      await navigator.clipboard.writeText(list.map((r) => [r.name, r.phone || '-', r.email || '-'].join(' · ')).join('\n'));
-      message.success(`${list.length}명의 연락처(이름 · 전화 · 이메일)를 복사했습니다`);
     });
 
   if (q.error?.status === 403) return <Result status="403" title="권한 없음" subTitle="이 화면을 볼 권한이 없습니다." />;
@@ -315,9 +300,13 @@ export default function EmployeeListPage() {
         <div className="hr-toolbar">
           <span>{`총 ${total}명`}</span>
           <div className="hr-toolbar-actions">
-            <button type="button" className="hr-btn" onClick={pickEveryone}>
-              전체 직원에게 보내기
-            </button>
+            {hasPick && (
+              <Tooltip title={allPicked ? `검색 결과 ${total}명에게 메일 보내기` : `선택한 ${pickedTotal}명에게 메일 보내기`}>
+                <button type="button" className="hr-mail-btn" aria-label="선택한 직원에게 메일 보내기" disabled={busy} onClick={sendMail}>
+                  <MailOutlined />
+                </button>
+              </Tooltip>
+            )}
             {isList && (
               <Popover
                 trigger="click"
@@ -341,7 +330,7 @@ export default function EmployeeListPage() {
           </div>
         </div>
 
-        {(allPicked || pickedTotal > 0) && (
+        {hasPick && (
           <div className="hr-pickbar">
             <span>
               {allPicked ? (
@@ -365,14 +354,6 @@ export default function EmployeeListPage() {
                 선택 해제
               </button>
             </span>
-            <div className="hr-pickbar-actions">
-              <button type="button" className="hr-btn" disabled={busy} onClick={sendMail}>
-                메일 보내기
-              </button>
-              <button type="button" className="hr-btn is-secondary" disabled={busy} onClick={copyContacts}>
-                연락처 복사
-              </button>
-            </div>
           </div>
         )}
 

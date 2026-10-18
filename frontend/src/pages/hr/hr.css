@@ -671,7 +671,32 @@
   min-width: 9rem;
 }
 
-/* 선택 바 — 고른 사람 수 + 메일 보내기 · 연락처 복사 */
+/* 메일 아이콘 버튼 — Figma Button_Secondary(50 × 36, #38bdf8). 체크박스로 고르면 나타난다 */
+.hr-mail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.125rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+
+.hr-mail-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.hr-mail-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 선택 바 — 고른 사람 수 · 검색 결과 전체 선택 · 선택 해제 */
 .hr-pickbar {
   display: flex;
   flex-wrap: wrap;
@@ -694,11 +719,6 @@
 
 .hr-link.is-gray {
   color: #64748b;
-}
-
-.hr-pickbar-actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 /* 칸이 많으면 표만 가로 스크롤 */
