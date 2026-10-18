@@ -13,11 +13,13 @@ import {
   getEmploymentStatusHistory,
   updateEmployee,
 } from '../../../api/employees';
+import { employeeSalariesKey, getEmployeeSalaries } from '../../../api/payroll';
 import { useMe } from '../../../auth/useMe';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf, optionsOf } from '../../../constants/labels';
+import { formatMoney } from '../../../utils/format';
 import { ConfirmModal, EmpStatusBadge, ModalFoot, PageHead, useOrgOptions } from '../parts';
 
 const KV = ({ k, children }) => (
@@ -28,6 +30,57 @@ const KV = ({ k, children }) => (
 );
 const has = (v) => v !== undefined;
 
+/** 급여 — 지금 급여(방식 · 연봉 · 월 기본급 · 적용 시작일) + 고정 수당 · 공제 + 최근 변경 3건 */
+function SalaryCard({ s }) {
+  const cur = s.current;
+  const items = s.payItems ?? [];
+  return (
+    <div className="hr-card hr-info" style={{ gap: '1rem' }}>
+      <p className="hr-card-title">급여</p>
+      {!s.payrollEligible && <p className="hr-note">급여 대상이 아닌 직원입니다.</p>}
+      {s.payrollEligible && !cur && <p className="hr-note">등록된 급여가 없습니다. 급여 화면에서 등록하세요.</p>}
+      {cur && (
+        <div className="hr-row2">
+          <div className="hr-info">
+            <KV k="급여 방식">{labelOf('salaryType', cur.salaryType)}</KV>
+            <KV k="연봉">{cur.annualSalary != null ? formatMoney(cur.annualSalary) : '-'}</KV>
+            <KV k="월 기본급">{formatMoney(cur.monthlyBase)}</KV>
+            <KV k="적용 시작일">{cur.effectiveFrom}</KV>
+          </div>
+          <div className="hr-info">
+            {items.length === 0 && <KV k="고정 수당 · 공제">-</KV>}
+            {items.map((p) => (
+              <KV key={p.payItemId} k={`${p.name} · ${p.itemKind === 'DEDUCTION' ? '공제' : '수당'}`}>
+                {p.currentAmount != null ? formatMoney(p.currentAmount) : '자동 계산'}
+              </KV>
+            ))}
+          </div>
+        </div>
+      )}
+      {(s.salaries ?? []).length > 0 && (
+        <div className="hr-table is-sm">
+          <div className="hr-tr is-head">
+            <span style={{ width: '9rem' }}>적용 시작일</span>
+            <span style={{ width: '7rem' }}>방식</span>
+            <span style={{ width: '10rem' }}>연봉</span>
+            <span style={{ width: '10rem' }}>월 기본급</span>
+            <span>사유</span>
+          </div>
+          {s.salaries.slice(0, 3).map((r) => (
+            <div key={r.id} className="hr-tr">
+              <span className="hr-strong" style={{ width: '9rem' }}>{r.effectiveFrom}</span>
+              <span style={{ width: '7rem' }}>{labelOf('salaryType', r.salaryType)}</span>
+              <span style={{ width: '10rem' }}>{r.annualSalary != null ? formatMoney(r.annualSalary) : '-'}</span>
+              <span style={{ width: '10rem' }}>{formatMoney(r.monthlyBase)}</span>
+              <span>{r.reason || '-'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EmployeeDetailPage() {
   const { id } = useParams();
   const { can } = useMe();
@@ -35,6 +88,8 @@ export default function EmployeeDetailPage() {
   const detail = useQuery({ queryKey: employeeKey(id), queryFn: () => getEmployee(id) });
   // 재직상태 이력은 EMPLOYEE_READ 전사 범위만 — 못 보면 카드를 숨긴다
   const history = useQuery({ queryKey: employmentStatusHistoryKey(id), queryFn: () => getEmploymentStatusHistory(id), retry: false });
+  // 연봉 · 급여는 급여 조회 권한(PAYROLL_READ)이 있을 때만 — 목록의 "연봉" 칸을 여기로 옮겼다(10/18 설계)
+  const salaries = useQuery({ queryKey: employeeSalariesKey(id), queryFn: () => getEmployeeSalaries(id), enabled: can('PAYROLL_READ'), retry: false });
   const [editOpen, setEditOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState(null);
 
@@ -89,6 +144,8 @@ export default function EmployeeDetailPage() {
           <p className="hr-note">※ 부서·직급·직책 변경은 인사발령 화면에서 처리합니다.</p>
         </div>
       </div>
+
+      {salaries.data && <SalaryCard s={salaries.data} />}
 
       {history.data && (
         <div className="hr-card hr-info" style={{ gap: '1rem' }}>

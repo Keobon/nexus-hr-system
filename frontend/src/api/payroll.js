@@ -17,4 +17,7 @@ export const getMyPayslip = (id) => api.get(`/me/payslips/${id}`);
 
 /** GET /me/salaries → { payrollEligible, current, salaries: [{ effectiveFrom, salaryType, annualSalary, monthlyBase, reason }], payItems } */
 export const mySalariesKey = ['salaries', 'me'];
+/** GET /employees/{id}/salaries — 같은 모양(PAYROLL_READ). 직원 상세의 급여 카드 */
+export const employeeSalariesKey = (id) => ['salaries', 'employee', String(id)];
+export const getEmployeeSalaries = (id) => api.get(`/employees/${id}/salaries`);
 export const getMySalaries = () => api.get('/me/salaries');
