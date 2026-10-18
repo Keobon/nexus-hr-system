@@ -1,0 +1,883 @@
+/*
+ * 인사 관리 › 급여 — Figma 456-15895 · 456-16092 · 456-16681 · 458-17828 · 458-18062 · 460-11591 · 460-12084 · 464-15910 외
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale. 공통 표 · 버튼 · 배지 · 창은 hr.css, 명세서 표는 me/payroll/payroll.css
+ */
+
+/* 탭 — 활성은 하늘색 채움, 나머지는 흰 테두리 */
+.pr-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pr-tabs button,
+.pr-chips button {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pr-tabs button.is-on,
+.pr-chips button.is-on {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+.pr-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* 위 카드 — 귀속 월 · 지급일 · 상태 · 급여 대장 */
+.pr-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pr-bar > .hr-badge {
+  align-self: center;
+  margin-top: 1.25rem;
+}
+
+.pr-select.ant-select,
+.pr-select.ant-picker {
+  width: 9.5rem;
+  height: 2.25rem;
+}
+
+.pr-grow {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+}
+
+.pr-spacer {
+  flex: 1 1 auto;
+}
+
+.pr-self-end {
+  align-self: center;
+  margin-top: 1.25rem;
+}
+
+.pr-readonly {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.875rem;
+}
+
+.pr-switch {
+  display: inline-flex;
+  gap: 0.625rem;
+  align-items: center;
+  align-self: center;
+  margin-top: 1.25rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 단계 — ① 수동 입력 → ② 미리보기 → ③ 확정 → ④ 지급완료 */
+.pr-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.pr-steps li {
+  position: relative;
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.pr-steps li + li::before {
+  position: absolute;
+  left: -1.25rem;
+  color: #94a3b8;
+  content: '→';
+}
+
+.pr-steps li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.6875rem;
+}
+
+.pr-steps li.is-on {
+  color: #0ea5e9;
+  font-weight: 700;
+}
+
+/* 미등록 직원 안내 — 노란 띠 */
+.pr-alert {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fde68a;
+  border-radius: 0.5rem;
+  background: #fffbeb;
+}
+
+.pr-alert > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pr-alert strong {
+  color: #92400e;
+  font-size: 0.8125rem;
+}
+
+.pr-alert span {
+  color: #b45309;
+  font-size: 0.75rem;
+}
+
+.pr-alert .hr-link {
+  color: #92400e;
+  text-decoration: underline;
+}
+
+.pr-warn {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #fed7aa;
+  border-radius: 0.375rem;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.75rem;
+}
+
+/* 합계 카드 5개 — 실지급 총액만 하늘색 강조 */
+.pr-totals {
+  display: grid;
+  grid-template-columns: 0.7fr repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.pr-totals > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pr-totals span {
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+.pr-totals strong {
+  color: #0f172a;
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pr-totals > div:first-child strong {
+  text-align: left;
+}
+
+.pr-totals > .is-main {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+}
+
+.pr-totals > .is-main strong {
+  color: #38bdf8;
+  font-size: 1.625rem;
+}
+
+/* 표 카드 */
+.pr-card-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.pr-card-head.is-plain {
+  padding: 0;
+}
+
+.pr-card-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pr-card-head strong {
+  color: #0f172a;
+  font-size: 0.9375rem;
+}
+
+.pr-card-head span,
+.pr-muted {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pr-card .hr-tr.is-head {
+  gap: 0.75rem;
+}
+
+.pr-row {
+  gap: 0.75rem;
+}
+
+.pr-row.is-open,
+.pr-row.is-open:hover {
+  background: #f0f9ff;
+}
+
+.pr-row.is-sum {
+  background: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.pr-row.is-sub {
+  background: #fafcff;
+}
+
+.pr-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.pr-card .hr-tr > * {
+  padding-right: 0;
+}
+
+/* 칸 너비 */
+.pr-c-no {
+  flex: 0 0 7rem;
+}
+
+.pr-c-name {
+  flex: 0 0 6rem;
+}
+
+.pr-c-org {
+  flex: 1 1 8rem;
+}
+
+.pr-c-num {
+  flex: 1 1 7.5rem;
+  text-align: right;
+}
+
+.pr-c-in {
+  flex: 0 0 10rem;
+  text-align: right;
+}
+
+.pr-c-x {
+  flex: 0 0 2.5rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.pr-c-type {
+  flex: 0 0 5.5rem;
+}
+
+.pr-c-date {
+  flex: 0 0 7rem;
+}
+
+.pr-c-st {
+  flex: 0 0 5.5rem;
+  text-align: center;
+}
+
+.pr-c-orgtree {
+  flex: 1.6 1 12rem;
+}
+
+.pr-c-orgtree em {
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+
+.pr-c-cnt {
+  flex: 0 0 4rem;
+  text-align: right;
+}
+
+.pr-c-rate {
+  flex: 1 1 9rem;
+}
+
+.pr-input.ant-input-number,
+.pr-input.ant-input-number-affix-wrapper {
+  width: 100%;
+}
+
+.pr-input input {
+  text-align: right;
+}
+
+.pr-blue {
+  color: #2563eb !important;
+}
+
+.pr-red {
+  color: #dc2626 !important;
+}
+
+/* 펼친 줄 — 지급 | 공제 + 근태 */
+.pr-detail,
+.pr-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: #f8fbff;
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+.pr-detail-wrap .pr-detail {
+  padding: 0;
+}
+
+.pr-detail-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.5rem;
+}
+
+.pr-detail dl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.pr-detail dt,
+.pr-detail dd {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.pr-detail dt {
+  margin-bottom: 0.25rem;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.pr-detail p {
+  margin: 0;
+  padding-top: 0.625rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.pr-slip-link {
+  align-self: flex-end;
+  font-size: 0.8125rem;
+}
+
+.pr-foot {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.pr-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pr-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.pr-empty strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.pr-empty .hr-btn {
+  margin-top: 0.5rem;
+}
+
+.pr-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+}
+
+/* 직원 급여 옆 창 */
+.pr-drawer .ant-drawer-body {
+  padding: 0;
+  background: #f8fafc;
+}
+
+.pr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 1.5rem;
+}
+
+.pr-panel-head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 -1rem;
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.pr-panel-head > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pr-panel-head strong {
+  color: #0f172a;
+  font-size: 1.125rem;
+}
+
+.pr-panel-head p {
+  flex: 1 1 100%;
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pr-x {
+  height: 1.75rem;
+  padding: 0 0.375rem;
+  border: 0;
+  background: none;
+  color: #64748b;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.pr-panel-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.pr-panel-empty strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.pr-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pr-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pr-box-head strong {
+  color: #0f172a;
+  font-size: 0.9375rem;
+}
+
+.pr-kv {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: 0.625rem 0.5rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.pr-kv dt {
+  color: #64748b;
+}
+
+.pr-kv dd {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pr-mini {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+.pr-mini > .pr-muted {
+  margin: 0;
+  padding: 0.75rem;
+}
+
+.pr-mini-tr {
+  display: grid;
+  grid-template-columns: 1fr 6.5rem 6.5rem 3.5rem;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+}
+
+.pr-mini-tr + .pr-mini-tr {
+  border-top: 1px solid #f1f5f9;
+}
+
+.pr-mini-tr.is-head {
+  min-height: 2rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.pr-mini-tr .is-num {
+  text-align: right;
+}
+
+.pr-seg-ro {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pr-seg-ro span {
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.pr-seg-ro span.is-on {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+.pr-box > .pr-muted {
+  margin: 0;
+}
+
+.pr-history {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+.pr-history > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.pr-history > div + div {
+  border-top: 1px solid #f1f5f9;
+}
+
+.pr-history-top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pr-history-top strong {
+  color: #0f172a;
+}
+
+.pr-history-top span,
+.pr-history em {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+
+.pr-history > .pr-muted {
+  margin: 0;
+  padding: 0.75rem;
+}
+
+/* 창 */
+.pr-modal .ant-form-item {
+  margin-bottom: 0.875rem;
+}
+
+.pr-calc {
+  margin: -0.375rem 0 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+/* 명세서 창 */
+.pr-slip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pr-slip {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+}
+
+.pr-slip-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pr-slip-title strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.pr-slip-title span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* 인건비 — 요약 카드 · 집행률 · 추이 */
+.pr-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.pr-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.pr-stats span {
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.pr-stats strong {
+  color: #0f172a;
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.pr-stats em {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+
+.pr-rate {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.125rem 0.5rem;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.pr-rate span {
+  grid-column: 1;
+  text-align: right;
+}
+
+.pr-rate i {
+  grid-column: 1;
+  height: 0.25rem;
+  border-radius: 0.125rem;
+  background: #38bdf8;
+}
+
+.pr-rate b {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: #dc2626;
+  font-size: 0.6875rem;
+}
+
+.pr-rate.is-over span {
+  color: #dc2626;
+}
+
+.pr-rate.is-over i {
+  background: #dc2626;
+}
+
+.pr-trend {
+  gap: 1rem;
+}
+
+.pr-bars {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 9rem;
+}
+
+.pr-bars > div {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  max-width: 8rem;
+}
+
+.pr-bars span {
+  color: #334155;
+  font-size: 0.6875rem;
+}
+
+.pr-bars i {
+  width: 2.5rem;
+  min-height: 0.25rem;
+  border-radius: 0.25rem 0.25rem 0 0;
+  background: #bae6fd;
+}
+
+.pr-bars > div.is-on i {
+  background: #38bdf8;
+}
+
+.pr-bars em {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.pr-bars > div.is-on em {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.hr-btn.is-sm {
+  height: 1.875rem;
+  padding: 0 0.75rem;
+}
+
+@media (max-width: 1199px) {
+  .pr-totals,
+  .pr-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .pr-card {
+    overflow-x: auto;
+  }
+
+  .pr-card > * {
+    min-width: 52rem;
+  }
+
+  .pr-detail-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 인쇄 — 명세서 창만 */
+@media print {
+  body.pr-printing .app-shell,
+  body.pr-printing .ant-modal-mask,
+  body.pr-printing .pr-print-hide {
+    display: none !important;
+  }
+
+  body.pr-printing .ant-modal-wrap {
+    position: static !important;
+  }
+
+  body.pr-printing .ant-modal {
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
