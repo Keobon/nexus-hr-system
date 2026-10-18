@@ -72,6 +72,10 @@ export default function EmployeeDetailPage() {
           <KV k="사원번호">{e.employeeNo}</KV>
           <KV k="이메일">{e.email ?? '-'}</KV>
           <KV k="연락처">{e.phone || '-'}</KV>
+          {e.address !== undefined && <KV k="주소">{e.address || '-'}</KV>}
+          {e.emergencyName !== undefined && (
+            <KV k="비상 연락처">{[e.emergencyName, e.emergencyRelation && `(${e.emergencyRelation})`, e.emergencyPhone].filter(Boolean).join(' ') || '-'}</KV>
+          )}
           {has(e.dependentsCount) && <KV k="부양가족수">{`${e.dependentsCount}명`}</KV>}
         </div>
         <div className="hr-card hr-info">
@@ -132,13 +136,25 @@ function EditModal({ employee: e, onClose }) {
   return (
     <Modal open title="직원 기본정보 수정" footer={null} onCancel={onClose} width={440} className="hr-modal" destroyOnHidden centered>
       <p className="hr-modal-sub">{[e.name, e.orgUnitName, e.jobGradeName].filter(Boolean).join(' · ')}</p>
-      <Form form={form} layout="vertical" requiredMark={false} initialValues={{ name: e.name, phone: e.phone, email: e.email }}
-        onFinish={(v) => save.mutate({ name: v.name.trim(), phone: v.phone?.trim() || null, email: v.email.trim() })}>
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={{ name: e.name, phone: e.phone, email: e.email, address: e.address }}
+        onFinish={(v) =>
+          save.mutate({
+            name: v.name.trim(),
+            phone: v.phone?.trim() || null,
+            email: v.email.trim(),
+            ...(e.address !== undefined && { address: v.address?.trim() || null }),
+          })
+        }>
         <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력하세요' }]}><Input maxLength={50} /></Form.Item>
         <Form.Item name="phone" label="연락처"><Input placeholder="010-0000-0000" maxLength={20} /></Form.Item>
         <Form.Item name="email" label="이메일" rules={[{ required: true, message: '이메일을 입력하세요' }, { type: 'email', message: '이메일 형식이 올바르지 않습니다' }]}>
           <Input maxLength={100} />
         </Form.Item>
+        {e.address !== undefined && (
+          <Form.Item name="address" label="주소">
+            <Input maxLength={255} />
+          </Form.Item>
+        )}
         {has(e.dependentsCount) && (
           <Form.Item label="부양가족수" extra="가족 정보에서 자동으로 계산됩니다">
             <Input value={`${e.dependentsCount}명`} disabled />

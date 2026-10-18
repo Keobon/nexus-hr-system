@@ -27,7 +27,6 @@ const MAILTO_LIMIT = 1800; // 이보다 길면 메일 앱이 못 여는 경우�
 const OPTIONAL_COLUMNS = [
   ['employmentType', '고용형태'],
   ['todayStatus', '오늘 상태'],
-  ['address', '주소'],
   ['annualSalary', '연봉'],
 ];
 const COLUMNS_STORE = 'hr.employees.columns';
@@ -63,7 +62,6 @@ function listColumns(visible) {
   const extra = {
     employmentType: { key: 'employmentType', title: '고용형태', w: 6, text: (r) => r.employmentTypeName },
     todayStatus: { key: 'todayStatus', title: '오늘 상태', w: 6, text: (r) => r.todayStatus && labelOf('todayStatus', r.todayStatus) },
-    address: { key: 'address', title: '주소', w: 14, text: (r) => r.address },
     annualSalary: { key: 'annualSalary', title: '연봉', w: 8, text: (r) => r.annualSalary != null && formatMoney(r.annualSalary) },
   };
   return [...base, ...OPTIONAL_COLUMNS.filter(([k]) => visible.includes(k)).map(([k]) => extra[k])];
@@ -80,7 +78,7 @@ const CONTACT_COLUMNS = [
 ];
 
 /** 연락처 행에서 직원 목록에 붙일 칸만 */
-const contactPart = (c) => (c ? { phone: c.phone, email: c.email, address: c.address } : {});
+const contactPart = (c) => (c ? { phone: c.phone, email: c.email } : {});
 
 export default function EmployeeListPage() {
   const navigate = useNavigate();
@@ -144,8 +142,8 @@ export default function EmployeeListPage() {
     placeholderData: keepPreviousData,
   });
 
-  // 직원 목록 응답에는 전화 · 이메일 · 주소가 없어 연락처 API(재직 · 휴직만)로 채운다 — 퇴직자는 "-".
-  // TODO: 백엔드가 GET /employees 행에 phone · email · address 를 넣으면 이 조회를 지운다
+  // 목록 API 에는 전화 · 이메일이 없다 — 연락처는 연락처 API(재직 · 휴직, 인사 · 조직장 전사)로 보기로 했다(백엔드 10/18).
+  // 그래서 한 번 받아 id 로 채운다(퇴직자는 "-"). 주소는 목록에 두지 않고 상세에서만 본다
   const contactAll = useQuery({
     queryKey: employeeContactsKey({ all: true }),
     queryFn: () => fetchAllPages(getEmployeeContacts, {}),
