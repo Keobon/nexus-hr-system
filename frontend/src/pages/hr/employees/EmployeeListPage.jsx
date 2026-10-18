@@ -1,7 +1,8 @@
-// 전직원 목록(F-EMP-02) — Figma HR_employee_list(445:8343). 직원 목록 · 연락처 두 탭, 고르면 메일 아이콘 버튼으로 메일 보내기
+// 전직원 목록(F-EMP-02) — Figma HR_employee_list(445:8343). 직원 목록 · 연락처 두 탭, 고르면 메일 아이콘 버튼으로 메일 보내기.
+// 연락처 탭은 "속성 고르기" — 고른 속성(전화번호 등)만 이름 · 직급 옆에 보여 준다(10/15 교수님 요청)
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Checkbox, Input, Pagination, Popover, Result, Select, Skeleton, Tooltip } from 'antd';
+import { App, Checkbox, Input, Pagination, Result, Select, Skeleton, Tooltip } from 'antd';
 import { MailOutlined } from '@ant-design/icons';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { employeeContactsKey, employeesKey, fetchAllPages, getEmployeeContacts, getEmployees } from '../../../api/employees';
@@ -9,9 +10,7 @@ import { employmentTypesApi, jobGradesApi, jobTitlesApi } from '../../../api/org
 import { useMe } from '../../../auth/useMe';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf, optionsOf } from '../../../constants/labels';
-import { formatMoney } from '../../../utils/format';
 import { EmpStatusBadge, PageHead, useOrgOptions } from '../parts';
-import iconSliders from '../../../assets/figma/icon-sliders.svg';
 
 const PAGE_SIZE = 20;
 // "전체 상태"는 퇴직자까지 — status 를 비우면 서버는 재직 · 휴직만 준다
@@ -23,21 +22,6 @@ const TABS = [
 const FILTER_KEYS = ['orgUnitId', 'jobGradeId', 'jobTitleId', 'employmentTypeId', 'status', 'keyword'];
 const MAILTO_LIMIT = 1800; // 이보다 길면 메일 앱이 못 여는 경우가 있어 주소를 복사해 준다
 
-/** "열 설정"으로 켜고 끄는 칸 — 기본은 숨김, 이 브라우저에 기억(localStorage) */
-const OPTIONAL_COLUMNS = [
-  ['employmentType', '고용형태'],
-  ['todayStatus', '오늘 상태'],
-  ['annualSalary', '연봉'],
-];
-const COLUMNS_STORE = 'hr.employees.columns';
-function loadColumns() {
-  try {
-    return JSON.parse(localStorage.getItem(COLUMNS_STORE)) ?? [];
-  } catch {
-    return [];
-  }
-}
-
 const dot = (d) => (d ? d.replaceAll('-', '.') : '-');
 const gradeTitle = (r) => [r.jobGradeName, r.jobTitleName].filter(Boolean).join(' · ') || '-';
 const nameCell = (r) => (
@@ -47,35 +31,43 @@ const nameCell = (r) => (
   </span>
 );
 
-/** 칸 — w 는 Figma px ÷ 16(rem) */
-function listColumns(visible) {
-  const base = [
-    { key: 'employeeNo', title: '사원번호', w: 6.5, text: (r) => r.employeeNo },
-    { key: 'name', title: '이름', w: 9.375, cell: nameCell },
-    { key: 'org', title: '소속 조직', w: 10, text: (r) => r.orgUnitName },
-    { key: 'grade', title: '직급 · 직책', w: 8.4375, text: gradeTitle },
-    { key: 'phone', title: '전화번호', w: 7.8125, text: (r) => r.phone },
-    { key: 'email', title: '이메일', w: 11.25, text: (r) => r.email },
-    { key: 'hireDate', title: '입사일', w: 7.1875, text: (r) => dot(r.hireDate) },
-    { key: 'status', title: '재직상태', w: 6.0625, cell: (r) => <EmpStatusBadge status={r.status} /> },
-  ];
-  const extra = {
-    employmentType: { key: 'employmentType', title: '고용형태', w: 6, text: (r) => r.employmentTypeName },
-    todayStatus: { key: 'todayStatus', title: '오늘 상태', w: 6, text: (r) => r.todayStatus && labelOf('todayStatus', r.todayStatus) },
-    annualSalary: { key: 'annualSalary', title: '연봉', w: 8, text: (r) => r.annualSalary != null && formatMoney(r.annualSalary) },
-  };
-  return [...base, ...OPTIONAL_COLUMNS.filter(([k]) => visible.includes(k)).map(([k]) => extra[k])];
-}
-const CONTACT_COLUMNS = [
+/** 직원 목록 칸 — w 는 Figma px ÷ 16(rem). 고용형태 · 오늘 상태도 기본으로 보인다(10/18 설계), 연봉은 상세에서 */
+const LIST_COLUMNS = [
   { key: 'employeeNo', title: '사원번호', w: 6.5, text: (r) => r.employeeNo },
   { key: 'name', title: '이름', w: 8, cell: nameCell },
-  { key: 'org', title: '소속', w: 8.5, text: (r) => r.orgUnitName },
+  { key: 'org', title: '소속 조직', w: 8.5, text: (r) => r.orgUnitName },
+  { key: 'grade', title: '직급 · 직책', w: 7.5, text: gradeTitle },
+  { key: 'employmentType', title: '고용형태', w: 5, text: (r) => r.employmentTypeName },
+  { key: 'phone', title: '전화번호', w: 7.5, text: (r) => r.phone },
+  { key: 'email', title: '이메일', w: 11, text: (r) => r.email },
+  { key: 'hireDate', title: '입사일', w: 6, text: (r) => dot(r.hireDate) },
+  { key: 'todayStatus', title: '오늘 상태', w: 5, text: (r) => r.todayStatus && labelOf('todayStatus', r.todayStatus) },
+  { key: 'status', title: '재직상태', w: 5, cell: (r) => <EmpStatusBadge status={r.status} /> },
+];
+
+/** 연락처 탭 — 이름 · 직급은 늘 보이고, 나머지는 "속성"으로 고른 것만. 고른 속성은 이 브라우저에 기억 */
+const CONTACT_BASE = [
+  { key: 'name', title: '이름', w: 8, cell: nameCell },
   { key: 'grade', title: '직급', w: 4.5, text: (r) => r.jobGradeName },
-  { key: 'title', title: '직책', w: 4.5, text: (r) => r.jobTitleName },
+];
+const CONTACT_PROPS = [
   { key: 'phone', title: '전화번호', w: 7.8125, text: (r) => r.phone },
   { key: 'email', title: '이메일', w: 12.5, text: (r) => r.email },
   { key: 'address', title: '주소', w: 16, text: (r) => r.address },
+  { key: 'org', title: '소속', w: 8.5, text: (r) => r.orgUnitName },
+  { key: 'title', title: '직책', w: 4.5, text: (r) => r.jobTitleName },
+  { key: 'employeeNo', title: '사원번호', w: 6.5, text: (r) => r.employeeNo },
 ];
+const PROPS_STORE = 'hr.employees.contactProps';
+const DEFAULT_PROPS = ['phone', 'email'];
+function loadProps() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROPS_STORE));
+    return Array.isArray(saved) ? saved : DEFAULT_PROPS;
+  } catch {
+    return DEFAULT_PROPS;
+  }
+}
 
 /** 연락처 행에서 직원 목록에 붙일 칸만 */
 const contactPart = (c) => (c ? { phone: c.phone, email: c.email } : {});
@@ -155,19 +147,17 @@ export default function EmployeeListPage() {
   const rows = (q.data?.content ?? []).map(withContact);
   const total = q.data?.totalElements ?? 0;
 
-  // 열 설정 — 연봉은 응답에 annualSalary 키가 있을 때(급여 권한)만 목록에 나온다
-  const [cols, setCols] = useState(loadColumns);
-  const hasSalary = rows.some((r) => 'annualSalary' in r);
-  const columns = isList ? listColumns(cols.filter((k) => k !== 'annualSalary' || hasSalary)) : CONTACT_COLUMNS;
-  const toggleCol = (k, on) => {
-    const next = on ? [...cols, k] : cols.filter((c) => c !== k);
-    setCols(next);
+  // 연락처 속성 고르기 — 고른 순서가 아니라 CONTACT_PROPS 순서로 칸을 둔다
+  const [props, setProps] = useState(loadProps);
+  const setPropsSaved = (next) => {
+    setProps(next);
     try {
-      localStorage.setItem(COLUMNS_STORE, JSON.stringify(next));
+      localStorage.setItem(PROPS_STORE, JSON.stringify(next));
     } catch {
       // 저장이 막힌 브라우저 — 이번 화면에서만 적용
     }
   };
+  const columns = isList ? LIST_COLUMNS : [...CONTACT_BASE, ...CONTACT_PROPS.filter((c) => props.includes(c.key))];
 
   // 선택 — 머리 체크박스는 이 페이지만. 탭 · 필터 · 검색어가 바뀌면 비운다
   const scopeKey = JSON.stringify([tab, baseParams]);
@@ -272,6 +262,13 @@ export default function EmployeeListPage() {
           <label>부서</label>
           <Select className="hr-select" popupMatchSelectWidth={false} allowClear placeholder="전체 부서" value={filters.orgUnitId} onChange={(v) => setFilter({ orgUnitId: v })} options={org.options} />
         </div>
+        {!isList && (
+          <div className="hr-field is-props">
+            <label>보여 줄 속성</label>
+            <Checkbox.Group value={props} onChange={setPropsSaved} options={CONTACT_PROPS.map((c) => ({ value: c.key, label: c.title }))} />
+            <span className="hr-props-note">이름 · 직급은 늘 보입니다</span>
+          </div>
+        )}
         {isList && (
           <>
             <div className="hr-field">
@@ -304,26 +301,6 @@ export default function EmployeeListPage() {
                   <MailOutlined />
                 </button>
               </Tooltip>
-            )}
-            {isList && (
-              <Popover
-                trigger="click"
-                placement="bottomRight"
-                title="열 설정"
-                content={
-                  <div className="hr-colset">
-                    {OPTIONAL_COLUMNS.filter(([k]) => k !== 'annualSalary' || hasSalary).map(([k, l]) => (
-                      <Checkbox key={k} checked={cols.includes(k)} onChange={(e) => toggleCol(k, e.target.checked)}>
-                        {l}
-                      </Checkbox>
-                    ))}
-                  </div>
-                }
-              >
-                <button type="button" className="hr-icon-btn" aria-label="열 설정">
-                  <img src={iconSliders} alt="" />
-                </button>
-              </Popover>
             )}
           </div>
         </div>
