@@ -12,12 +12,13 @@ import java.util.Optional;
 
 /**
  * 직원 상세(GET /api/employees/{id}, F-EMP-06). 팀 범위면 위 필드만 내려가고 full 이 통째로 빠진다(Java null).
+ * address 는 조직장도 연락처(GET /api/employees/contacts)에서 보므로 팀 범위에도 내려간다.
  * hrMemo 는 EMPLOYEE_MANAGE 가 있을 때만 — 권한이 없으면 필드 자체가 빠지고(Java null), 있는데 비어 있으면 null(빈 Optional).
  * 급여 계좌는 범위와 관계없이 넣지 않는다(F-PAY-03). todayStatus 는 퇴직자면 null 이다.
  */
 public record EmployeeDetail(long id, String employeeNo, String name, String orgUnitName, String jobGradeName,
                              String jobTitleName, String employmentTypeName, EmpStatus status, String email,
-                             String phone, Long profileFileId, TodayStatus todayStatus, MonthSummary monthSummary,
+                             String phone, String address, Long profileFileId, TodayStatus todayStatus, MonthSummary monthSummary,
                              @JsonUnwrapped Full full,
                              @JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> hrMemo) {
 
@@ -25,7 +26,7 @@ public record EmployeeDetail(long id, String employeeNo, String name, String org
      * 전사 범위에서만 더해지는 항목. 부양가족 수 · 자녀 수는 가족 정보에서 센 값이다(BR-EMP-007, 가족 API 와 같은 계산) —
      * 가족 명단은 EMPLOYEE_MANAGE 만 보는 가족 API 에 있다.
      */
-    public record Full(String nameEn, String address, LocalDate birthDate, Gender gender, String emergencyName,
+    public record Full(String nameEn, LocalDate birthDate, Gender gender, String emergencyName,
                        String emergencyRelation, String emergencyPhone, LocalDate hireDate, long orgUnitId,
                        Long jobGradeId, Long jobTitleId, long employmentTypeId, boolean payrollEligible,
                        LocalDate contractEndDate, LocalDate probationEndDate,
