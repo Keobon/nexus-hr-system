@@ -119,7 +119,7 @@ class EmployeeDetailTest {
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.todayStatus").value("REMOTE"))
                 .andExpect(jsonPath("$.data.monthSummary.lateCount").value(1))
-                .andExpect(jsonPath("$.data.address").doesNotExist())
+                .andExpect(jsonPath("$.data.address").value("서울시 마포구"))     // 연락처(#87)에서 조직장도 보므로 상세도 같게
                 .andExpect(jsonPath("$.data.hireDate").doesNotExist())
                 .andExpect(jsonPath("$.data.fieldValues").doesNotExist())
                 .andExpect(jsonPath("$.data.dependentsCount").doesNotExist())
