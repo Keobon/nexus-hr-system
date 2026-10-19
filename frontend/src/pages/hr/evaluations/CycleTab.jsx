@@ -148,6 +148,7 @@ export default function CycleTab({ onResults }) {
 /* ───── 평가 기간 만들기(473-11844) — 저장하면 대상 규칙(전원 → 고른 평가 유형)까지 넣는다 ───── */
 function CreateModal({ onClose, onCreated }) {
   const notify = useNotify();
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const templates = useQuery({ queryKey: evalTemplatesKey, queryFn: getEvalTemplates });
@@ -166,7 +167,9 @@ function CreateModal({ onClose, onCreated }) {
     },
     onSuccess: (c) => {
       queryClient.invalidateQueries({ queryKey: evalCyclesKey });
-      notify.success(`${c.name}을(를) 만들었습니다`, c);
+      // 날짜가 겹쳐도 저장은 되고 warning PERIOD_OVERLAP 만 온다 — 공통 경고 문구(휴가·출장)가 아닌 평가 기간 문구로
+      notify.success(`${c.name}을(를) 만들었습니다`);
+      if (c.warning === 'PERIOD_OVERLAP') message.warning('다른 평가 기간과 날짜가 겹칩니다. 날짜를 확인해 주세요', 5);
       onClose();
       onCreated?.(c);
     },

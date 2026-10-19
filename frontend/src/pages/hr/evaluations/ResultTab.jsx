@@ -223,14 +223,12 @@ function ResultPanel({ item, cycle, detail, readOnly }) {
               </div>
             </div>
           </div>
-          {/* 조회 전용 목록(결과 API)에는 종합 의견이 없다 */}
-          {!readOnly && (
-            <div className="ea-feedback">
-              <span>종합 피드백</span>
-              <p>{detail.overallComment || '작성된 종합 의견이 없습니다.'}</p>
-              <em>{`평가자 ${item.evaluatorName}만 고칠 수 있습니다`}</em>
-            </div>
-          )}
+          {/* 조회 권한자도 종합 의견을 본다(10/19 결정, 결과 API overallComment) */}
+          <div className="ea-feedback">
+            <span>종합 피드백</span>
+            <p>{detail.overallComment || '작성된 종합 의견이 없습니다.'}</p>
+            {!readOnly && <em>{`평가자 ${item.evaluatorName}만 고칠 수 있습니다`}</em>}
+          </div>
         </>
       )}
       {!readOnly && (
@@ -352,7 +350,7 @@ function ReadResults() {
             </div>
           ))}
         </section>
-        <div className="ea-side">{selected && <ResultPanel item={asItem(selected)} cycle={{ name: selected.cycleName }} detail={{ criteria: selected.criteria, overallComment: null, confirmedAt: selected.confirmedAt }} readOnly />}</div>
+        <div className="ea-side">{selected && <ResultPanel item={asItem(selected)} cycle={{ name: selected.cycleName }} detail={{ criteria: selected.criteria, overallComment: selected.overallComment, confirmedAt: selected.confirmedAt }} readOnly />}</div>
       </div>
     </>
   );

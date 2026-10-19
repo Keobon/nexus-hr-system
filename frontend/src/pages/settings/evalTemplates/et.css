@@ -1,0 +1,692 @@
+/*
+ * 회사 설정 › 평가 템플릿 — Figma 72-7357(템플릿 편집기) · 473-12319(기준표 미리보기)
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale. 공통 머리 · 배지 · 창은 hr.css
+ */
+
+.et-layout {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.et-card {
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.et-muted {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+/* 왼쪽 템플릿 목록 */
+.et-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.et-list-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.et-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1.25rem;
+  border: 0;
+  border-bottom: 1px solid #f1f5f9;
+  border-left: 3px solid transparent;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.et-list-item:last-child {
+  border-bottom: 0;
+}
+
+.et-list-item:hover {
+  background: #f8fafc;
+}
+
+.et-list-item.is-on {
+  border-left-color: #38bdf8;
+  background: #f0f9ff;
+}
+
+.et-list-item strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.et-list-item span {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.et-list-item em {
+  font-style: normal;
+}
+
+.et-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 20rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.et-empty strong {
+  color: #0f172a;
+}
+
+/* 템플릿 편집기 — 카드 p24 · 간격 24 */
+.et-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.et-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.et-summary,
+.et-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* ScoreBadge — 11 Bold 알약 */
+.et-sum {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.et-sum.is-ok {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.et-sum.is-bad {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* 버튼 — h36 · r8 · 14 SemiBold */
+.et-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 1rem;
+  border: 1px solid #38bdf8;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.et-btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.et-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.et-btn.is-line {
+  border-color: #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+}
+
+.et-btn.is-text {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #38bdf8;
+}
+
+.et-btn.is-text.is-red {
+  color: #ef4444;
+  font-size: 0.8125rem;
+}
+
+.et-self-start {
+  align-self: flex-start;
+}
+
+.et-notice {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border: 1px solid #bae6fd;
+  border-radius: 0.5rem;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.8125rem;
+}
+
+.et-notice.is-gray {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+}
+
+/* 입력칸 — 라벨 13 · 칸 h44 r8 */
+.et-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.et-field > span {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.et-field .ant-input,
+.et-field .ant-input-number,
+.et-field .ant-select {
+  width: 100%;
+  height: 2.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.et-field .ant-input-number-input {
+  height: 2.625rem;
+  text-align: right;
+}
+
+.et-field.is-cat {
+  flex: 0 0 9.375rem;
+}
+
+.et-field.is-grow {
+  flex: 1 1 0;
+}
+
+.et-field.is-weight {
+  flex: 0 0 6.875rem;
+}
+
+/* 항목 카드 — bg #f8fafc · p20 · r10 · 간격 16 */
+.et-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.et-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.et-item-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.et-item-head > div {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.et-item-head strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.et-item-acts {
+  gap: 1.25rem !important;
+}
+
+.et-weight {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.et-item-fields {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+/* 질문 줄 — 흰 카드 p12 · r8 */
+.et-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.et-q {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.et-q.is-drag {
+  opacity: 0.5;
+}
+
+.et-grip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.75rem;
+  background: #f1f5f9;
+  cursor: grab;
+}
+
+.et-q-no {
+  flex: 0 0 1.5rem;
+  color: #4b5563;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.et-q .ant-input {
+  flex: 1 1 0;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+/* 세부 기준 — 흰 카드 p16 · 열 100 / 120 / 나머지 */
+.et-bands {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.et-bands-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.et-bands-head strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.et-bands-head .et-muted {
+  font-size: 0.75rem;
+}
+
+.et-band {
+  display: grid;
+  grid-template-columns: 6.25rem 7.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 0.8125rem;
+}
+
+.et-band:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.et-band.is-head {
+  padding: 0;
+  border-bottom: 0;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.et-band > strong {
+  font-weight: 600;
+  text-align: right;
+}
+
+.et-band.is-head > span:first-child {
+  text-align: right;
+}
+
+.et-band:not(.is-head):not(.is-plain) > span {
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.et-band:not(.is-head):not(.is-plain) > span:nth-child(2) {
+  text-align: right;
+}
+
+/* + 항목 추가 — 흰 바탕 · 테두리 1.5 #98bdf9 */
+.et-add {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  align-self: flex-start;
+  height: 2.25rem;
+  padding: 0 1rem;
+  border: 1.5px solid #98bdf9;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #38bdf8;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ───── 기준표 미리보기(473-12319) ───── */
+.et-preview .ant-modal-content {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+}
+
+.et-pv-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.et-pv-head strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.et-pv-head span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.et-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-height: 72vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.et-pv-title {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.et-pv-title h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.et-pv-title p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.et-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.et-doc-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.et-doc-title h2 {
+  margin: 0.25rem 0 0;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.et-doc-sum {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.et-doc-sum > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.et-doc-sum span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.et-doc-sum strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.et-doc-sum strong.is-big {
+  font-size: 1.5rem;
+}
+
+.et-doc-sec h3 {
+  margin: 0 0 0.5rem;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.et-doc-sec p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.et-doc-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.et-doc-box h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.et-doc-row {
+  display: grid;
+  grid-template-columns: 3.5rem 5rem minmax(0, 1fr);
+  gap: 0.75rem;
+  color: #0f172a;
+  font-size: 0.75rem;
+}
+
+.et-doc-row.is-head {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.et-doc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.et-doc-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.et-doc-item-head h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.et-doc-q {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.8125rem;
+}
+
+.et-doc-q span:first-child {
+  flex: 0 0 1rem;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.et-doc-box .et-band {
+  font-size: 0.75rem;
+}
+
+/* 출력 · PDF — 미리보기 문서만 */
+@media print {
+  body:has(.et-sheet) * {
+    visibility: hidden;
+  }
+
+  body:has(.et-sheet) .et-sheet,
+  body:has(.et-sheet) .et-sheet * {
+    visibility: visible;
+  }
+
+  body:has(.et-sheet) .et-sheet {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    background: #fff;
+  }
+
+  .et-print-hide {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .et-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .et-item-fields {
+    flex-wrap: wrap;
+  }
+
+  .et-field.is-grow {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  .et-band {
+    grid-template-columns: 5rem 5.5rem minmax(0, 1fr);
+  }
+
+  .et-doc-sum {
+    grid-template-columns: 1fr;
+  }
+}
