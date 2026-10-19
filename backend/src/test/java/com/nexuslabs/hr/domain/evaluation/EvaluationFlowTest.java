@@ -164,7 +164,8 @@ class EvaluationFlowTest {
         as(org.kang, get("/api/evaluations/results?cycleId=" + cycle))
                 .andExpect(jsonPath("$.data.content[*].targetId").value(contains(Math.toIntExact(org.cho.id()))))
                 .andExpect(jsonPath("$.data.content[0].evaluatorName").exists())
-                .andExpect(jsonPath("$.data.content[0].totalScore").value(78.0));
+                .andExpect(jsonPath("$.data.content[0].totalScore").value(78.0))
+                .andExpect(jsonPath("$.data.content[0].overallComment").value("배포 자동화를 주도했습니다"));   // 본인이 보는 글이라 조회 권한자도
         as(org.yoon, get("/api/evaluations/results")).andExpect(jsonPath("$.data.totalElements").value(0));
         as(hr, get("/api/evaluations/results?orgUnitId=" + org.backendTeam)).andExpect(jsonPath("$.data.totalElements").value(0));
 
