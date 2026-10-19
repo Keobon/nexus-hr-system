@@ -99,7 +99,7 @@ public class EvalResultService {
             List<EvalScore> s = scores.getOrDefault(r.id(), List.of());
             return new EvalResultItem(r.id(), r.cycleId(), r.cycleName(), r.targetId(), r.employeeNo(), r.targetName(),
                     r.orgUnitName(), r.templateName(), r.evaluatorName(), s, EvalScoreCalculator.total(s),
-                    r.confirmedAt());
+                    r.overallComment(), r.confirmedAt());
         }).toList();
         return new PageImpl<>(items, pageable, total);
     }
