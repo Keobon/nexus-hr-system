@@ -93,12 +93,12 @@ const GROUPS = [
         badge: 'approvalsPending',
       },
       {
-        // 진행 중 평가에서 내가 평가자인 건이 있을 때. /me 에는 미제출 건수만 있어서 그걸로 판단한다
+        // 조직장(평가자)이거나 미제출 평가가 있을 때. 다 제출한 조직장도 제출 · 확정 상태를 다시 볼 수 있게 남긴다
         key: 'eval-todo',
         path: '/evaluations/todo',
         label: '평가하기',
         icon: FormOutlined,
-        visible: ({ me }) => (me.todos?.evaluationsToSubmit ?? 0) > 0,
+        visible: ({ me }) => (me.leadOrgUnitIds?.length ?? 0) > 0 || (me.todos?.evaluationsToSubmit ?? 0) > 0,
         badge: 'evaluationsToSubmit',
       },
     ],

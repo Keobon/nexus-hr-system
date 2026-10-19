@@ -17,7 +17,7 @@ export default function EvaluationAdminPage() {
 
   return (
     <div className="hr ea">
-      <PageHead title="평가 관리" desc="평가 기간을 관리하고 결과를 확정합니다." />
+      <PageHead title="평가 관리" desc={manage ? '평가 기간을 관리하고 결과를 확정합니다.' : '조회 범위 안의 확정된 평가 결과를 확인합니다.'} />
       <nav className="ea-tabs" role="tablist" aria-label="평가 관리 탭">
         {tabs.map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'is-on' : undefined} onClick={() => go(k)}>

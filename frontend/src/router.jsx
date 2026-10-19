@@ -23,6 +23,8 @@ import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectio
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
 import TitleSettingsPage from './pages/settings/TitleSettingsPage';
 import PaySettingsPage from './pages/settings/pay/PaySettingsPage';
+import EvalTemplatePage from './pages/settings/evalTemplates/EvalTemplatePage';
+import EvalTodoPage from './pages/me/evalTodo/EvalTodoPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -39,6 +41,7 @@ const PAGES = {
   'my-work-requests': MyWorkRequestsPage,
   'my-payroll': MyPayrollPage,
   'my-evaluations': MyEvaluationPage,
+  'eval-todo': EvalTodoPage,
   'org-chart': OrgChartPage,
   employees: EmployeeListPage,
   assignments: AssignmentListPage,
@@ -47,6 +50,7 @@ const PAGES = {
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
+  'set-eval-templates': EvalTemplatePage,
 };
 
 // 메뉴 아래 화면(등록 · 상세 · 정정) — 부모 메뉴와 같은 규칙으로 막는다. 버튼은 화면에서 can() 으로 감싼다
@@ -68,7 +72,7 @@ const OWNER = {
   'my-payroll': 'FE-B · F-16',
   payroll: 'FE-B · F-16',
   'my-evaluations': 'FE-A · F-17',
-  'eval-todo': 'FE-A · F-17',
+  'eval-todo': 'FE-B · F-17',
   evaluations: 'FE-A · F-17',
   employees: 'FE-A · F-04',
   assignments: 'FE-A · F-04',
