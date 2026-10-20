@@ -1,0 +1,1227 @@
+/*
+ * 회사 설정 › 최고 관리자 화면 — Figma Admin_cpinfo · Admin_cpinfo_sec · Admin_cpdoc · Admin_Atwork(_pop-up) · Admin_Dayoff ·
+ * Admin_role(_popup) · Admin_accountlist(_rolechange · _popup · _popup(error)). 승인선 · 감사 로그 · 마법사는 Figma 가 없어 같은 조각으로.
+ * 공통 버튼 · 표 · 모달은 hr.css(hr-*)를 쓰고, 여기에는 이 화면들에만 있는 것만 둔다. 값은 rem(Figma px ÷ 16)
+ */
+
+/* 밑줄 탭 — 기본 정보 · 변경 이력 · 회사 서류 / 근무시간 · 휴일 (14px, 켜진 탭은 #38bdf8 굵게 + 밑줄) */
+.ad-tabs {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: -0.75rem;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.ad-tabs button {
+  position: relative;
+  padding: 0 0.25rem 0.5rem;
+  border: 0;
+  background: none;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 300;
+  cursor: pointer;
+}
+
+.ad-tabs button.is-on {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.ad-tabs button.is-on::after {
+  position: absolute;
+  right: -0.75rem;
+  bottom: -1px;
+  left: -0.75rem;
+  height: 2px;
+  background: #38bdf8;
+  content: '';
+}
+
+.ad-tabs .ad-count {
+  margin-left: 0.375rem;
+  padding: 0 0.375rem;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* 큰 카드(기본 · 부가 정보 · 운영 설정 · 현재 적용 중 · 적용 예정) — 제목 24 Bold */
+.ad-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem 1rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.ad-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ad-section-head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.ad-section-head h2 small {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 300;
+}
+
+.ad-section-head h2.is-20 {
+  font-size: 1.25rem;
+}
+
+/* 입력칸 줄 — 라벨 11 #64748b, 칸 38 높이 · 반지름 6 */
+.ad-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 1rem 1.875rem;
+}
+
+.ad-grid .ant-form-item {
+  margin-bottom: 0;
+}
+
+.ad-grid .ant-form-item-label {
+  padding-bottom: 0.25rem;
+}
+
+.ad-grid .ant-form-item-label > label {
+  height: auto;
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 400;
+}
+
+.ad-grid .ant-form-item-required::before {
+  display: none !important;
+}
+
+.ad-grid .ant-form-item-required::after {
+  visibility: visible !important;
+  margin-left: 2px;
+  color: #ff383c;
+  content: '*' !important;
+}
+
+.ad-grid .ant-input,
+.ad-grid .ant-picker,
+.ad-grid .ant-input-number,
+.ad-grid .ant-select-selector {
+  height: 2.375rem;
+  border-color: #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.ad-grid .ant-input-number-input {
+  height: 2.25rem;
+}
+
+.ad-grid .ant-picker,
+.ad-grid .ant-input-number {
+  width: 100%;
+}
+
+.ad-span-2 {
+  grid-column: span 2;
+}
+
+/* 부가 정보 — 왼쪽 로고 칸 + 오른쪽 입력칸 */
+.ad-with-logo {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.ad-with-logo > .ad-grid {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.ad-logo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+.ad-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 6.125rem;
+  height: 4.875rem;
+  border: 1px dashed #4b5563;
+  border-radius: 0.375rem;
+  background: #f8fafc;
+  color: #000;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  cursor: pointer;
+}
+
+.ad-logo-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.ad-logo-box.is-busy {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.ad-logo .hr-link {
+  font-size: 0.6875rem;
+}
+
+.ad-save-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+/* 작은 하늘색 버튼(변경 · 저장, 24 높이 · 반지름 8) */
+.ad-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  height: 1.5rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ad-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ad-btn.is-gray {
+  background: #e2e8f0;
+}
+
+.ad-btn.is-lg {
+  height: 1.8125rem;
+  padding: 0 1.25rem;
+}
+
+/* 흰 바탕 테두리 버튼(삭제 · 역할변경 · 비활성화 · 비밀번호초기화) */
+.ad-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.4375rem;
+  padding: 0 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ad-mini:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.ad-mini:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.ad-mini.is-dark {
+  border-color: #000;
+  border-radius: 0.5rem;
+  color: #475569;
+}
+
+.ad-mini.is-on {
+  border-color: #38bdf8;
+  background: #38bdf8;
+  color: #fff;
+}
+
+.ad-mini.is-red {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.ad-mini-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+/* 근무시간 — 현재 적용 중 카드 */
+.ad-now {
+  display: flex;
+  gap: 2.375rem;
+  align-items: center;
+}
+
+.ad-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 16.25rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+}
+
+.ad-stat .k,
+.ad-val .k {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 300;
+}
+
+.ad-stat .v {
+  color: #38bdf8;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.ad-stat .s {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 300;
+}
+
+.ad-vals {
+  display: flex;
+  flex: 1 0 0;
+  gap: 1.25rem;
+}
+
+.ad-val {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 9.375rem;
+}
+
+.ad-val .v {
+  color: #000;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.ad-days-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 300;
+}
+
+/* 요일 동그라미 35px — 켜짐 #38bdf8 · 꺼짐 #e2e8f0 */
+.ad-days {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.ad-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1875rem;
+  height: 2.1875rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #fff;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.ad-day.is-on {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+button.ad-day {
+  cursor: pointer;
+}
+
+/* 적용 예정 줄 */
+.ad-upcoming {
+  display: flex;
+  align-items: center;
+  gap: 2.25rem;
+  color: #64748b;
+  font-size: 1.0625rem;
+  font-weight: 300;
+}
+
+.ad-upcoming + .ad-upcoming {
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.ad-upcoming .ad-mini {
+  margin-left: auto;
+}
+
+/* 가운데 정렬 표(변경 이력 · 휴일) — Figma 의 헤더 #f8fafc · 세로 구분선 */
+.ad-ctable {
+  width: 100%;
+  border-collapse: collapse;
+  color: #000;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.ad-ctable th {
+  height: 2.25rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ad-ctable th:first-child {
+  border-radius: 0.25rem 0 0 0.25rem;
+}
+
+.ad-ctable th:last-child {
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+
+.ad-ctable td {
+  height: 3.25rem;
+  padding: 0 0.5rem;
+}
+
+.ad-ctable td + td {
+  border-left: 1px solid #e2e8f0;
+}
+
+.ad-ctable tr.is-empty td {
+  height: 6rem;
+  color: #64748b;
+}
+
+.ad-ctable .is-left {
+  text-align: left;
+}
+
+.ad-ctable .hr-strong {
+  font-weight: 700;
+}
+
+.ad-ctable .ad-arrow {
+  color: #38bdf8;
+}
+
+.ad-ctable .muted {
+  color: #64748b;
+}
+
+/* 휴일 수정 · 삭제 — 초록 · 빨강 작은 버튼 */
+.ad-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.ad-stack button {
+  width: 6.3125rem;
+  height: 1.125rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: #059669;
+  color: #fff;
+  font: inherit;
+  font-size: 0.625rem;
+  font-weight: 300;
+  cursor: pointer;
+}
+
+.ad-stack button.is-red {
+  background: #f00;
+}
+
+/* 휴일 종류 배지(Figma Admin_Dayoff) */
+.ad-pill {
+  display: inline-block;
+  min-width: 6.25rem;
+  padding: 0.3125rem 0.5rem;
+  border-radius: 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.ad-pill.is-PUBLIC {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ad-pill.is-COMPANY {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.ad-pill.is-SUBSTITUTE {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+/* 연도 넘기기 ◀ 2026 ▶ */
+.ad-year {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.ad-year button {
+  width: 0;
+  height: 0;
+  padding: 0;
+  border-top: 0.625rem solid transparent;
+  border-bottom: 0.625rem solid transparent;
+  background: none;
+  cursor: pointer;
+}
+
+.ad-year button.prev {
+  border-right: 1.0625rem solid #cbd5e1;
+  border-left: 0;
+}
+
+.ad-year button.next {
+  border-right: 0;
+  border-left: 1.0625rem solid #cbd5e1;
+}
+
+.ad-year button:hover {
+  filter: brightness(0.85);
+}
+
+.ad-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* 회사 서류 카드 — 회색(#94a3b8) 바탕 · 흰 글씨, 만료면 서류 이름이 빨강 */
+.ad-doc {
+  border-radius: 0.5rem;
+  background: #94a3b8;
+  color: #fff;
+}
+
+.ad-doc-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 4.75rem;
+  padding: 0 1.5rem 0 1rem;
+}
+
+.ad-doc-title {
+  display: flex;
+  flex: 1 0 0;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.ad-doc-title strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.ad-doc-title strong.is-expired {
+  color: #ef4444;
+}
+
+.ad-doc-title span {
+  overflow: hidden;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-doc-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.ad-doc-toggle:disabled {
+  cursor: default;
+}
+
+.ad-doc-btn {
+  height: 1.4375rem;
+  padding: 0 0.875rem;
+  border: 1px solid #fff;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ad-doc-btn:hover {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.ad-doc-old {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 1.5rem 0.875rem 1rem;
+}
+
+.ad-doc-old > div {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background: rgb(255 255 255 / 0.12);
+  color: #e2e8f0;
+  font-size: 0.75rem;
+}
+
+.ad-doc-old > div > span {
+  flex: 1 0 0;
+}
+
+.ad-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* 중요 정보 변경 창 — 전 → 후 줄 */
+.ad-change {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.6875rem;
+}
+
+.ad-change > div {
+  display: flex;
+  gap: 1rem;
+}
+
+.ad-change .k {
+  width: 7rem;
+  color: #64748b;
+}
+
+.ad-change .ad-arrow {
+  color: #38bdf8;
+}
+
+/* 노랑 경고 상자(저장 확인 · 임시 비밀번호) */
+.ad-warn {
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #fde68a;
+  border-radius: 0.5rem;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.ad-codes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.ad-codes .k {
+  margin-bottom: 0.25rem;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.6875rem;
+}
+
+/* 역할 · 권한 — 왼쪽 역할 목록 · 오른쪽 권한 표 */
+.ad-split {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ad-roles {
+  flex: 0 0 20rem;
+  gap: 0.5rem;
+}
+
+.ad-editor {
+  flex: 1 0 0;
+  min-width: 0;
+}
+
+.ad-role {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ad-role:hover {
+  background: #f8fafc;
+}
+
+.ad-role.is-on {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.ad-role .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ad-role strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+}
+
+.ad-role span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-role .count {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+}
+
+.ad-tag {
+  flex-shrink: 0;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.ad-tag.is-custom {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ad-banner {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #bae6fd;
+  border-radius: 0.375rem;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.75rem;
+}
+
+.ad-perm-head,
+.ad-perm {
+  display: grid;
+  grid-template-columns: 2.5rem 12.5rem minmax(0, 1fr) 7.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.ad-perm-head {
+  height: 2.25rem;
+  border-radius: 0.25rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ad-perm {
+  min-height: 2.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 0.8125rem;
+}
+
+.ad-perm code {
+  color: #0f172a;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.ad-perm.is-off code,
+.ad-perm.is-off .desc {
+  color: #94a3b8;
+}
+
+.ad-perm .rel {
+  margin-left: 0.5rem;
+  color: #94a3b8;
+}
+
+.ad-perm .ant-select {
+  width: 100%;
+}
+
+.ad-scope-fixed {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.ad-editor-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.ad-editor-foot strong {
+  color: #0f172a;
+}
+
+.ad-editor-foot .hr-btn.is-outline-red {
+  border: 1px solid #fecaca;
+  background: #fff;
+  color: #dc2626;
+}
+
+/* 계정 관리 */
+.ad-role-badge {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.ad-role-badge.is-c0 { background: #eff6ff; color: #2563eb; }
+.ad-role-badge.is-c1 { background: #f5f3ff; color: #7c3aed; }
+.ad-role-badge.is-c2 { background: #ecfdf5; color: #059669; }
+.ad-role-badge.is-custom { background: #fef3c7; color: #b45309; }
+
+.ad-locked {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.hr-tr.is-dim {
+  color: #94a3b8;
+}
+
+.hr-tr.is-dim .hr-strong {
+  color: #64748b;
+}
+
+.ad-total {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ad-total strong {
+  color: #0f172a;
+}
+
+.ad-target {
+  margin-bottom: 1rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background: #f8fafc;
+  font-size: 0.75rem;
+}
+
+.ad-target strong {
+  margin: 0 0.25rem;
+  color: #0f172a;
+}
+
+.ad-pw {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.ad-pw .k {
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+.ad-pw .v {
+  margin: 0.5rem 0 0.75rem;
+  color: #0f172a;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* 승인선 */
+.ad-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ad-line {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+}
+
+.ad-line.is-off {
+  background: #f8fafc;
+}
+
+.ad-line-info {
+  display: flex;
+  flex: 0 0 15rem;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ad-line-info strong {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
+}
+
+.ad-line-info span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ad-flow {
+  display: flex;
+  flex: 1 0 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.ad-flow .step {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid #bae6fd;
+  border-radius: 1rem;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ad-flow .ad-arrow {
+  color: #94a3b8;
+}
+
+.ad-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ad-step {
+  display: grid;
+  grid-template-columns: 2.5rem 11rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.ad-step .no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.125rem;
+  border-radius: 50%;
+  background: #38bdf8;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ad-step .ant-form-item {
+  margin-bottom: 0;
+}
+
+.ad-step .ops {
+  display: flex;
+  gap: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+/* 감사 로그 — 전 · 후 비교 */
+.ad-diff {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.ad-diff > div {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  overflow-wrap: anywhere;
+}
+
+.ad-diff .h {
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ad-diff .k {
+  color: #64748b;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.ad-diff .is-changed {
+  background: #fffbeb;
+}
+
+.ad-diff .b {
+  color: #94a3b8;
+}
+
+.ad-diff .a.is-changed {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* 초기 설정 마법사 — 사이드바 없는 전체 화면 */
+.wz {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.wz-top {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.25rem 2.5rem;
+  border-bottom: 1px solid #1e293b;
+  background: #0f172a;
+}
+
+.wz-top h1 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.wz-top .wz-later {
+  margin-left: auto;
+  color: #94a3b8;
+}
+
+.wz-steps {
+  display: flex;
+  gap: 0;
+  padding: 1.25rem 2.5rem 0;
+  counter-reset: wz;
+}
+
+.wz-step {
+  display: flex;
+  flex: 1 0 0;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0 0 0.875rem;
+  border: 0;
+  border-bottom: 3px solid #e2e8f0;
+  background: none;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wz-step .n {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.wz-step .t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wz-step.is-done .n {
+  background: #10b981;
+  color: #fff;
+}
+
+.wz-step.is-on {
+  border-bottom-color: #38bdf8;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.wz-step.is-on .n {
+  background: #38bdf8;
+  color: #fff;
+}
+
+.wz-body {
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: 82rem;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 1.75rem 2.5rem 2rem;
+}
+
+.wz-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid #bae6fd;
+  border-radius: 0.5rem;
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 0.8125rem;
+}
+
+.wz-intro strong {
+  color: #0f172a;
+}
+
+.wz-foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 2.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.wz-foot .grow {
+  flex: 1 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.wz-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}

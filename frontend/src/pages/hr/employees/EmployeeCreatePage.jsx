@@ -13,7 +13,8 @@ import { PageHead, useOrgOptions } from '../parts';
 
 const opts = (list) => (list ?? []).map((x) => ({ value: x.id, label: x.name }));
 
-export default function EmployeeCreatePage() {
+/** onCancel · onDone — 초기 설정 마법사 안에서 쓸 때(목록 · 상세로 가지 않고 마법사에 남는다) */
+export default function EmployeeCreatePage({ onCancel, onDone }) {
   const navigate = useNavigate();
   const notify = useNotify();
   const queryClient = useQueryClient();
@@ -118,7 +119,7 @@ export default function EmployeeCreatePage() {
 
       <p className="hr-notice">저장하면 직원 계정이 자동으로 생성되며, 재직상태는 '재직중'으로 등록됩니다.</p>
       <div className="hr-form-actions">
-        <button type="button" className="hr-btn is-secondary" style={{ padding: '0 1.5rem' }} onClick={() => navigate('/employees')}>취소</button>
+        <button type="button" className="hr-btn is-secondary" style={{ padding: '0 1.5rem' }} onClick={() => (onCancel ? onCancel() : navigate('/employees'))}>취소</button>
         <button type="button" className="hr-btn" style={{ padding: '0 1.5rem' }} disabled={save.isPending} onClick={() => form.submit()}>
           {save.isPending ? '저장 중…' : '저장'}
         </button>
@@ -146,7 +147,7 @@ export default function EmployeeCreatePage() {
               </p>
             )}
             <div className="hr-modal-foot">
-              <button type="button" className="hr-btn" onClick={() => { notify.success(`${created.name} 직원을 등록했습니다`); navigate(`/employees/${created.id}`); }}>
+              <button type="button" className="hr-btn" onClick={() => { notify.success(`${created.name} 직원을 등록했습니다`); if (onDone) { setCreated(null); form.resetFields(); onDone(created); } else navigate(`/employees/${created.id}`); }}>
                 확인
               </button>
             </div>

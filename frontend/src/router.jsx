@@ -25,6 +25,14 @@ import TitleSettingsPage from './pages/settings/TitleSettingsPage';
 import PaySettingsPage from './pages/settings/pay/PaySettingsPage';
 import EvalTemplatePage from './pages/settings/evalTemplates/EvalTemplatePage';
 import EvalTodoPage from './pages/me/evalTodo/EvalTodoPage';
+import EmploymentTypeSettingsPage from './pages/settings/EmploymentTypeSettingsPage';
+import CompanyPage from './pages/settings/admin/company/CompanyPage';
+import WorkSettingsPage from './pages/settings/admin/work/WorkSettingsPage';
+import RolesPage from './pages/settings/admin/roles/RolesPage';
+import AccountsPage from './pages/settings/admin/accounts/AccountsPage';
+import ApprovalLinesPage from './pages/settings/admin/approval/ApprovalLinesPage';
+import AuditLogPage from './pages/settings/admin/audit/AuditLogPage';
+import SetupWizardPage from './pages/settings/admin/setup/SetupWizardPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
@@ -51,6 +59,13 @@ const PAGES = {
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
   'set-eval-templates': EvalTemplatePage,
+  'set-company': CompanyPage,
+  'set-work': WorkSettingsPage,
+  'set-emp-types': EmploymentTypeSettingsPage,
+  'set-roles': RolesPage,
+  'set-accounts': AccountsPage,
+  'set-approval-lines': ApprovalLinesPage,
+  'set-audit-logs': AuditLogPage,
 };
 
 // 메뉴 아래 화면(등록 · 상세 · 정정) — 부모 메뉴와 같은 규칙으로 막는다. 버튼은 화면에서 can() 으로 감싼다
@@ -78,7 +93,6 @@ const OWNER = {
   assignments: 'FE-A · F-04',
   attendance: 'FE-A · F-15',
   leaves: 'FE-A · F-15',
-  setup: 'FE-A · F-02',
 };
 
 const menuRoutes = ALL_MENU_ITEMS.filter((item) => item.key !== 'setup').map((item) => {
@@ -112,7 +126,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/password', element: <PasswordPage /> },
       // 마법사는 사이드바 없는 전체 화면(메뉴 구조 4장)
-      { path: '/setup', element: <MenuGuard menuKey="setup"><PlaceholderPage title="초기 설정 마법사" owner={OWNER.setup} /></MenuGuard> },
+      { path: '/setup', element: <MenuGuard menuKey="setup"><SetupWizardPage /></MenuGuard> },
       {
         element: <AppLayout />,
         children: [
