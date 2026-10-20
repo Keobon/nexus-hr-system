@@ -7,6 +7,7 @@ import com.nexuslabs.hr.domain.approval.service.CurrentStep;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripCreateRequest;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripResponse;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripRow;
+import com.nexuslabs.hr.domain.attendance.dto.TeamTripRow;
 import com.nexuslabs.hr.domain.attendance.entity.BusinessTrip;
 import com.nexuslabs.hr.domain.attendance.entity.RequestStatus;
 import com.nexuslabs.hr.domain.attendance.entity.TripType;
@@ -147,6 +148,38 @@ public class BusinessTripService {
                         List.of((Object) scope.employeeIds().toArray(Long[]::new)), from, to, orgUnitId, status, pageable);
     }
 
+    /**
+     * 부서원 출장 일정 — 권한 없이 누구나(역할 분담 2.3 M-101). 나와 같은 조직(하위 제외)의 재직 · 휴직자가 낸 진행 중
+     * 출장(승인대기 · 승인완료) 중 기간이 from · to 에 걸치는 것. 시작일 → 이름 순.
+     * 팀 휴가 캘린더(N-103)와 같은 규칙으로, ATTENDANCE_READ 를 쓸 수 없으면 남의 출장은 승인된 것만 보인다. 내 출장은 그대로.
+     */
+    @Transactional(readOnly = true)
+    public List<TeamTripRow> teamTrips(LoginUser user, LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            throw BusinessException.invalidFields(Map.of("to", "종료일은 시작일 이후여야 합니다"));
+        }
+        boolean attendanceReader = scopeResolver.usable(user, PermissionCode.ATTENDANCE_READ);
+        return jdbc.query("""
+                        SELECT t.id, e.id AS employee_id, e.name AS employee_name, t.trip_type::text AS trip_type,
+                               t.destination, t.start_date, t.end_date, t.status::text AS status
+                        FROM business_trip t
+                        JOIN employee e ON e.id = t.employee_id AND e.company_id = t.company_id
+                        WHERE t.company_id = ?
+                          AND e.org_unit_id = (SELECT org_unit_id FROM employee WHERE id = ? AND company_id = ?)
+                          AND e.status <> 'RESIGNED'
+                          AND t.status IN ('PENDING', 'APPROVED')
+                          AND (? OR t.employee_id = ? OR t.status = 'APPROVED')
+                          AND t.start_date <= ? AND t.end_date >= ?
+                        ORDER BY t.start_date, e.name, t.id
+                        """,
+                (rs, i) -> new TeamTripRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
+                        TripType.valueOf(rs.getString("trip_type")), rs.getString("destination"),
+                        rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class),
+                        RequestStatus.valueOf(rs.getString("status"))),
+                user.companyId(), user.employeeId(), user.companyId(), attendanceReader, user.employeeId(),
+                Date.valueOf(to), Date.valueOf(from));
+    }
+
     /** 퇴직 처리(B-10)가 같은 트랜잭션에서 부른다(역할 분담 v2 2.1). 승인대기 출장을 취소(사유 "퇴직")하고 단계를 닫는다. */
     @Transactional(propagation = Propagation.MANDATORY)
     public int cancelPendingByResignation(long companyId, long employeeId) {
@@ -273,11 +306,14 @@ public class BusinessTripService {
                         rs.getObject("estimated_cost", Long.class), RequestStatus.valueOf(rs.getString("status")),
                         rs.getString("report_text") != null,
                         rs.getString("claim_status") == null ? null : RequestStatus.valueOf(rs.getString("claim_status")),
-                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
+                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null, null),
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(companyId, ApprovalWorkType.BUSINESS_TRIP,
                 rows.stream().map(BusinessTripRow::id).toList());
-        return new PageImpl<>(rows.stream().map(r -> r.withCurrentStep(steps.get(r.id()))).toList(), pageable, total);
+        Map<Long, String> rejectReasons = approvalService.rejectReasons(companyId, ApprovalWorkType.BUSINESS_TRIP,
+                rows.stream().filter(r -> r.status() == RequestStatus.REJECTED).map(BusinessTripRow::id).toList());
+        return new PageImpl<>(rows.stream().map(r -> r.withApproval(steps.get(r.id()), rejectReasons.get(r.id())))
+                .toList(), pageable, total);
     }
 
     private static final String SELECT = """

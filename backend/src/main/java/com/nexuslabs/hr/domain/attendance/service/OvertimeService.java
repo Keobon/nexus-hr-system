@@ -227,12 +227,15 @@ public class OvertimeService {
                             rs.getObject("approved_minutes", Integer.class), !calendar.isWorkday(workDate),
                             nightMinutes(calendar, workDate, start, end), rs.getString("reason"),
                             RequestStatus.valueOf(rs.getString("status")),
-                            RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null);
+                            RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null, null);
                 },
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(companyId, ApprovalWorkType.OVERTIME,
                 rows.stream().map(OvertimeRow::id).toList());
-        return new PageImpl<>(rows.stream().map(r -> r.withCurrentStep(steps.get(r.id()))).toList(), pageable, total);
+        Map<Long, String> rejectReasons = approvalService.rejectReasons(companyId, ApprovalWorkType.OVERTIME,
+                rows.stream().filter(r -> r.status() == RequestStatus.REJECTED).map(OvertimeRow::id).toList());
+        return new PageImpl<>(rows.stream().map(r -> r.withApproval(steps.get(r.id()), rejectReasons.get(r.id())))
+                .toList(), pageable, total);
     }
 
     private static final String ROW_SELECT = """
