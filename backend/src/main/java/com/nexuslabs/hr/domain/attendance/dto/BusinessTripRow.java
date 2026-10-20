@@ -11,14 +11,15 @@ import java.time.OffsetDateTime;
  * 출장 목록 행(GET /api/me/business-trips · /api/business-trips). 화면 버튼 규칙(프론트 가이드 3.2)에 쓰는
  * reportWritten(결과 보고 작성 여부) · expenseClaimStatus(상세의 expenseClaim 과 같은 청구의 상태, 없으면 null)를 담는다.
  * currentStep 은 API 설계서 8장 "휴가 신청 목록 행"과 같다.
+ * rejectReason 은 반려된 신청만 반려한 단계의 의견, 그 밖에는 null 이다(역할 분담 2.3 L-94 — 휴가 목록 행과 같다).
  */
 public record BusinessTripRow(long id, long employeeId, String employeeName, String orgUnitName, TripType tripType,
                               String destination, LocalDate startDate, LocalDate endDate, Long estimatedCost,
                               RequestStatus status, boolean reportWritten, RequestStatus expenseClaimStatus,
-                              OffsetDateTime createdAt, CurrentStep currentStep) {
+                              OffsetDateTime createdAt, CurrentStep currentStep, String rejectReason) {
 
-    public BusinessTripRow withCurrentStep(CurrentStep step) {
+    public BusinessTripRow withApproval(CurrentStep step, String rejectReason) {
         return new BusinessTripRow(id, employeeId, employeeName, orgUnitName, tripType, destination, startDate, endDate,
-                estimatedCost, status, reportWritten, expenseClaimStatus, createdAt, step);
+                estimatedCost, status, reportWritten, expenseClaimStatus, createdAt, step, rejectReason);
     }
 }

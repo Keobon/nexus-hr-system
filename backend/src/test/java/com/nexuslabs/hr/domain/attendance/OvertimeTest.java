@@ -179,7 +179,15 @@ class OvertimeTest {
 
         decide(org.seo, id, "reject", "{\"comment\": \"필요 없음\"}").andExpect(status().isOk());
         assertThat(overtimeStatus(id)).isEqualTo("REJECTED");
-        applyOk(org.cho, DATE, "19:00", "20:00");
+        long again = applyOk(org.cho, DATE, "19:00", "20:00");
+
+        // 목록 행의 반려 사유는 반려된 신청에만(2.3 L-94)
+        String row = "$.data.content[?(@.id == %d)].rejectReason";
+        as(org.cho.id(), get("/api/me/overtime-requests"))
+                .andExpect(jsonPath(row.formatted(id)).value(contains("필요 없음")))
+                .andExpect(jsonPath(row.formatted(again)).value(contains(nullValue())));
+        as(org.company.adminId(), get("/api/overtime-requests"))
+                .andExpect(jsonPath(row.formatted(id)).value(contains("필요 없음")));
     }
 
     @Test

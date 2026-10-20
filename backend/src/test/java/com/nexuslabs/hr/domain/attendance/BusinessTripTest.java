@@ -24,6 +24,7 @@ import java.util.List;
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -141,7 +142,15 @@ class BusinessTripTest {
         decide(org.seo, id, "reject", "{\"comment\": \"일정 조정\"}").andExpect(status().isOk());
         assertThat(tripStatus(id)).isEqualTo("REJECTED");
         assertThat(tripDays(id)).isEmpty();
-        applyOk(org.cho, "2030-03-04", "2030-03-05");
+        long again = applyOk(org.cho, "2030-03-04", "2030-03-05");
+
+        // 목록 행의 반려 사유는 반려된 신청에만(2.3 L-94)
+        String row = "$.data.content[?(@.id == %d)].rejectReason";
+        as(org.cho.id(), get("/api/me/business-trips"))
+                .andExpect(jsonPath(row.formatted(id)).value(contains("일정 조정")))
+                .andExpect(jsonPath(row.formatted(again)).value(contains(nullValue())));
+        as(org.company.adminId(), get("/api/business-trips"))
+                .andExpect(jsonPath(row.formatted(id)).value(contains("일정 조정")));
     }
 
     @Test
@@ -275,6 +284,72 @@ class BusinessTripTest {
                 .andExpect(jsonPath("$.data.totalElements").value(1));
         as(org.seo.id(), get(path)).andExpect(jsonPath("$.data.totalElements").value(2));
         as(org.cho.id(), get(path)).andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    private long trip(TestFixture.Employee e, String start, String end, String status) {
+        return jdbc.queryForObject("""
+                INSERT INTO business_trip (company_id, employee_id, trip_type, destination, purpose, start_date, end_date,
+                                           estimated_cost, status)
+                VALUES (?, ?, 'OVERSEAS', '도쿄', '고객사 방문', ?::date, ?::date, 500000, ?::request_status) RETURNING id""",
+                Long.class, cid, e.id(), start, end, status);
+    }
+
+    private ResultActions teamTrips(TestFixture.Employee e, String from, String to) throws Exception {
+        return as(e.id(), get("/api/me/team-trips").param("from", from).param("to", to));
+    }
+
+    // 조직: 개발본부(강하늘) ┬ 프론트엔드팀(서예린 조직장 · 조현우) / └ 백엔드팀(윤서연)
+    @Test
+    void 부서원_출장_일정은_같은_조직의_진행_중_출장만_기간이_걸치면_시작일_순으로() throws Exception {
+        long seoTrip = trip(org.seo, "2030-03-10", "2030-03-12", "APPROVED");
+        trip(org.cho, "2030-03-04", "2030-03-05", "PENDING");
+        trip(org.seo, "2030-03-25", "2030-03-25", "REJECTED");      // 반려 — 빠짐
+        trip(org.seo, "2030-03-26", "2030-03-26", "CANCELLED");     // 취소 — 빠짐
+        trip(org.seo, "2030-02-25", "2030-03-01", "APPROVED");      // 기간 밖 — 빠짐
+        trip(org.cho, "2030-03-31", "2030-04-02", "APPROVED");      // 끝에 걸침
+        trip(org.yoon, "2030-03-10", "2030-03-10", "APPROVED");     // 다른 팀 — 빠짐
+        trip(org.kang, "2030-03-10", "2030-03-10", "APPROVED");     // 상위 조직 — 빠짐
+
+        // 서예린은 프론트엔드팀 조직장(ATTENDANCE_READ 팀) — 승인 전 출장까지 본다
+        teamTrips(org.seo, "2030-03-02", "2030-03-31")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                .andExpect(jsonPath("$.data[*].startDate", contains("2030-03-04", "2030-03-10", "2030-03-31")))
+                .andExpect(jsonPath("$.data[*].status", contains("PENDING", "APPROVED", "APPROVED")))
+                .andExpect(jsonPath("$.data[1].id").value(seoTrip))
+                .andExpect(jsonPath("$.data[1].employeeId").value(org.seo.id()))
+                .andExpect(jsonPath("$.data[1].employeeName").isString())
+                .andExpect(jsonPath("$.data[1].tripType").value("OVERSEAS"))
+                .andExpect(jsonPath("$.data[1].destination").value("도쿄"))
+                .andExpect(jsonPath("$.data[1].endDate").value("2030-03-12"))
+                .andExpect(jsonPath("$.data[1].purpose").doesNotExist())
+                .andExpect(jsonPath("$.data[1].estimatedCost").doesNotExist());
+    }
+
+    @Test
+    void 근태_조회_권한을_쓸_수_없는_직원에게_남의_출장은_승인된_것만() throws Exception {
+        trip(org.seo, "2030-03-10", "2030-03-10", "APPROVED");
+        trip(org.seo, "2030-03-15", "2030-03-15", "PENDING");       // 승인 전 — 빠짐
+        trip(org.cho, "2030-03-04", "2030-03-04", "PENDING");       // 내 것은 그대로
+
+        // 조현우는 조직장이 아니라 팀 범위 ATTENDANCE_READ 를 쓸 수 없다
+        teamTrips(org.cho, "2030-03-01", "2030-03-31")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].startDate", contains("2030-03-04", "2030-03-10")))
+                .andExpect(jsonPath("$.data[*].status", contains("PENDING", "APPROVED")));
+    }
+
+    @Test
+    void 부서원_출장_일정에서_퇴직자는_빠지고_시작일이_종료일보다_뒤면_VALIDATION_ERROR() throws Exception {
+        trip(org.seo, "2030-03-10", "2030-03-10", "APPROVED");
+        jdbc.update("UPDATE employee SET status = 'RESIGNED' WHERE id = ?", org.seo.id());
+
+        teamTrips(org.cho, "2030-03-01", "2030-03-31")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+        teamTrips(org.cho, "2030-03-31", "2030-03-01")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
     }
 
     @Test

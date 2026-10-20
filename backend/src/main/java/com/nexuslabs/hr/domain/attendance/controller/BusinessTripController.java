@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.attendance.dto.BusinessTripCreateRequest;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripReportRequest;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripResponse;
 import com.nexuslabs.hr.domain.attendance.dto.BusinessTripRow;
+import com.nexuslabs.hr.domain.attendance.dto.TeamTripRow;
 import com.nexuslabs.hr.domain.attendance.entity.RequestStatus;
 import com.nexuslabs.hr.domain.attendance.service.BusinessTripService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /** API 설계서 7.3 — 출장(F-ATT-07). */
 @RestController
@@ -51,6 +53,14 @@ public class BusinessTripController {
                                                            @RequestParam(required = false) RequestStatus status,
                                                            @PageableDefault(size = 20) Pageable pageable) {
         return ApiResponse.ok(PageResponse.of(businessTripService.mine(user, status, pageable)));
+    }
+
+    /** 부서원 출장 일정 — 같은 조직(하위 제외) 동료의 진행 중 출장. 권한 없이 로그인한 직원 누구나. */
+    @GetMapping("/api/me/team-trips")
+    public ApiResponse<List<TeamTripRow>> teamTrips(@CurrentUser LoginUser user,
+                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                                    @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ApiResponse.ok(businessTripService.teamTrips(user, from, to));
     }
 
     /** 다른 직원의 출장 목록. 팀 범위면 내 팀 직원 것만. from · to 는 기간이 걸치는 출장, orgUnitId 는 하위 조직 포함. */

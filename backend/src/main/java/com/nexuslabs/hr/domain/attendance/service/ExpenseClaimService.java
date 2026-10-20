@@ -297,11 +297,14 @@ public class ExpenseClaimService {
                         rs.getString("destination"), rs.getLong("employee_id"), rs.getString("employee_name"),
                         rs.getString("org_unit_name"), rs.getLong("total_amount"), rs.getInt("line_count"),
                         RequestStatus.valueOf(rs.getString("status")), rs.getString("pay_month"),
-                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null),
+                        RequestAccess.seoul(rs.getObject("created_at", OffsetDateTime.class)), null, null),
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(companyId, ApprovalWorkType.TRIP_EXPENSE,
                 rows.stream().map(ExpenseClaimRow::id).toList());
-        return new PageImpl<>(rows.stream().map(r -> r.withCurrentStep(steps.get(r.id()))).toList(), pageable, total);
+        Map<Long, String> rejectReasons = approvalService.rejectReasons(companyId, ApprovalWorkType.TRIP_EXPENSE,
+                rows.stream().filter(r -> r.status() == RequestStatus.REJECTED).map(ExpenseClaimRow::id).toList());
+        return new PageImpl<>(rows.stream().map(r -> r.withApproval(steps.get(r.id()), rejectReasons.get(r.id())))
+                .toList(), pageable, total);
     }
 
     private static final String SELECT = """

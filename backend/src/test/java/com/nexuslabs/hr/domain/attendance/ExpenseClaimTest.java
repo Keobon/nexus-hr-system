@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -225,6 +226,13 @@ class ExpenseClaimTest {
         claim(org.cho, trip, line(perDiem, "2030-03-04", 40000, null)).andExpect(status().isCreated());
         as(org.cho.id(), get("/api/me/business-trips"))
                 .andExpect(jsonPath("$.data.content[0].expenseClaimStatus").value("PENDING"));
+
+        // 목록 행의 반려 사유는 반려된 청구에만(2.3 L-94)
+        as(org.cho.id(), get("/api/me/expense-claims"))
+                .andExpect(jsonPath("$.data.content[?(@.id == %d)].rejectReason".formatted(id))
+                        .value(contains("영수증 확인 필요")))
+                .andExpect(jsonPath("$.data.content[?(@.status == 'PENDING')].rejectReason")
+                        .value(contains(nullValue())));
     }
 
     @Test
