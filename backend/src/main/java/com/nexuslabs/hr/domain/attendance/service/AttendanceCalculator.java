@@ -114,7 +114,7 @@ public class AttendanceCalculator {
 
         Map<Long, Map<LocalDate, Row>> rows = new HashMap<>();
         jdbc.query("""
-                        SELECT employee_id, work_date, status::text AS status, work_type::text AS work_type,
+                        SELECT id, employee_id, work_date, status::text AS status, work_type::text AS work_type,
                                check_in_at, check_out_at
                         FROM attendance
                         WHERE company_id = ? AND employee_id = ANY(?) AND work_date BETWEEN ? AND ?
@@ -123,7 +123,7 @@ public class AttendanceCalculator {
                     String workType = rs.getString("work_type");
                     rows.computeIfAbsent(rs.getLong("employee_id"), k -> new HashMap<>())
                             .put(rs.getObject("work_date", LocalDate.class),
-                                    new Row(AttendanceStatus.valueOf(rs.getString("status")),
+                                    new Row(rs.getLong("id"), AttendanceStatus.valueOf(rs.getString("status")),
                                             workType == null ? null : WorkType.valueOf(workType),
                                             rs.getObject("check_in_at", OffsetDateTime.class),
                                             rs.getObject("check_out_at", OffsetDateTime.class)));
@@ -153,7 +153,7 @@ public class AttendanceCalculator {
                         calendar.scheduleOn(date), row == null ? null : row.status(),
                         row == null ? null : row.workType(), row == null ? null : row.checkInAt(),
                         row == null ? null : row.checkOutAt(), employeeApproved.get(date),
-                        employmentOn(date, start, changes), today)));
+                        employmentOn(date, start, changes), today)).withAttendanceId(row == null ? null : row.id()));
             }
             result.put(employeeId, new MonthlyAttendance(month.toString(), days, summarize(days)));
         });
@@ -176,7 +176,7 @@ public class AttendanceCalculator {
         if (in.status() == AttendanceStatus.ON_BUSINESS_TRIP) {
             // 출장일은 1일 소정근로시간을 일한 것으로 본다(BR-ATT-005)
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), AttendanceDayStatus.ON_BUSINESS_TRIP,
-                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0);
+                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0, null);
         }
         LocalDateTime checkIn = minute(in.checkInAt());
         boolean late = in.workday()
@@ -185,7 +185,7 @@ public class AttendanceCalculator {
         AttendanceDayStatus status = AttendanceDayStatus.valueOf(in.status().name());
         if (in.checkOutAt() == null) {
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
-                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved);
+                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved, null);
         }
         LocalDateTime checkOut = minute(in.checkOutAt());
         boolean earlyLeave = in.workday() && checkOut.isBefore(in.date().atTime(schedule.endTime()));
@@ -212,7 +212,7 @@ public class AttendanceCalculator {
         }
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
                 seoul(in.checkInAt()), seoul(in.checkOutAt()), late, earlyLeave, work, overtime, night, holiday,
-                holidayOvertime, approved);
+                holidayOvertime, approved, null);
     }
 
     public static AttendanceSummary summarize(List<AttendanceDay> days) {
@@ -248,7 +248,7 @@ public class AttendanceCalculator {
 
     private static AttendanceDay noRecord(DayInput in, AttendanceDayStatus status) {
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     /** 출근~퇴근이 야간 시간대와 겹치는 분. 야간 시간대는 보통 자정을 넘는다(22:00–06:00). 연장근무 신청의 예정 시간에도 쓴다. */
@@ -299,6 +299,7 @@ public class AttendanceCalculator {
     private record StatusChange(LocalDate effectiveDate, EmpStatus status) {
     }
 
-    private record Row(AttendanceStatus status, WorkType workType, OffsetDateTime checkInAt, OffsetDateTime checkOutAt) {
+    private record Row(long id, AttendanceStatus status, WorkType workType, OffsetDateTime checkInAt,
+                       OffsetDateTime checkOutAt) {
     }
 }

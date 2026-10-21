@@ -42,8 +42,9 @@ public class EmployeeFieldController {
 
     /** 로그인만 하면 볼 수 있다. 입력 폼은 activeOnly=true. */
     @GetMapping("/api/employee-fields")
-    public ApiResponse<List<EmployeeFieldResponse>> list(@RequestParam(defaultValue = "false") boolean activeOnly) {
-        return ApiResponse.ok(fieldService.list(activeOnly));
+    public ApiResponse<List<EmployeeFieldResponse>> list(@CurrentUser LoginUser user,
+                                                         @RequestParam(defaultValue = "false") boolean activeOnly) {
+        return ApiResponse.ok(fieldService.list(user, activeOnly));
     }
 
     @PostMapping("/api/employee-fields")
