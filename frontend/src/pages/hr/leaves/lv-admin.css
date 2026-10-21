@@ -1,0 +1,232 @@
+/* 인사 관리 › 휴가 현황 — 근태 현황(at.css) 위에 덧붙이는 값. Figma 70-3465 · 487-16827 · 487-17038 · 487-17240 */
+
+/* 조회 조건 · 부여 카드 — 흰 카드 r12 p20 */
+.lv-box,
+.lv-card {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.lv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lv-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.lv-history {
+  margin: 0 -1.25rem -1.25rem;
+}
+
+.lv-card .lv-form {
+  padding: 0;
+}
+
+.lv-form .ant-form-item {
+  margin-bottom: 0.875rem;
+}
+
+.lv-form .ant-form-item-label > label {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.lv-form-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.4fr;
+  gap: 0.75rem;
+}
+
+.lv-form .ant-select,
+.lv-form .ant-input-number {
+  height: 2.375rem;
+}
+
+.lv-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lv-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.at-table th.is-right,
+.at-table td.is-right {
+  text-align: right;
+}
+
+/* 오른쪽 상세 서랍 */
+.lv-drawer .ant-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.lv-dr-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.lv-dr-head strong {
+  color: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.lv-dr-head span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.lv-dr-title {
+  margin: 0.5rem 0 0;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.lv-dr-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.lv-dr-sum > div {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.lv-dr-sum span {
+  flex: none;
+  color: #64748b;
+}
+
+.lv-dr-sum strong {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+}
+
+.lv-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lv-timeline li {
+  position: relative;
+  display: flex;
+  gap: 0.625rem;
+}
+
+.lv-timeline li + li::before {
+  position: absolute;
+  top: -1.125rem;
+  left: 0.5rem;
+  width: 1px;
+  height: 1.125rem;
+  background: #cbd5e1;
+  content: '';
+}
+
+.lv-dot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1.5px solid #38bdf8;
+  border-radius: 50%;
+  background: #fff;
+  color: #38bdf8;
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.lv-timeline li.is-APPROVED .lv-dot {
+  background: #38bdf8;
+  color: #fff;
+}
+
+.lv-timeline li.is-REJECTED .lv-dot {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.lv-timeline li.is-WAITING .lv-dot,
+.lv-timeline li.is-CANCELLED .lv-dot {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.lv-timeline li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.lv-timeline strong {
+  color: #0f172a;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.lv-timeline span {
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+.lv-reject {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+}
+
+.lv-reject strong {
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.lv-reject p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+  .lv-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

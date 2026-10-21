@@ -32,3 +32,21 @@ export const cancelLeave = (id, reason) => api.post(`/me/leave-requests/${id}/ca
 /** GET /me/team-leaves?from=&to= — 같은 조직(하위 제외) 재직 · 휴직자의 승인대기 · 승인완료 · 취소요청 휴가, 나 포함. 권한 없이 누구나(노션 2.3 L-91) */
 export const teamLeavesKey = (from, to) => ['leave-requests', 'team', from, to];
 export const getTeamLeaves = (from, to) => api.get('/me/team-leaves', { from, to }); // [{ employeeId, employeeName, leaveTypeName, startDate, endDate, status }]
+
+/** 인사 · 휴가 현황(API 8장) — LEAVE_READ 범위(팀이면 내 팀)
+ * GET /leave-requests?from&to&orgUnitId&status&leaveTypeId — 기간이 걸치는 휴가. 행 { id, employeeId, employeeName, orgUnitName, leaveTypeName,
+ *   startDate, endDate, days, status, reason, currentStep: { stepOrder, totalSteps, approverName, status } | null, rejectReason } */
+export const getLeaveRequestPage = (params) => api.get('/leave-requests', params);
+/** GET /leave-types — 사용 중지 포함(목록 필터용) */
+export const allLeaveTypesKey = ['leave-types', 'all'];
+export const getAllLeaveTypes = () => api.get('/leave-types');
+/** GET /leave-balances?leaveYear&orgUnitId → 페이지 { content: [{ employeeId, employeeNo, name, orgUnitName, balances: [{ leaveTypeId, leaveTypeName, granted, used, pending, remaining }] }] } */
+export const getLeaveBalancePage = (params) => api.get('/leave-balances', params);
+
+/** 휴가 부여(LEAVE_MANAGE) — POST /leave-grants/annual { leaveYear } → { leaveYear, created, skipped } */
+export const grantAnnualLeave = (leaveYear) => api.post('/leave-grants/annual', { leaveYear });
+/** POST /leave-grants/adjustments { employeeId, leaveTypeId, leaveYear, days(±, 0 불가), reason } — 잔여가 음수가 되면 거절 */
+export const adjustLeaveGrant = (body) => api.post('/leave-grants/adjustments', body);
+/** GET /leave-grants?employeeId&leaveYear → [{ id, leaveTypeName, leaveYear, grantType REGULAR|HIRE|ADJUSTMENT, days, reason, createdByName, createdAt }] */
+export const leaveGrantsKey = (employeeId, leaveYear) => ['leave-grants', employeeId, leaveYear];
+export const getLeaveGrants = (employeeId, leaveYear) => api.get('/leave-grants', { employeeId, leaveYear });

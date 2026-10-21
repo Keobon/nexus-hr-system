@@ -19,6 +19,7 @@ import AssignmentListPage from './pages/hr/assignments/AssignmentListPage';
 import PayrollPage from './pages/hr/payroll/PayrollPage';
 import EvaluationAdminPage from './pages/hr/evaluations/EvaluationAdminPage';
 import AttendanceAdminPage from './pages/hr/attendance/AttendanceAdminPage';
+import LeaveAdminPage from './pages/hr/leaves/LeaveAdminPage';
 import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
@@ -57,6 +58,7 @@ const PAGES = {
   payroll: PayrollPage,
   evaluations: EvaluationAdminPage,
   attendance: AttendanceAdminPage,
+  leaves: LeaveAdminPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
@@ -94,7 +96,7 @@ const OWNER = {
   employees: 'FE-A · F-04',
   assignments: 'FE-A · F-04',
   attendance: 'FE-B · F-15',
-  leaves: 'FE-A · F-15',
+  leaves: 'FE-B · F-15',
 };
 
 const menuRoutes = ALL_MENU_ITEMS.filter((item) => item.key !== 'setup').map((item) => {
