@@ -44,6 +44,37 @@
   height: 528.26%;
 }
 
+/* 회사 로고(F-COMP-02) — 서비스 로고와 같은 자리 · 높이. 올린 이미지는 비율 그대로, 없으면 회사명 글자 */
+.company-logo {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.nav-top .company-logo {
+  width: 12.875rem;
+  height: 2.4375rem;
+  margin-left: 0.3125rem;
+}
+
+.company-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.company-logo.is-text span {
+  overflow: hidden;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .nav-line {
   display: block;
   width: 13.5rem;
@@ -296,9 +327,14 @@
     color: #fff;
   }
 
-  .app-topbar .brand-logo {
+  .app-topbar .brand-logo,
+  .app-topbar .company-logo {
     width: 10rem;
     height: 1.875rem;
+  }
+
+  .app-topbar .company-logo.is-text span {
+    font-size: 1rem;
   }
 
   .app-main {

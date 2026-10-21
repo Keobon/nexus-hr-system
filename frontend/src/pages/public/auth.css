@@ -340,9 +340,20 @@
 }
 
 /* 버튼 아래 5.4375rem — 실패 안내가 생겨도 보안 안내 위치가 그대로(47.25rem) */
+.login-signup {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0.875rem 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+/* 회사 등록 줄(약 2rem)만큼 줄여 아래 안내 위치를 그대로 둔다 */
 .login-error-slot {
-  height: 5.4375rem;
-  padding-top: 1.4375rem;
+  height: 3.4375rem;
+  padding-top: 0.5rem;
   box-sizing: border-box;
 }
 

@@ -1,10 +1,12 @@
 // 직원 등록(F-EMP-01) — Figma HR_employee_create
-// 고용형태는 Figma 에 없지만 API 필수값이라 넣었다. 임시 비밀번호는 응답에서 한 번만 받으므로 등록 직후 창으로 보여 준다(F-AUTH-04).
+// 고용형태는 Figma 에 없지만 API 필수값이라 넣었다. 역할은 ROLE_MANAGE 가 있을 때만 고른다(없으면 서버가 기본 역할 "직원"). 임시 비밀번호는 응답에서 한 번만 받으므로 등록 직후 창으로 보여 준다(F-AUTH-04).
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DatePicker, Form, Input, Modal, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMe } from '../../../auth/useMe';
 import { createEmployee } from '../../../api/employees';
+import { getRoles, rolesKey } from '../../../api/roles';
 import { employmentTypesApi, jobGradesApi, jobTitlesApi } from '../../../api/orgSettings';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
@@ -24,6 +26,9 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
   const grades = useQuery({ queryKey: jobGradesApi.key(true), queryFn: () => jobGradesApi.list(true) });
   const titles = useQuery({ queryKey: jobTitlesApi.key(true), queryFn: () => jobTitlesApi.list(true) });
   const types = useQuery({ queryKey: employmentTypesApi.key(true), queryFn: () => employmentTypesApi.list(true) });
+  const { can } = useMe();
+  const roleManage = can('ROLE_MANAGE');
+  const roles = useQuery({ queryKey: rolesKey, queryFn: getRoles, enabled: roleManage });
 
   const save = useMutation({
     mutationFn: createEmployee,
@@ -45,6 +50,7 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
       jobGradeId: v.jobGradeId,
       jobTitleId: v.jobTitleId ?? null,
       employmentTypeId: v.employmentTypeId,
+      roleId: roleManage ? (v.roleId ?? null) : null,
       hireDate: v.hireDate.format('YYYY-MM-DD'),
       phone: v.phone?.trim() || null,
       address: v.address?.trim() || null,
@@ -91,7 +97,13 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
           <Form.Item name="employmentTypeId" label="고용형태 *" rules={req('고용형태를 선택하세요')}>
             <Select placeholder="고용형태를 선택하세요" options={opts(types.data)} />
           </Form.Item>
-          <div />
+          {roleManage ? (
+            <Form.Item name="roleId" label="역할" extra="비워 두면 '직원' 역할로 만들어집니다. 나중에 계정 관리에서 바꿀 수 있습니다.">
+              <Select placeholder="직원 (기본)" allowClear loading={roles.isLoading} options={opts(roles.data)} />
+            </Form.Item>
+          ) : (
+            <div />
+          )}
         </div>
 
         <p className="hr-card-title" style={{ marginTop: '0.5rem' }}>연락처 · 주소</p>

@@ -186,6 +186,14 @@ export default function LoginPage() {
             {loading ? '로그인 중…' : '로그인 (Sign In)'}
           </button>
 
+          {/* F-COMP-01 첫 화면의 회사 등록 — 처음 쓰는 회사의 관리자가 회사 · 최고 관리자 계정을 만든다 */}
+          <p className="login-signup">
+            처음 사용하는 회사인가요?
+            <button type="button" className="login-link" onClick={() => navigate('/signup')}>
+              회사 등록
+            </button>
+          </p>
+
           <div className="login-error-slot">
             {error && (
               <ul className="login-error" role="alert">

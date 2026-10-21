@@ -18,6 +18,9 @@ import EmployeeDetailPage from './pages/hr/employees/EmployeeDetailPage';
 import AssignmentListPage from './pages/hr/assignments/AssignmentListPage';
 import PayrollPage from './pages/hr/payroll/PayrollPage';
 import EvaluationAdminPage from './pages/hr/evaluations/EvaluationAdminPage';
+import AttendanceAdminPage from './pages/hr/attendance/AttendanceAdminPage';
+import LeaveAdminPage from './pages/hr/leaves/LeaveAdminPage';
+import LeaveTypeSettingsPage from './pages/settings/leaveTypes/LeaveTypeSettingsPage';
 import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
@@ -55,9 +58,12 @@ const PAGES = {
   assignments: AssignmentListPage,
   payroll: PayrollPage,
   evaluations: EvaluationAdminPage,
+  attendance: AttendanceAdminPage,
+  leaves: LeaveAdminPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
+  'set-leave-types': LeaveTypeSettingsPage,
   'set-eval-templates': EvalTemplatePage,
   'set-company': CompanyPage,
   'set-work': WorkSettingsPage,
@@ -91,8 +97,8 @@ const OWNER = {
   evaluations: 'FE-A · F-17',
   employees: 'FE-A · F-04',
   assignments: 'FE-A · F-04',
-  attendance: 'FE-A · F-15',
-  leaves: 'FE-A · F-15',
+  attendance: 'FE-B · F-15',
+  leaves: 'FE-B · F-15',
 };
 
 const menuRoutes = ALL_MENU_ITEMS.filter((item) => item.key !== 'setup').map((item) => {
@@ -117,7 +123,7 @@ const subRoutes = SUB_PAGES.map(({ path, menuKey, Page }) => ({
 }));
 
 export const router = createBrowserRouter([
-  // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록은 링크 없이 /signup 주소로만(일반 직원은 등록하지 않는다)
+  // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록(/signup)은 로그인 화면의 "회사 등록" 링크로(F-COMP-01)
   { path: '/welcome', element: <Navigate to="/login" replace /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },

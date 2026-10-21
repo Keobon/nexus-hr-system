@@ -1,0 +1,537 @@
+/*
+ * 인사 관리 › 근태 현황 — Figma 484-26574 · 484-26008 · 484-26894 · 484-27187 · 484-27503 · 482-11916 · 484-27817 · 484-28109
+ * 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale. 머리는 hr.css
+ */
+
+.at-muted {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.at-muted.is-strong {
+  font-weight: 600;
+}
+
+.at-muted.is-11 {
+  font-size: 0.6875rem;
+}
+
+.at-strong {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.at-warn {
+  color: #d97706 !important;
+  font-weight: 700;
+}
+
+.at-red {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
+/* 탭 — 14 · 활성 하늘색 SemiBold + 2px 밑줄, 간격 24 */
+.at-tabs {
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 0;
+}
+
+.at-tabs button {
+  display: inline-flex;
+  gap: 0.3125rem;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+  padding: 0 0 0.5625rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.at-tabs button.is-on {
+  border-bottom-color: #38bdf8;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.at-tabs em {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.875rem;
+  height: 0.875rem;
+  padding: 0 0.1875rem;
+  border: 1px solid #38bdf8;
+  border-radius: 999px;
+  color: #38bdf8;
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* 전사 요약 6칸 — 흰 카드 r12 · 14 SemiBold */
+.at-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.at-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.at-tile {
+  padding: 0.8125rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.at-tile.is-warn {
+  color: #d97706;
+}
+
+/* 조회 조건 — 라벨 12 SemiBold #64748b · 칸 h38 r4 */
+.at-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.at-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.at-field > span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.at-field .ant-select,
+.at-field .ant-picker,
+.at-field .ant-input-affix-wrapper,
+.at-field > .ant-input {
+  width: 100%;
+  height: 2.375rem;
+  border-radius: 0.25rem;
+}
+
+.at-fixed {
+  display: flex;
+  align-items: center;
+  height: 2.375rem;
+  padding: 0 0.75rem;
+  border: 1px solid #e1e7ec;
+  border-radius: 0.25rem;
+  background: #f8fafc;
+  color: #2a2e33;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.at-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 2.25rem;
+  border: 1px solid #38bdf8;
+  border-radius: 0.5rem;
+  background: #38bdf8;
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.at-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.at-btn.is-wide {
+  width: auto;
+  padding: 0 1.5rem;
+}
+
+.at-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #38bdf8;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 목록 카드 — 흰 r12 · 머리 p20 */
+.at-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.at-card-head {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.at-card-head strong {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.at-card-head > span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.at-card-head.is-col {
+  align-items: flex-start;
+}
+
+.at-card-head.is-col strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.at-sub-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -0.75rem;
+  padding: 0 1.25rem 0.75rem;
+}
+
+.at-count {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700;
+}
+
+/* 표 — 머리 #f8fafc 12 SemiBold · 행 13 #334155 */
+.at-table-wrap {
+  overflow-x: auto;
+}
+
+.at-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.at-table th {
+  padding: 0.625rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.at-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  vertical-align: middle;
+}
+
+.at-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.at-table tr.is-click {
+  cursor: pointer;
+}
+
+.at-table tr.is-click:hover td,
+.at-table tr.is-on td {
+  background: #f0f9ff;
+}
+
+.at-table tr.is-off td {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.at-table tr.is-empty td {
+  padding: 3rem 1rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.at-table td:first-child {
+  white-space: nowrap;
+}
+
+.at-ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.at-person {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.at-person strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.at-person span {
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+.at-foot {
+  margin: 0;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.6875rem;
+}
+
+/* 상태 알약 — 11 Bold */
+.at-pill {
+  display: inline-block;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.at-pill.is-ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.at-pill.is-warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.at-pill.is-info {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.at-pill.is-alert {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.at-pill.is-purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.at-pill.is-gray {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.at-pill.is-plain {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* 정정 대상 — 왼쪽 목록 · 오른쪽 상세(약 6 : 4) */
+.at-banner {
+  padding: 0.875rem 1rem;
+  border: 1px solid #fde68a;
+  border-radius: 0.625rem;
+  background: #fffbeb;
+  color: #b45309;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.at-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.at-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.at-chips button {
+  padding: 0.3125rem 0.625rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: #f1f5f9;
+  color: #334155;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.at-chips button.is-on {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.at-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  padding: 1.25rem;
+}
+
+.at-detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.at-detail-head > strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.at-detail-head .at-strong {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+}
+
+.at-kv {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 1.125rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.at-kv h4,
+.at-form h4 {
+  margin: 0 0 0.25rem;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.at-kv > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.at-kv strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.at-note-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.625rem;
+  background: #f0f9ff;
+}
+
+.at-note-box span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.at-note-box p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.8125rem;
+}
+
+.at-form .ant-form-item {
+  margin-bottom: 0.875rem;
+}
+
+.at-form .ant-form-item-label > label {
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.at-form .ant-select,
+.at-form .ant-picker {
+  height: 2.375rem;
+}
+
+.at-form-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.at-empty {
+  margin: 0;
+  padding: 3rem 0;
+  color: #64748b;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .at-split {
+    grid-template-columns: 1fr;
+  }
+
+  .at-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
