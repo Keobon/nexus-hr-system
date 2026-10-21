@@ -26,6 +26,7 @@ import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
 import TitleSettingsPage from './pages/settings/TitleSettingsPage';
+import ExpenseTypeSettingsPage from './pages/settings/expenseTypes/ExpenseTypeSettingsPage';
 import PaySettingsPage from './pages/settings/pay/PaySettingsPage';
 import EvalTemplatePage from './pages/settings/evalTemplates/EvalTemplatePage';
 import EvalTodoPage from './pages/me/evalTodo/EvalTodoPage';
@@ -63,6 +64,7 @@ const PAGES = {
   leaves: LeaveAdminPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
+  'set-expense-types': ExpenseTypeSettingsPage,
   'set-pay': PaySettingsPage,
   'set-leave-types': LeaveTypeSettingsPage,
   'set-emp-fields': EmployeeFieldSettingsPage,
