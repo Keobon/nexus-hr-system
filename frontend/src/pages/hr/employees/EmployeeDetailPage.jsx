@@ -1,7 +1,9 @@
 // 직원 상세(F-EMP-06) · 관리자 수정(F-EMP-03) · 재직상태 변경(F-EMP-04)
 // Figma HR_employee_detail · MODAL_employee_edit · MODAL_employment_status · MODAL_confirm
+// 고치는 곳(10/21 정리): 이름 · 이메일 · 연락처 · 주소 · 비상 연락처 · 고용형태 → [기본정보 수정] · 부서 · 직급 · 직책 → [인사발령 등록](발령 이력)
+// · 재직상태 → [재직상태 변경] · 부양가족수는 가족 정보에서 자동 · 입사일 · 사원번호는 바꿀 수 없다
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { DatePicker, Form, Input, Modal, Result, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -14,6 +16,7 @@ import {
   updateEmployee,
 } from '../../../api/employees';
 import { employeeSalariesKey, getEmployeeSalaries } from '../../../api/payroll';
+import { employmentTypesApi } from '../../../api/orgSettings';
 import { useMe } from '../../../auth/useMe';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
@@ -83,6 +86,7 @@ function SalaryCard({ s }) {
 
 export default function EmployeeDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { can } = useMe();
   const org = useOrgOptions();
   const detail = useQuery({ queryKey: employeeKey(id), queryFn: () => getEmployee(id) });
@@ -108,15 +112,13 @@ export default function EmployeeDetailPage() {
     <div className="hr">
       <PageHead title="직원 상세" desc="기본·소속 정보와 재직상태 이력을 확인하고 재직상태를 관리합니다.">
         {manage && (
-          <>
-            <button type="button" className="hr-btn is-secondary" disabled={resigned} onClick={() => setEditOpen(true)}>기본정보 수정</button>
-            {e.status === 'ON_LEAVE' ? (
-              <button type="button" className="hr-btn is-secondary" onClick={() => setStatusTarget('ACTIVE')}>복직 처리</button>
-            ) : (
-              <button type="button" className="hr-btn is-secondary" disabled={resigned} onClick={() => setStatusTarget('ON_LEAVE')}>휴직 처리</button>
-            )}
-            <button type="button" className="hr-btn is-danger" disabled={resigned} onClick={() => setStatusTarget('RESIGNED')}>퇴직 처리</button>
-          </>
+          <button type="button" className="hr-btn is-secondary" disabled={resigned} onClick={() => setEditOpen(true)}>기본정보 수정</button>
+        )}
+        {can('ASSIGNMENT_MANAGE') && (
+          <button type="button" className="hr-btn is-secondary" disabled={resigned} onClick={() => navigate(`/assignments/new?employeeId=${e.id}`)}>인사발령 등록</button>
+        )}
+        {manage && (
+          <button type="button" className="hr-btn" disabled={resigned} onClick={() => setStatusTarget(e.status === 'ON_LEAVE' ? 'ACTIVE' : 'ON_LEAVE')}>재직상태 변경</button>
         )}
       </PageHead>
 
@@ -131,7 +133,11 @@ export default function EmployeeDetailPage() {
           {e.emergencyName !== undefined && (
             <KV k="비상 연락처">{[e.emergencyName, e.emergencyRelation && `(${e.emergencyRelation})`, e.emergencyPhone].filter(Boolean).join(' ') || '-'}</KV>
           )}
-          {has(e.dependentsCount) && <KV k="부양가족수">{`${e.dependentsCount}명`}</KV>}
+          {has(e.dependentsCount) && (
+            <KV k="부양가족수">
+              {`${e.dependentsCount}명`} <em className="hr-hint-inline">가족 정보에 등록하면 자동으로 셉니다</em>
+            </KV>
+          )}
         </div>
         <div className="hr-card hr-info">
           <p className="hr-card-title">소속정보</p>
@@ -139,9 +145,10 @@ export default function EmployeeDetailPage() {
           <KV k="부서">{e.orgUnitName ?? '-'}</KV>
           <KV k="직급">{e.jobGradeName ?? '-'}</KV>
           <KV k="직책">{e.jobTitleName ?? '-'}</KV>
+          <KV k="고용형태">{e.employmentTypeName ?? '-'}</KV>
           {has(e.hireDate) && <KV k="입사일">{e.hireDate}</KV>}
           <KV k="재직상태"><EmpStatusBadge status={e.status} /></KV>
-          <p className="hr-note">※ 부서·직급·직책 변경은 인사발령 화면에서 처리합니다.</p>
+          <p className="hr-note">※ 부서·직급·직책은 [인사발령 등록]으로 바꾸며 발령 이력에 남습니다. 고용형태는 [기본정보 수정], 재직상태는 [재직상태 변경]에서 바꿉니다. 입사일 · 사원번호는 바꿀 수 없습니다.</p>
         </div>
       </div>
 
@@ -175,11 +182,17 @@ export default function EmployeeDetailPage() {
   );
 }
 
-/** MODAL_employee_edit — 이름 · 연락처 · 이메일. 부양가족수는 가족 정보에서 세는 값이라 여기서 못 바꾼다(BR-EMP-007) */
+/** MODAL_employee_edit — 이름 · 이메일 · 연락처 · 주소 · 비상 연락처 · 고용형태. 부양가족수는 가족 정보에서 세는 값이라 여기서 못 바꾼다(BR-EMP-007) */
 function EditModal({ employee: e, onClose }) {
   const notify = useNotify();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
+  const full = has(e.employmentTypeId); // 전사 범위에서만 비상 연락처 · 고용형태가 온다
+  const types = useQuery({ queryKey: employmentTypesApi.key(false), queryFn: () => employmentTypesApi.list(false), enabled: full });
+  // 사용 중지된 고용형태도 지금 값이면 보여 준다
+  const typeOptions = (types.data ?? [])
+    .filter((t) => t.isActive || t.id === e.employmentTypeId)
+    .map((t) => ({ value: t.id, label: t.isActive ? t.name : `${t.name} (사용 중지)` }));
   const save = useMutation({
     mutationFn: (body) => updateEmployee(e.id, body),
     onSuccess: (data) => {
@@ -190,34 +203,54 @@ function EditModal({ employee: e, onClose }) {
     },
     onError: (err) => { if (!applyFieldErrors(form, err)) notify.error(err); },
   });
+  const t = (v) => v?.trim() || null;
+  const phoneRule = [{ pattern: /^[0-9-]{9,20}$/, message: '숫자와 - 만 입력하세요 (예: 010-1234-5678)' }];
   return (
-    <Modal open title="직원 기본정보 수정" footer={null} onCancel={onClose} width={440} className="hr-modal" destroyOnHidden centered>
-      <p className="hr-modal-sub">{[e.name, e.orgUnitName, e.jobGradeName].filter(Boolean).join(' · ')}</p>
-      <Form form={form} layout="vertical" requiredMark={false} initialValues={{ name: e.name, phone: e.phone, email: e.email, address: e.address }}
+    <Modal open title="직원 기본정보 수정" footer={null} onCancel={onClose} width={560} className="hr-modal" destroyOnHidden centered>
+      <p className="hr-modal-sub">{[e.name, e.employeeNo, e.orgUnitName, e.jobGradeName].filter(Boolean).join(' · ')}</p>
+      <Form form={form} layout="vertical" requiredMark={false}
+        initialValues={{ name: e.name, phone: e.phone, email: e.email, address: e.address, emergencyName: e.emergencyName, emergencyRelation: e.emergencyRelation, emergencyPhone: e.emergencyPhone, employmentTypeId: e.employmentTypeId }}
         onFinish={(v) =>
           save.mutate({
             name: v.name.trim(),
-            phone: v.phone?.trim() || null,
             email: v.email.trim(),
-            ...(e.address !== undefined && { address: v.address?.trim() || null }),
+            phone: t(v.phone),
+            ...(e.address !== undefined && { address: t(v.address) }),
+            ...(full && { emergencyName: t(v.emergencyName), emergencyRelation: t(v.emergencyRelation), emergencyPhone: t(v.emergencyPhone), employmentTypeId: v.employmentTypeId }),
           })
         }>
-        <Form.Item name="name" label="이름" rules={[{ required: true, message: '이름을 입력하세요' }]}><Input maxLength={50} /></Form.Item>
-        <Form.Item name="phone" label="연락처"><Input placeholder="010-0000-0000" maxLength={20} /></Form.Item>
-        <Form.Item name="email" label="이메일" rules={[{ required: true, message: '이메일을 입력하세요' }, { type: 'email', message: '이메일 형식이 올바르지 않습니다' }]}>
-          <Input maxLength={100} />
-        </Form.Item>
+        <div className="hr-form-row">
+          <Form.Item name="name" label="이름" rules={[{ required: true, whitespace: true, message: '이름을 입력하세요' }]}><Input maxLength={50} /></Form.Item>
+          <Form.Item name="email" label="이메일" rules={[{ required: true, message: '이메일을 입력하세요' }, { type: 'email', message: '이메일 형식이 올바르지 않습니다' }]}>
+            <Input maxLength={100} />
+          </Form.Item>
+        </div>
+        <div className="hr-form-row">
+          <Form.Item name="phone" label="연락처" rules={phoneRule}><Input placeholder="010-0000-0000" maxLength={20} /></Form.Item>
+          {full ? (
+            <Form.Item name="employmentTypeId" label="고용형태" rules={[{ required: true, message: '고용형태를 고르세요' }]}>
+              <Select options={typeOptions} loading={types.isLoading} />
+            </Form.Item>
+          ) : <div />}
+        </div>
         {e.address !== undefined && (
           <Form.Item name="address" label="주소">
-            <Input maxLength={255} />
+            <Input maxLength={255} placeholder="예: 서울특별시 강남구 테헤란로 123, 7층" />
           </Form.Item>
         )}
+        {full && (
+          <div className="hr-form-row">
+            <Form.Item name="emergencyName" label="비상 연락처 이름"><Input maxLength={50} placeholder="예: 홍길순" /></Form.Item>
+            <Form.Item name="emergencyRelation" label="관계"><Input maxLength={20} placeholder="예: 배우자" /></Form.Item>
+            <Form.Item name="emergencyPhone" label="비상 연락처 전화" rules={phoneRule}><Input maxLength={20} placeholder="010-0000-0000" /></Form.Item>
+          </div>
+        )}
         {has(e.dependentsCount) && (
-          <Form.Item label="부양가족수" extra="가족 정보에서 자동으로 계산됩니다">
+          <Form.Item label="부양가족수" extra="직접 입력하지 않습니다. 가족 정보에 등록하면 자동으로 셉니다.">
             <Input value={`${e.dependentsCount}명`} disabled />
           </Form.Item>
         )}
-        <p className="hr-notice">부서·직급·직책은 인사발령에서 변경합니다.</p>
+        <p className="hr-notice">부서 · 직급 · 직책은 [인사발령 등록]에서, 재직상태는 [재직상태 변경]에서 바꿉니다. 입사일 · 사원번호는 바꿀 수 없습니다.</p>
         <ModalFoot onCancel={onClose} busy={save.isPending} />
       </Form>
     </Modal>
