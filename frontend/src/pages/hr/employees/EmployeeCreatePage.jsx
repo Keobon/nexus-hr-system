@@ -1,19 +1,24 @@
 // 직원 등록(F-EMP-01) — Figma HR_employee_create
 // 고용형태는 Figma 에 없지만 API 필수값이라 넣었다. 역할은 ROLE_MANAGE 가 있을 때만 고른다(없으면 서버가 기본 역할 "직원"). 임시 비밀번호는 응답에서 한 번만 받으므로 등록 직후 창으로 보여 준다(F-AUTH-04).
+// 급여(10/15 시연 피드백)는 PAYROLL_MANAGE 가 있을 때만 — 직원을 만든 뒤 POST /employees/{id}/salaries(적용 시작일 = 입사일). 비우면 급여 › 직원 급여에서 나중에 등록
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DatePicker, Form, Input, Modal, Select } from 'antd';
+import { DatePicker, Form, Input, InputNumber, Modal, Segmented, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '../../../auth/useMe';
 import { createEmployee } from '../../../api/employees';
+import { registerSalary } from '../../../api/payrollAdmin';
 import { getRoles, rolesKey } from '../../../api/roles';
 import { employmentTypesApi, jobGradesApi, jobTitlesApi } from '../../../api/orgSettings';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
+import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
+import { formatMoney } from '../../../utils/format';
 import { PageHead, useOrgOptions } from '../parts';
 
 const opts = (list) => (list ?? []).map((x) => ({ value: x.id, label: x.name }));
+const money = { formatter: (v) => (v || v === 0 ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''), parser: (v) => v.replace(/,/g, '') };
 
 /** onCancel · onDone — 초기 설정 마법사 안에서 쓸 때(목록 · 상세로 가지 않고 마법사에 남는다) */
 export default function EmployeeCreatePage({ onCancel, onDone }) {
@@ -29,12 +34,25 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
   const { can } = useMe();
   const roleManage = can('ROLE_MANAGE');
   const roles = useQuery({ queryKey: rolesKey, queryFn: getRoles, enabled: roleManage });
+  const payrollManage = can('PAYROLL_MANAGE');
+  const salaryType = Form.useWatch('salaryType', form) ?? 'ANNUAL';
 
   const save = useMutation({
-    mutationFn: createEmployee,
+    // 직원을 만든 뒤 급여를 넣는다 — 급여만 실패하면 직원은 등록된 채로 완료 창에서 안내한다
+    mutationFn: async ({ employee, salary }) => {
+      const data = await createEmployee(employee);
+      if (!salary) return data;
+      try {
+        await registerSalary(data.id, salary);
+        return { ...data, salary };
+      } catch (err) {
+        return { ...data, salaryError: errorMessage(err) };
+      }
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['salaries'] });
       setCreated(data);
     },
     onError: (err) => {
@@ -42,22 +60,34 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
     },
   });
 
-  const onFinish = (v) =>
-    save.mutate({
-      name: v.name.trim(),
-      email: v.email.trim(),
-      orgUnitId: v.orgUnitId,
-      jobGradeId: v.jobGradeId,
-      jobTitleId: v.jobTitleId ?? null,
-      employmentTypeId: v.employmentTypeId,
-      roleId: roleManage ? (v.roleId ?? null) : null,
-      hireDate: v.hireDate.format('YYYY-MM-DD'),
-      phone: v.phone?.trim() || null,
-      address: v.address?.trim() || null,
-      emergencyName: v.emergencyName?.trim() || null,
-      emergencyRelation: v.emergencyRelation?.trim() || null,
-      emergencyPhone: v.emergencyPhone?.trim() || null,
-    });
+  const onFinish = (v) => {
+    const amount = v.salaryType === 'MONTHLY' ? v.monthlyBase : v.annualSalary;
+    const salary = payrollManage && amount
+      ? {
+          salaryType: v.salaryType,
+          annualSalary: v.salaryType === 'ANNUAL' ? amount : null,
+          monthlyBase: v.salaryType === 'MONTHLY' ? amount : null,
+          effectiveFrom: v.hireDate.format('YYYY-MM-DD'),
+          reason: '입사 계약',
+        }
+      : null;
+    save.mutate({ employee: toEmployee(v), salary });
+  };
+  const toEmployee = (v) => ({
+    name: v.name.trim(),
+    email: v.email.trim(),
+    orgUnitId: v.orgUnitId,
+    jobGradeId: v.jobGradeId,
+    jobTitleId: v.jobTitleId ?? null,
+    employmentTypeId: v.employmentTypeId,
+    roleId: roleManage ? (v.roleId ?? null) : null,
+    hireDate: v.hireDate.format('YYYY-MM-DD'),
+    phone: v.phone?.trim() || null,
+    address: v.address?.trim() || null,
+    emergencyName: v.emergencyName?.trim() || null,
+    emergencyRelation: v.emergencyRelation?.trim() || null,
+    emergencyPhone: v.emergencyPhone?.trim() || null,
+  });
 
   const req = (message) => [{ required: true, message }];
   // 전화번호 — 숫자 · 하이픈만(비워 둘 수 있다)
@@ -106,6 +136,26 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
           )}
         </div>
 
+        {payrollManage && (
+          <>
+            <p className="hr-card-title" style={{ marginTop: '0.5rem' }}>급여</p>
+            <div className="hr-form-row">
+              <Form.Item name="salaryType" label="급여 방식" initialValue="ANNUAL">
+                <Segmented block options={[{ value: 'ANNUAL', label: '연봉제' }, { value: 'MONTHLY', label: '월급제' }]} />
+              </Form.Item>
+              {salaryType === 'ANNUAL' ? (
+                <Form.Item name="annualSalary" label="연봉" extra="적용 시작일은 입사일입니다. 비워 두면 나중에 급여 › 직원 급여에서 등록합니다.">
+                  <InputNumber className="full-width" min={0} step={1000000} suffix="원" placeholder="예: 42,000,000" {...money} />
+                </Form.Item>
+              ) : (
+                <Form.Item name="monthlyBase" label="월 기본급" extra="적용 시작일은 입사일입니다. 비워 두면 나중에 급여 › 직원 급여에서 등록합니다.">
+                  <InputNumber className="full-width" min={0} step={100000} suffix="원" placeholder="예: 3,000,000" {...money} />
+                </Form.Item>
+              )}
+            </div>
+          </>
+        )}
+
         <p className="hr-card-title" style={{ marginTop: '0.5rem' }}>연락처 · 주소</p>
         <div className="hr-form-row">
           <Form.Item name="phone" label="휴대전화" rules={phoneRule}>
@@ -153,6 +203,16 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
             <p className="hr-notice" style={{ marginTop: '0.875rem' }}>
               이 창을 닫으면 임시 비밀번호를 다시 볼 수 없습니다. 직원은 첫 로그인 때 비밀번호를 바꿔야 합니다.
             </p>
+            {created.salary && (
+              <p className="hr-hint" style={{ marginTop: '0.75rem' }}>
+                {`급여 등록 · ${labelOf('salaryType', created.salary.salaryType)} ${formatMoney(created.salary.annualSalary ?? created.salary.monthlyBase)}(${created.salary.effectiveFrom}부터)`}
+              </p>
+            )}
+            {created.salaryError && (
+              <p className="hr-note" style={{ marginTop: '0.75rem' }}>
+                {`급여는 등록하지 못했습니다(${created.salaryError}). 급여 › 직원 급여에서 등록하세요.`}
+              </p>
+            )}
             {created.leaveGrants?.length > 0 && (
               <p className="hr-hint" style={{ marginTop: '0.75rem' }}>
                 {`입사 휴가 자동 부여 · ${created.leaveGrants.map((g) => `${g.leaveTypeName} ${g.days}일(${labelOf('leaveGrantType', g.grantType)})`).join(', ')}`}
