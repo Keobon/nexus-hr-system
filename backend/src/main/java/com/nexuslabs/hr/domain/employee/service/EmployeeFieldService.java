@@ -53,10 +53,13 @@ public class EmployeeFieldService {
 
     /** 입력 폼은 activeOnly=true, 설정 화면은 비활성까지(B-12 경비 종류와 같은 방식). */
     @Transactional(readOnly = true)
-    public List<EmployeeFieldResponse> list(boolean activeOnly) {
+    public List<EmployeeFieldResponse> list(LoginUser user, boolean activeOnly) {
         List<EmployeeFieldDef> defs = activeOnly ? repository.findByActiveTrueOrderBySortOrderAscIdAsc()
                 : repository.findAllByOrderBySortOrderAscIdAsc();
-        return defs.stream().map(EmployeeFieldResponse::from).toList();
+        Set<Long> withValues = new HashSet<>(jdbc.queryForList(
+                "SELECT DISTINCT field_def_id FROM employee_field_value WHERE company_id = ?", Long.class,
+                user.companyId()));
+        return defs.stream().map(d -> EmployeeFieldResponse.from(d, withValues.contains(d.getId()))).toList();
     }
 
     @Transactional
@@ -75,7 +78,7 @@ public class EmployeeFieldService {
         if (Boolean.FALSE.equals(request.active())) {
             def.deactivate();
         }
-        return EmployeeFieldResponse.from(repository.save(def));
+        return EmployeeFieldResponse.from(repository.save(def), false);
     }
 
     /**
@@ -85,10 +88,11 @@ public class EmployeeFieldService {
     @Transactional
     public EmployeeFieldResponse update(LoginUser user, long id, Map<String, Object> patch) {
         EmployeeFieldDef def = get(id);
-        EmployeeFieldRequest request = merge(EmployeeFieldResponse.from(def), patch);
+        EmployeeFieldRequest request = merge(EmployeeFieldResponse.from(def, false), patch);
         String name = request.name().trim();
         List<String> options = options(request);
-        if (request.fieldType() != def.getFieldType() && hasValues(user.companyId(), id)) {
+        boolean hasValues = hasValues(user.companyId(), id);
+        if (request.fieldType() != def.getFieldType() && hasValues) {
             throw new BusinessException(ErrorCode.ITEM_IN_USE, "값이 입력된 항목은 타입을 바꿀 수 없습니다");
         }
         if (def.isMultiple() && !request.multiple() && hasMultipleValues(user.companyId(), id)) {
@@ -99,7 +103,7 @@ public class EmployeeFieldService {
         }
         def.update(name, request.fieldType(), options, request.required(), request.multiple(), request.selfEditable(),
                 request.sortOrder(), request.active());
-        return EmployeeFieldResponse.from(def);
+        return EmployeeFieldResponse.from(def, hasValues);
     }
 
     /** 값이 있으면 비활성화(DEACTIVATED), 없으면 삭제(DELETED). */
@@ -157,6 +161,7 @@ public class EmployeeFieldService {
         Map<String, Object> merged = new LinkedHashMap<>(
                 objectMapper.convertValue(current, new TypeReference<Map<String, Object>>() {}));
         merged.remove("id");
+        merged.remove("hasValues");
         merged.putAll(patch);
         EmployeeFieldRequest request;
         try {

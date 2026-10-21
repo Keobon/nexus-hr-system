@@ -121,6 +121,8 @@ class AttendanceQueryTest {
     @Test
     void 내_근태는_그_달의_모든_날짜와_월_합계를_준다() throws Exception {
         memberWeek();
+        long mondayId = jdbc.queryForObject("SELECT id FROM attendance WHERE employee_id = ? AND work_date = ?",
+                Long.class, member.id(), Date.valueOf(MONDAY));
 
         as(member.id(), "/api/me/attendances?month=2030-03")
                 .andExpect(status().isOk())
@@ -143,8 +145,10 @@ class AttendanceQueryTest {
                 .andExpect(jsonPath("$.data.days[3].overtimeMinutes").value(90))
                 .andExpect(jsonPath("$.data.days[3].nightMinutes").value(40))
                 .andExpect(jsonPath("$.data.days[3].approvedOvertimeMinutes").value(90))
+                .andExpect(jsonPath("$.data.days[3].attendanceId").value(mondayId))   // 정정(PATCH /attendances/{id})용
                 // 3/5(화) 결근 — 필드는 빠지지 않고 null
                 .andExpect(jsonPath("$.data.days[4].status").value("ABSENT"))
+                .andExpect(jsonPath("$.data.days[4].attendanceId").value(nullValue()))
                 .andExpect(jsonPath("$.data.days[4].workMinutes").value(nullValue()))
                 .andExpect(jsonPath("$.data.days[4].late").value(nullValue()))
                 .andExpect(jsonPath("$.data.days[4].holidayName").value(nullValue()))

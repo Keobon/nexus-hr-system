@@ -128,7 +128,12 @@ class EmployeeFieldTest {
         json(hr, patch("/api/employee-fields/" + edu), "{\"isMultiple\": false}")
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("ITEM_IN_USE"));
         json(hr, patch("/api/employee-fields/" + memo), "{\"fieldType\": \"DATE\"}")    // 값이 없으면 된다
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fieldType").value("DATE"));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.fieldType").value("DATE"))
+                .andExpect(jsonPath("$.data.hasValues").value(false));
+        // 목록에서 미리 안다 — 값이 있으면 타입 잠금 · 삭제 대신 비활성화
+        as(hr, get("/api/employee-fields"))
+                .andExpect(jsonPath("$.data[?(@.name == '학력')].hasValues").value(contains(true)))
+                .andExpect(jsonPath("$.data[?(@.name == '비고')].hasValues").value(contains(false)));
 
         as(hr, delete("/api/employee-fields/" + edu)).andExpect(jsonPath("$.data.result").value("DEACTIVATED"));
         as(hr, delete("/api/employee-fields/" + memo)).andExpect(jsonPath("$.data.result").value("DELETED"));
