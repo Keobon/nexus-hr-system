@@ -39,10 +39,7 @@ export default function EmployeeFieldsCard({ employee: e, canEdit }) {
               const vals = valuesOf(d.id);
               return (
                 <div key={d.id} className="hr-kv">
-                  <span className="k">
-                    {d.name}
-                    {!d.isSelfEditable && <em className="hr-hint-inline">인사팀만 수정</em>}
-                  </span>
+                  <span className="k">{d.name}</span>
                   <span className="v">{vals.length ? vals.join(', ') : '-'}</span>
                 </div>
               );
