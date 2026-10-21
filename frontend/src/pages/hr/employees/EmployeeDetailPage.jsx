@@ -24,6 +24,7 @@ import { errorMessage } from '../../../constants/errors';
 import { labelOf, optionsOf } from '../../../constants/labels';
 import { formatMoney } from '../../../utils/format';
 import { ConfirmModal, EmpStatusBadge, ModalFoot, PageHead, useOrgOptions } from '../parts';
+import EmployeeFieldsCard from './EmployeeFieldsCard';
 
 const KV = ({ k, children }) => (
   <div className="hr-kv">
@@ -151,6 +152,8 @@ export default function EmployeeDetailPage() {
           <p className="hr-note">※ 부서·직급·직책은 [인사발령 등록]으로 바꾸며 발령 이력에 남습니다. 고용형태는 [기본정보 수정], 재직상태는 [재직상태 변경]에서 바꿉니다. 입사일 · 사원번호는 바꿀 수 없습니다.</p>
         </div>
       </div>
+
+      {has(e.fieldValues) && <EmployeeFieldsCard employee={e} canEdit={manage && !resigned} />}
 
       {salaries.data && <SalaryCard s={salaries.data} />}
 
