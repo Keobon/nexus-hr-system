@@ -20,6 +20,7 @@ import PayrollPage from './pages/hr/payroll/PayrollPage';
 import EvaluationAdminPage from './pages/hr/evaluations/EvaluationAdminPage';
 import AttendanceAdminPage from './pages/hr/attendance/AttendanceAdminPage';
 import LeaveAdminPage from './pages/hr/leaves/LeaveAdminPage';
+import LeaveTypeSettingsPage from './pages/settings/leaveTypes/LeaveTypeSettingsPage';
 import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
@@ -62,6 +63,7 @@ const PAGES = {
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
+  'set-leave-types': LeaveTypeSettingsPage,
   'set-eval-templates': EvalTemplatePage,
   'set-company': CompanyPage,
   'set-work': WorkSettingsPage,
