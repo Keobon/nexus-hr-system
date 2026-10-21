@@ -18,6 +18,7 @@ import EmployeeDetailPage from './pages/hr/employees/EmployeeDetailPage';
 import AssignmentListPage from './pages/hr/assignments/AssignmentListPage';
 import PayrollPage from './pages/hr/payroll/PayrollPage';
 import EvaluationAdminPage from './pages/hr/evaluations/EvaluationAdminPage';
+import AttendanceAdminPage from './pages/hr/attendance/AttendanceAdminPage';
 import AssignmentCreatePage from './pages/hr/assignments/AssignmentCreatePage';
 import AssignmentCorrectionPage from './pages/hr/assignments/AssignmentCorrectionPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
@@ -55,6 +56,7 @@ const PAGES = {
   assignments: AssignmentListPage,
   payroll: PayrollPage,
   evaluations: EvaluationAdminPage,
+  attendance: AttendanceAdminPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-pay': PaySettingsPage,
@@ -91,7 +93,7 @@ const OWNER = {
   evaluations: 'FE-A · F-17',
   employees: 'FE-A · F-04',
   assignments: 'FE-A · F-04',
-  attendance: 'FE-A · F-15',
+  attendance: 'FE-B · F-15',
   leaves: 'FE-A · F-15',
 };
 
