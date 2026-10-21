@@ -570,6 +570,46 @@
   font-style: normal;
 }
 
+/* 카드 제목 줄 — 오른쪽에 [수정] */
+.hr-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 여러 건 입력 — 칸마다 지우기 버튼, 아래 [값 추가] */
+.hr-multi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.hr-multi-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.hr-multi-row > :first-child {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hr-icon-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #94a3b8;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.hr-icon-btn:hover {
+  color: #ef4444;
+}
+
 .hr-hint.is-warn {
   color: #d97706;
 }
