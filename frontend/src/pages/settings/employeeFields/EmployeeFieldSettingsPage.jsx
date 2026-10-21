@@ -1,5 +1,6 @@
 // 회사 설정 › 직원 정보 항목(F-EMP-07, ORG_MANAGE) — 설정 목록 A형(휴가 종류와 같은 모양): 비활성 보기 · 추가 · 수정/삭제 · 추가/수정 창
-// 값이 입력된 항목은 타입을 못 바꾼다(ITEM_IN_USE) — 목록 응답에 값 여부가 없어 저장 때 서버 답을 받으면 타입 칸을 잠그고 안내한다
+// 값이 입력된 항목은 타입을 못 바꾸고 삭제하면 비활성화된다 — 목록 응답의 hasValues 로 미리 타입 칸을 잠그고 삭제 확인 문구를 바꾼다.
+// 그 사이 값이 생겨 저장 때 ITEM_IN_USE 가 와도 타입 칸을 잠그고 안내한다
 import { useState } from 'react';
 import { App, Checkbox, Form, Input, InputNumber, Modal, Select, Switch } from 'antd';
 import { CheckOutlined, MinusOutlined } from '@ant-design/icons';
@@ -48,9 +49,11 @@ export default function EmployeeFieldSettingsPage() {
   });
   const askRemove = (f) =>
     modal.confirm({
-      title: `${f.name} 항목을 삭제할까요?`,
-      content: '직원에게 값이 입력된 항목은 지워지지 않고 비활성화됩니다.',
-      okText: '삭제',
+      title: f.hasValues ? `${f.name} 항목을 비활성화할까요?` : `${f.name} 항목을 삭제할까요?`,
+      content: f.hasValues
+        ? '직원에게 입력된 값이 있어 지워지지 않고 비활성화됩니다. 값은 남고 입력 화면에서만 숨겨집니다.'
+        : '입력된 값이 없어 항목이 완전히 삭제됩니다.',
+      okText: f.hasValues ? '비활성화' : '삭제',
       okButtonProps: { danger: true },
       cancelText: '취소',
       onOk: () => remove.mutateAsync(f),
@@ -135,7 +138,7 @@ function FieldModal({ item, nextOrder, onClose, onSaved }) {
   const notify = useNotify();
   const [form] = Form.useForm();
   const isNew = !item.id;
-  const [typeLocked, setTypeLocked] = useState(false);
+  const [typeLocked, setTypeLocked] = useState(!!item.hasValues);
   const fieldType = Form.useWatch('fieldType', form) ?? item.fieldType ?? 'TEXT';
 
   const save = useMutation({
