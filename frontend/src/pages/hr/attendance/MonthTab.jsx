@@ -1,14 +1,21 @@
 // 근태 조회(Figma 484-26008) — 직원별 월 집계, 행을 누르면 아래에 일별 근태 상세
+// 일별 상세에서 ATTENDANCE_MANAGE 는 날짜별로 정정(기록 있는 날, attendanceId) · 입력(미기록 · 결근 날)한다(F-ATT-04)
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { attendanceMonthKey, employeeAttendancesKey, getAttendanceMonth, getEmployeeAttendances } from '../../../api/attendance';
 import { fetchAllPages } from '../../../api/employees';
+import { useMe } from '../../../auth/useMe';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
+import CorrectModal from './CorrectModal';
 import { ListCard, MonthField, OrgField, Pill, SearchButton, SearchField, Table, dotDay, hhmm, hm, matches, useApplied } from './shared';
 
 const times = (n, unit) => `${n}${unit}`;
+/** 출퇴근 기록이 있는 날 — 정정할 수 있다 */
+const hasRecord = (d) => ['CHECKED_IN', 'CHECKED_OUT', 'MISSING_CHECKOUT'].includes(d.status);
+/** 기록이 없는 근무일(미기록 · 결근) — 새로 입력할 수 있다 */
+const canCreate = (d) => ['NOT_RECORDED', 'ABSENT'].includes(d.status);
 
 export default function MonthTab() {
   const f = useApplied({ month: dayjs().format('YYYY-MM'), orgUnitId: null, q: '' });
@@ -87,6 +94,9 @@ function dayPill(d) {
 }
 
 function DayDetail({ person, month, onClose }) {
+  const { can } = useMe();
+  const manage = can('ATTENDANCE_MANAGE');
+  const [target, setTarget] = useState(null);
   const data = useQuery({ queryKey: employeeAttendancesKey(person.employeeId, month), queryFn: () => getEmployeeAttendances(person.employeeId, month) });
   // 오늘 이후 날짜는 빼고 보여 준다
   const days = (data.data?.days ?? []).filter((d) => !dayjs(d.date).isAfter(dayjs(), 'day'));
@@ -111,6 +121,7 @@ function DayDetail({ person, month, onClose }) {
           { key: 'work', label: '근무' },
           { key: 'ot', label: '연장' },
           { key: 'night', label: '야간' },
+          ...(manage ? [{ key: 'act', label: '', width: '5rem' }] : []),
         ]}
         loading={data.isLoading}
         error={data.error && errorMessage(data.error)}
@@ -131,11 +142,25 @@ function DayDetail({ person, month, onClose }) {
               <td>{hhmm(d.workMinutes)}</td>
               <td>{hhmm(d.overtimeMinutes)}</td>
               <td>{hhmm(d.nightMinutes)}</td>
+              {manage && (
+                <td>
+                  {hasRecord(d) && d.attendanceId ? (
+                    <button type="button" className="at-link" onClick={() => setTarget({ mode: 'patch', attendanceId: d.attendanceId, employeeId: person.employeeId, employeeName: person.name, workDate: d.date, record: d })}>
+                      정정
+                    </button>
+                  ) : canCreate(d) ? (
+                    <button type="button" className="at-link" onClick={() => setTarget({ mode: 'create', employeeId: person.employeeId, employeeName: person.name, workDate: d.date })}>
+                      입력
+                    </button>
+                  ) : null}
+                </td>
+              )}
             </tr>
           );
         })}
       </Table>
       <p className="at-foot">공휴일·주말은 근무 기록이 없으면 집계에서 제외됩니다. 월간 합계와 위 조회 구간은 다를 수 있습니다.</p>
+      {target && <CorrectModal target={target} onClose={() => setTarget(null)} />}
     </ListCard>
   );
 }
