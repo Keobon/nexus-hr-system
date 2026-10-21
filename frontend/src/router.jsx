@@ -117,7 +117,7 @@ const subRoutes = SUB_PAGES.map(({ path, menuKey, Page }) => ({
 }));
 
 export const router = createBrowserRouter([
-  // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록은 링크 없이 /signup 주소로만(일반 직원은 등록하지 않는다)
+  // 로그인 안 한 사용자는 로그인 화면부터. 회사 등록(/signup)은 로그인 화면의 "회사 등록" 링크로(F-COMP-01)
   { path: '/welcome', element: <Navigate to="/login" replace /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },

@@ -7,7 +7,7 @@ import { logout } from '../../api/auth';
 import { clearToken } from '../../auth/token';
 import { isSetupLocked } from '../../auth/permissions';
 import { useMe } from '../../auth/useMe';
-import BrandLogo from '../brand/BrandLogo';
+import CompanyLogo from '../brand/CompanyLogo';
 import { useFileUrl } from '../common/useFileUrl';
 import navLine from '../../assets/figma/nav-line.svg';
 import { ALL_MENU_ITEMS, MENU_GROUPS } from './menu';
@@ -78,7 +78,7 @@ function Sidebar({ activeKey, onLogout }) {
   return (
     <nav className="nav" aria-label="메인 메뉴">
       <div className="nav-top">
-        <BrandLogo />
+        <CompanyLogo company={me.company} />
         <img className="nav-line" src={navLine} alt="" />
       </div>
 
@@ -127,7 +127,7 @@ function Sidebar({ activeKey, onLogout }) {
 }
 
 export default function AppLayout() {
-  const { refetch } = useMe();
+  const { me, refetch } = useMe();
   const location = useLocation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -156,7 +156,7 @@ export default function AppLayout() {
       <Sidebar activeKey={activeKey} onLogout={handleLogout} />
       <header className="app-topbar">
         <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} aria-label="메뉴" />
-        <BrandLogo />
+        <CompanyLogo company={me?.company} />
       </header>
       <Drawer
         className="nav-drawer"

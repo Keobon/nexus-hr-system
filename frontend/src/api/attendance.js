@@ -40,3 +40,19 @@ export const getTrip = (id) => api.get(`/business-trips/${id}`);
  * 행 { employeeId, name, orgUnitName, todayStatus, workType, placeMemo, checkInAt, checkOutAt } — 페이징 */
 export const teamTodayKey = (orgUnitId) => ['attendance', 'team-today', orgUnitId];
 export const getTeamToday = (orgUnitId) => api.get('/attendances/today', { orgUnitId, size: 50 });
+
+/** GET /attendances?month=&orgUnitId= — 직원별 월 합계(ATTENDANCE_READ). 행 { employeeId, employeeNo, name, orgUnitName, summary } — 페이징 */
+export const attendanceMonthKey = (month, orgUnitId) => ['attendance', 'month', month, orgUnitId ?? null];
+export const getAttendanceMonth = (params) => api.get('/attendances', params);
+
+/**
+ * 근태 정정(F-ATT-04, ATTENDANCE_MANAGE)
+ * GET /attendances/corrections → [{ type MISSING_CHECKOUT | LEAVE_CONFLICT | TRIP_CONFLICT, attendanceId, employeeId, employeeNo, name, orgUnitName,
+ *   workDate, status, workType, checkInAt, checkOutAt, conflict: { id, name, startDate, endDate } | null }]
+ */
+export const attendanceCorrectionsKey = ['attendance', 'corrections'];
+export const getAttendanceCorrections = () => api.get('/attendances/corrections');
+/** PATCH /attendances/{id} { status?, checkInAt?, checkOutAt?, workType?, reason } — 보낸 필드만 바꾼다. 값 없이 reason 만 보내면 "확인" */
+export const correctAttendance = (id, patch) => api.patch(`/attendances/${id}`, patch);
+/** POST /attendances { employeeId, workDate, status, checkInAt?, checkOutAt?, workType?, reason } — 기록이 없는 날에 만든다 */
+export const createAttendance = (body) => api.post('/attendances', body);
