@@ -407,6 +407,9 @@ INSERT INTO eval_cycle_target (company_id, eval_cycle_id, priority, cond_is_org_
 --   파일(로고 · 사진 · 서류 · 영수증)은 uploads/ 에 있어야 해서 넣지 않았다 — 화면에서 직접 올린다
 -- ---------------------------------------------------------------------
 
+-- 결근은 max(입사일, 직원 등록일)부터 센다(AttendanceCalculator) — 등록일을 8/1로 두어 8월부터 결근 · 결근 공제가 보이게
+UPDATE employee SET created_at = '2026-08-01 09:00+09', updated_at = '2026-08-01 09:00+09' WHERE company_id = 1;
+
 -- 주소 · 비상 연락처(직원 상세 · 연락처 탭)
 UPDATE employee SET address = v.address FROM (VALUES
  (1, '서울특별시 강남구 도곡로 21'), (2, '서울특별시 송파구 올림픽로 300'), (3, '경기도 성남시 분당구 판교로 45'),
@@ -418,9 +421,10 @@ UPDATE employee SET emergency_name = '박지은', emergency_relation = '부모',
 
 -- 퇴직자 1명(퇴직자 보기 · 계정 자동 비활성 · 8월 급여만)
 INSERT INTO employee (id, company_id, employee_no, name, name_en, email, phone, address, birth_date, gender,
-                      hire_date, org_unit_id, job_grade_id, job_title_id, employment_type_id, status) VALUES
+                      hire_date, org_unit_id, job_grade_id, job_title_id, employment_type_id, status, created_at, updated_at) VALUES
  (13, 1, 'NX-2024-0002', '김도현', 'Dohyun Kim', 'dohyun.kim@nexuslabs.example', '010-1000-0013',
-  '서울특별시 성동구 왕십리로 50', '1997-02-14', 'MALE', '2024-03-04', 7, 1, NULL, 1, 'RESIGNED');
+  '서울특별시 성동구 왕십리로 50', '1997-02-14', 'MALE', '2024-03-04', 7, 1, NULL, 1, 'RESIGNED',
+  '2026-08-01 09:00+09', '2026-09-01 09:00+09');
 UPDATE employee_no_seq SET last_seq = 2 WHERE company_id = 1 AND hire_year = 2024;
 INSERT INTO employment_status_history (company_id, employee_id, status, effective_date, reason, created_by) VALUES
  (1, 13, 'ACTIVE', '2024-03-04', '입사', NULL),
@@ -494,7 +498,7 @@ SELECT 1, employee_id, work_date,
        CASE WHEN work_type = 'FIELD' THEN '고객사 미팅' END
 FROM t;
 
--- ===== API로 만든 결과 (scripts: 신청 → 승인/반려, 결과 보고, 평가 입력 · 확정 · 마감, 8 · 9월 정산) =====
+-- ===== API로 만든 결과 (신청 → 승인/반려, 결과 보고, 평가 입력 · 확정 · 마감, 8 · 9월 정산 — 실제 API로 돌린 뒤 옮김) =====
 -- 휴가 신청
 INSERT INTO leave_request (id, company_id, employee_id, leave_type_id, leave_year, start_date, end_date, days, reason, status, cancel_reason, created_at, updated_at) VALUES
  (3, 1, 8, 1, 2026, '2026-09-14', '2026-09-15', 2, '가족 행사', 'APPROVED', NULL, '2026-09-07 10:00:00+09', '2026-09-08 10:00:00+09'),
@@ -521,18 +525,18 @@ INSERT INTO business_trip (id, company_id, employee_id, trip_type, destination, 
  (5, 1, 4, 'DOMESTIC', '부산 벡스코', '채용 박람회 참가', '2026-09-29', '2026-09-29', 200000, NULL, NULL, 'REJECTED', NULL, '2026-09-24 11:00:00+09', '2026-09-24 15:00:00+09');
 -- 휴가 · 출장 승인으로 생긴 근태
 INSERT INTO attendance (id, company_id, employee_id, work_date, status, work_type, check_in_at, check_out_at, check_in_method, check_out_method, check_in_lat, check_in_lng, check_out_lat, check_out_lng, place_memo, leave_request_id, business_trip_id, correction_reason, corrected_by, corrected_at, created_at, updated_at) VALUES
- (634, 1, 8, '2026-09-14', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.100559+09', '2026-10-21 16:12:38.100559+09'),
- (635, 1, 8, '2026-09-15', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.100559+09', '2026-10-21 16:12:38.100559+09'),
- (636, 1, 4, '2026-09-07', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.384129+09', '2026-10-21 16:12:38.384129+09'),
- (637, 1, 9, '2026-08-24', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 5, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.626376+09', '2026-10-21 16:12:38.626376+09'),
- (638, 1, 5, '2026-10-14', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.807205+09', '2026-10-21 16:12:38.807205+09'),
- (639, 1, 5, '2026-10-15', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.807205+09', '2026-10-21 16:12:38.807205+09'),
- (640, 1, 5, '2026-10-16', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:12:38.807205+09', '2026-10-21 16:12:38.807205+09'),
- (641, 1, 7, '2026-11-12', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 11, NULL, NULL, NULL, NULL, '2026-10-21 16:12:39.417532+09', '2026-10-21 16:12:39.417532+09'),
- (642, 1, 6, '2026-09-08', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, '2026-10-21 16:12:39.94726+09', '2026-10-21 16:12:39.94726+09'),
- (643, 1, 6, '2026-09-09', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, '2026-10-21 16:12:39.94726+09', '2026-10-21 16:12:39.94726+09'),
- (644, 1, 10, '2026-10-19', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, '2026-10-21 16:12:40.106471+09', '2026-10-21 16:12:40.106471+09'),
- (645, 1, 10, '2026-10-20', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, '2026-10-21 16:12:40.106471+09', '2026-10-21 16:12:40.106471+09');
+ (634, 1, 8, '2026-09-14', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, '2026-10-21 16:22:15.922538+09', '2026-10-21 16:22:15.922538+09'),
+ (635, 1, 8, '2026-09-15', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, '2026-10-21 16:22:15.922538+09', '2026-10-21 16:22:15.922538+09'),
+ (636, 1, 4, '2026-09-07', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL, NULL, '2026-10-21 16:22:16.200206+09', '2026-10-21 16:22:16.200206+09'),
+ (637, 1, 9, '2026-08-24', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 5, NULL, NULL, NULL, NULL, '2026-10-21 16:22:16.428036+09', '2026-10-21 16:22:16.428036+09'),
+ (638, 1, 5, '2026-10-14', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:22:16.600973+09', '2026-10-21 16:22:16.600973+09'),
+ (639, 1, 5, '2026-10-15', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:22:16.600973+09', '2026-10-21 16:22:16.600973+09'),
+ (640, 1, 5, '2026-10-16', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL, '2026-10-21 16:22:16.600973+09', '2026-10-21 16:22:16.600973+09'),
+ (641, 1, 7, '2026-11-12', 'ON_VACATION', NULL, NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, 11, NULL, NULL, NULL, NULL, '2026-10-21 16:22:17.202603+09', '2026-10-21 16:22:17.202603+09'),
+ (642, 1, 6, '2026-09-08', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, '2026-10-21 16:22:17.747578+09', '2026-10-21 16:22:17.747578+09'),
+ (643, 1, 6, '2026-09-09', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, '2026-10-21 16:22:17.747578+09', '2026-10-21 16:22:17.747578+09'),
+ (644, 1, 10, '2026-10-19', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, '2026-10-21 16:22:17.907009+09', '2026-10-21 16:22:17.907009+09'),
+ (645, 1, 10, '2026-10-20', 'ON_BUSINESS_TRIP', 'BUSINESS_TRIP', NULL, NULL, 'SYSTEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, '2026-10-21 16:22:17.907009+09', '2026-10-21 16:22:17.907009+09');
 -- 급여 정산(8월 지급완료 · 9월 확정)
 INSERT INTO payroll_run (id, company_id, pay_month, pay_date, status, company_name_snap, ceo_name_snap, business_reg_no_snap, company_address_snap, confirmed_by, confirmed_at, paid_by, paid_at) VALUES
  (1, 1, '2026-08', '2026-09-25', 'PAID', '넥서스랩스', '박서준', '214-88-12345', '서울특별시 강남구 테헤란로 123, 7층', 4, '2026-09-04 15:00:00+09', 4, '2026-09-25 10:00:00+09'),
@@ -561,7 +565,7 @@ INSERT INTO paystub (id, company_id, payroll_run_id, employee_id, employee_no_sn
  (20, 1, 2, 7, 'NX-2021-0001', '윤서연', 6, '백엔드팀', NULL, 5000000, 25837, 3, 2, 30, 30, 5700000, 5500000, 744000, 74400, 1335625, 4364375, 530975, '2026-10-02 15:00:00+09'),
  (21, 1, 2, 10, 'NX-2022-0001', '서예린', 7, '프론트엔드팀', NULL, 4900000, 25358, 0, 0, 30, 30, 5479618, 5279618, 781108, 78110, 1355716, 4123902, 509697, '2026-10-02 15:00:00+09'),
  (22, 1, 2, 8, 'NX-2023-0001', '임태현', 6, '백엔드팀', NULL, 4000000, 20095, 0, 0, 30, 30, 4790427, 4590427, 615702, 61570, 1108958, 3681469, 443162, '2026-10-02 15:00:00+09'),
- (23, 1, 2, 12, 'NX-2024-0001', '신유나', 5, '재무팀', NULL, 3500000, 17703, 0, 0, 30, 30, 3700000, 3500000, 417000, 41700, 787843, 2912157, 337893, '2026-10-02 15:00:00+09'),
+ (23, 1, 2, 12, 'NX-2024-0001', '신유나', 5, '재무팀', NULL, 3500000, 17703, 0, 0, 30, 30, 3700000, 3500000, 417000, 41700, 929467, 2770533, 337893, '2026-10-02 15:00:00+09'),
  (24, 1, 2, 11, 'NX-2025-0001', '조현우', 7, '프론트엔드팀', NULL, 3200000, 16267, 0, 0, 30, 30, 3400000, 3200000, 372000, 37200, 710131, 2689869, 308931, '2026-10-02 15:00:00+09'),
  (25, 1, 2, 9, 'NX-2026-0001', '오지민', 6, '백엔드팀', NULL, 2800000, 14354, 0, 0, 30, 30, 3021531, 2821531, 315229, 31522, 612088, 2409443, 272391, '2026-10-02 15:00:00+09');
 -- 급여명세서 항목
@@ -695,21 +699,22 @@ INSERT INTO paystub_line (id, company_id, paystub_id, pay_item_id, item_name_sna
  (127, 1, 22, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 21074, 0, 0, 21074, NULL, NULL, NULL, 103),
  (128, 1, 22, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 41313, 0, 0, 52789, NULL, NULL, NULL, 104),
  (129, 1, 23, 11, '식대', 'EARNING', 'FIXED', 200000, 0, 200000, NULL, NULL, NULL, NULL, 10),
- (130, 1, 23, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 157500, 0, 0, 157500, NULL, NULL, NULL, 101),
- (131, 1, 23, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 124075, 0, 0, 124075, NULL, NULL, NULL, 102),
- (132, 1, 23, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 16068, 0, 0, 16068, NULL, NULL, NULL, 103),
- (133, 1, 23, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 31500, 0, 0, 40250, NULL, NULL, NULL, 104),
- (134, 1, 24, 11, '식대', 'EARNING', 'FIXED', 200000, 0, 200000, NULL, NULL, NULL, NULL, 10),
- (135, 1, 24, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 144000, 0, 0, 144000, NULL, NULL, NULL, 101),
- (136, 1, 24, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 113440, 0, 0, 113440, NULL, NULL, NULL, 102),
- (137, 1, 24, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 14691, 0, 0, 14691, NULL, NULL, NULL, 103),
- (138, 1, 24, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 28800, 0, 0, 36800, NULL, NULL, NULL, 104),
- (139, 1, 25, 11, '식대', 'EARNING', 'FIXED', 200000, 0, 200000, NULL, NULL, NULL, NULL, 10),
- (140, 1, 25, 5, '연장근로수당', 'EARNING', 'ATTENDANCE', 21531, 21531, 0, NULL, 1.00, 21531, '1시간 × 14,354원 × 1.5', 51),
- (141, 1, 25, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 126968, 0, 0, 126968, NULL, NULL, NULL, 101),
- (142, 1, 25, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 100023, 0, 0, 100023, NULL, NULL, NULL, 102),
- (143, 1, 25, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 12953, 0, 0, 12953, NULL, NULL, NULL, 103),
- (144, 1, 25, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 25393, 0, 0, 32447, NULL, NULL, NULL, 104);
+ (130, 1, 23, 9, '결근 공제', 'DEDUCTION', 'ATTENDANCE', 141624, 0, 0, NULL, 8.00, 17703, '1일(8시간) × 17,703원 × 1', 55),
+ (131, 1, 23, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 157500, 0, 0, 157500, NULL, NULL, NULL, 101),
+ (132, 1, 23, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 124075, 0, 0, 124075, NULL, NULL, NULL, 102),
+ (133, 1, 23, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 16068, 0, 0, 16068, NULL, NULL, NULL, 103),
+ (134, 1, 23, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 31500, 0, 0, 40250, NULL, NULL, NULL, 104),
+ (135, 1, 24, 11, '식대', 'EARNING', 'FIXED', 200000, 0, 200000, NULL, NULL, NULL, NULL, 10),
+ (136, 1, 24, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 144000, 0, 0, 144000, NULL, NULL, NULL, 101),
+ (137, 1, 24, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 113440, 0, 0, 113440, NULL, NULL, NULL, 102),
+ (138, 1, 24, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 14691, 0, 0, 14691, NULL, NULL, NULL, 103),
+ (139, 1, 24, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 28800, 0, 0, 36800, NULL, NULL, NULL, 104),
+ (140, 1, 25, 11, '식대', 'EARNING', 'FIXED', 200000, 0, 200000, NULL, NULL, NULL, NULL, 10),
+ (141, 1, 25, 5, '연장근로수당', 'EARNING', 'ATTENDANCE', 21531, 21531, 0, NULL, 1.00, 21531, '1시간 × 14,354원 × 1.5', 51),
+ (142, 1, 25, 1, '국민연금', 'DEDUCTION', 'TAXABLE_RATE', 126968, 0, 0, 126968, NULL, NULL, NULL, 101),
+ (143, 1, 25, 2, '건강보험', 'DEDUCTION', 'TAXABLE_RATE', 100023, 0, 0, 100023, NULL, NULL, NULL, 102),
+ (144, 1, 25, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 12953, 0, 0, 12953, NULL, NULL, NULL, 103),
+ (145, 1, 25, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 25393, 0, 0, 32447, NULL, NULL, NULL, 104);
 -- 출장 경비 청구(9월분은 9월 급여에 반영, 10월분은 미정산)
 INSERT INTO expense_claim (id, company_id, business_trip_id, employee_id, status, paystub_id, cancel_reason, created_at, updated_at) VALUES
  (1, 1, 2, 6, 'APPROVED', 16, NULL, '2026-09-10 17:30:00+09', '2026-09-11 10:00:00+09'),
@@ -743,7 +748,7 @@ INSERT INTO approval_step (id, company_id, work_type, target_id, approval_line_i
  (22, 1, 'LEAVE', 10, 1, 1, 2, 3, 'CANCELLED', NULL, NULL, NULL, false, '2026-10-16 10:00:00+09'),
  (23, 1, 'LEAVE', 11, 1, 1, 1, 6, 'APPROVED', NULL, NULL, '2026-10-16 14:00:00+09', false, '2026-10-16 10:00:00+09'),
  (24, 1, 'LEAVE', 11, 1, 1, 2, 6, 'SKIPPED', NULL, NULL, NULL, false, '2026-10-16 10:00:00+09'),
- (25, 1, 'LEAVE_CANCEL', 11, NULL, 1, 1, 6, 'PENDING', NULL, NULL, NULL, false, '2026-10-21 16:12:39.451732+09'),
+ (25, 1, 'LEAVE_CANCEL', 11, NULL, 1, 1, 6, 'PENDING', NULL, NULL, NULL, false, '2026-10-21 16:22:17.237728+09'),
  (26, 1, 'OVERTIME', 2, 2, 1, 1, 7, 'APPROVED', 180, NULL, '2026-09-09 18:00:00+09', false, '2026-09-09 14:00:00+09'),
  (27, 1, 'OVERTIME', 3, 2, 1, 1, 7, 'APPROVED', 60, '1시간이면 충분합니다', '2026-09-21 18:00:00+09', false, '2026-09-21 14:00:00+09'),
  (28, 1, 'OVERTIME', 4, 2, 1, 1, 6, 'APPROVED', 270, NULL, '2026-09-29 18:00:00+09', false, '2026-09-29 14:00:00+09'),
@@ -828,8 +833,8 @@ INSERT INTO employee_salary (id, company_id, employee_id, salary_type, annual_sa
 INSERT INTO audit_log (id, company_id, actor_id, action, target_type, target_id, before_value, after_value, created_at) VALUES
  (1, 1, 4, 'EXECUTE', 'PAYROLL_RUN', 1, NULL, '{"totals": {"netPay": 53086372, "grossPay": 71700000, "headcount": 13, "totalDeduction": 18613628, "companyBurdenTotal": 6670978}, "payDate": "2026-09-25", "payMonth": "2026-08"}', '2026-09-04 15:00:00+09'),
  (2, 1, 4, 'UPDATE', 'PAYROLL_RUN', 1, '{"status": "CONFIRMED"}', '{"status": "PAID"}', '2026-09-25 10:00:00+09'),
- (3, 1, 4, 'EXECUTE', 'PAYROLL_RUN', 2, NULL, '{"totals": {"netPay": 51179192, "grossPay": 69451576, "headcount": 12, "totalDeduction": 18272384, "companyBurdenTotal": 6467422}, "payDate": "2026-10-23", "payMonth": "2026-09"}', '2026-10-02 15:00:00+09'),
- (4, 1, 4, 'CREATE', 'LEAVE_GRANT', 33, NULL, '{"id": 33, "days": 1, "reason": "3분기 우수사원 포상 휴가", "createdAt": "2026-10-21T16:12:51.024329+09:00", "grantType": "ADJUSTMENT", "leaveYear": 2026, "employeeId": 11, "createdById": 4, "leaveTypeId": 1, "createdByName": "정수아", "leaveTypeName": "연차"}', '2026-10-10 11:00:00+09'),
+ (3, 1, 4, 'EXECUTE', 'PAYROLL_RUN', 2, NULL, '{"totals": {"netPay": 51037568, "grossPay": 69451576, "headcount": 12, "totalDeduction": 18414008, "companyBurdenTotal": 6467422}, "payDate": "2026-10-23", "payMonth": "2026-09"}', '2026-10-02 15:00:00+09'),
+ (4, 1, 4, 'CREATE', 'LEAVE_GRANT', 33, NULL, '{"id": 33, "days": 1, "reason": "3분기 우수사원 포상 휴가", "createdAt": "2026-10-21T16:22:19.146926+09:00", "grantType": "ADJUSTMENT", "leaveYear": 2026, "employeeId": 11, "createdById": 4, "leaveTypeId": 1, "createdByName": "정수아", "leaveTypeName": "연차"}', '2026-10-10 11:00:00+09'),
  (5, 1, 4, 'CREATE', 'EMPLOYEE_SALARY', 24, NULL, '{"reason": "수습 종료 급여 조정", "employeeId": 9, "salaryType": "MONTHLY", "monthlyBase": 3000000, "annualSalary": "", "effectiveFrom": "2026-10-01"}', '2026-09-28 14:00:00+09'),
  (6, 1, 4, 'UPDATE', 'ATTENDANCE', 252, '{"reason": null, "status": "MISSING_CHECKOUT", "workType": "OFFICE", "checkInAt": "2026-09-17T08:53+09:00", "checkOutAt": null, "businessTripId": null, "leaveRequestId": null}', '{"reason": "퇴근 미기록 — 출입 기록 확인 후 정정", "status": "CHECKED_OUT", "workType": "OFFICE", "checkInAt": "2026-09-17T08:53+09:00", "checkOutAt": "2026-09-17T18:20+09:00", "businessTripId": null, "leaveRequestId": null}', '2026-09-18 09:40:00+09');
 -- 기존 행 변경: 윤서연 부산 출장 결과 보고, 한도윤 9/17 퇴근 미기록 정정
@@ -838,6 +843,20 @@ UPDATE business_trip SET report_text = '고객사 담당자와 도입 일정(12�
 UPDATE attendance SET status = 'CHECKED_OUT', check_out_at = '2026-09-17 18:20+09', check_in_method = 'ADMIN', check_out_method = 'ADMIN',
        correction_reason = '퇴근 미기록 — 출입 기록 확인 후 정정', corrected_by = 4, corrected_at = '2026-09-18 09:40+09', updated_at = '2026-09-18 09:40+09'
  WHERE employee_id = 5 AND work_date = '2026-09-17';
+
+-- 10/21 ~ 시드를 넣는 날 전날까지의 근무일 — 비워 두면 그 사이가 모두 결근이 되므로 같은 규칙으로 채운다(넣는 날에 따라 줄 수가 달라진다)
+SELECT setval(pg_get_serial_sequence('attendance', 'id'), (SELECT max(id) FROM attendance));
+INSERT INTO attendance (company_id, employee_id, work_date, status, work_type, check_in_at, check_out_at,
+                        check_in_method, check_out_method)
+SELECT 1, e.id, d::date, 'CHECKED_OUT',
+       CASE WHEN EXTRACT(ISODOW FROM d) = 5 AND e.id IN (8, 9, 11, 12) THEN 'REMOTE' ELSE 'OFFICE' END::work_type,
+       (d::date + time '08:30' + make_interval(mins => ((e.id * 31 + EXTRACT(DOY FROM d))::int % 28))) AT TIME ZONE 'Asia/Seoul',
+       (d::date + time '18:00' + make_interval(mins => ((e.id * 31 + EXTRACT(DOY FROM d))::int % 40))) AT TIME ZONE 'Asia/Seoul',
+       'WEB', 'WEB'
+FROM employee e CROSS JOIN generate_series(date '2026-10-21', CURRENT_DATE - 1, interval '1 day') d
+WHERE e.company_id = 1 AND e.status <> 'RESIGNED' AND EXTRACT(ISODOW FROM d) <= 5
+  AND NOT EXISTS (SELECT 1 FROM holiday h WHERE h.company_id = 1 AND h.holiday_date = d::date)
+  AND NOT EXISTS (SELECT 1 FROM attendance a WHERE a.employee_id = e.id AND a.work_date = d::date);
 
 -- ---------------------------------------------------------------------
 -- 시퀀스를 넣은 ID 다음 값으로 맞춘다
