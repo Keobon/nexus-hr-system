@@ -175,6 +175,12 @@
   padding: 0 1.5rem;
 }
 
+/* 보조 버튼(소명 반려 · 취소) — 테두리만 */
+.at-btn.is-line {
+  background: #fff;
+  color: #0284c7;
+}
+
 .at-link {
   padding: 0;
   border: 0;
@@ -514,6 +520,7 @@
 
 .at-form-foot {
   display: flex;
+  gap: 0.5rem;
   justify-content: flex-end;
   margin-top: 0.75rem;
 }

@@ -47,8 +47,10 @@ export const getAttendanceMonth = (params) => api.get('/attendances', params);
 
 /**
  * 근태 정정(F-ATT-04, ATTENDANCE_MANAGE)
- * GET /attendances/corrections → [{ type MISSING_CHECKOUT | LEAVE_CONFLICT | TRIP_CONFLICT, attendanceId, employeeId, employeeNo, name, orgUnitName,
- *   workDate, status, workType, checkInAt, checkOutAt, conflict: { id, name, startDate, endDate } | null }]
+ * GET /attendances/corrections → [{ type MISSING_CHECKOUT | LEAVE_CONFLICT | TRIP_CONFLICT | EXPLANATION, attendanceId, employeeId, employeeNo, name,
+ *   orgUnitName, workDate, status, workType, checkInAt, checkOutAt, conflict: { id, name, startDate, endDate } | null,
+ *   explanation: { id, reason, checkInAt, checkOutAt, workType, createdAt } | null }]
+ * EXPLANATION 은 대기 중인 근태 소명 — 결근 소명이면 근태 행이 없어 attendanceId · status · 출퇴근 시각이 null
  */
 export const attendanceCorrectionsKey = ['attendance', 'corrections'];
 export const getAttendanceCorrections = () => api.get('/attendances/corrections');
@@ -56,3 +58,16 @@ export const getAttendanceCorrections = () => api.get('/attendances/corrections'
 export const correctAttendance = (id, patch) => api.patch(`/attendances/${id}`, patch);
 /** POST /attendances { employeeId, workDate, status, checkInAt?, checkOutAt?, workType?, reason } — 기록이 없는 날에 만든다 */
 export const createAttendance = (body) => api.post('/attendances', body);
+
+/**
+ * 근태 소명(F-ATT-10) — 직원이 지각 · 조퇴 · 퇴근미기록 · 결근인 날에 사유와 실제 시각(선택)을 낸다. 인사 담당이 승인하면 근태가 정정된다
+ * 행 { id, employeeId, workDate, reason, checkInAt, checkOutAt, workType, status PENDING|APPROVED|REJECTED|CANCELLED, rejectReason, reviewedAt, createdAt, warning }
+ */
+export const myExplanationsKey = (month) => ['attendance', 'explanations', month];
+export const getMyExplanations = (month) => api.get('/me/attendance-explanations', { month });
+/** POST { workDate, reason, checkInAt?, checkOutAt?, workType? } — 결근인 날 시각을 내려면 출근 · 퇴근 둘 다 */
+export const createExplanation = (body) => api.post('/me/attendance-explanations', body);
+export const withdrawExplanation = (id) => api.post(`/me/attendance-explanations/${id}/withdraw`);
+/** ATTENDANCE_MANAGE — 승인하면 요청 값으로 정정(warning PAY_MONTH_SETTLED 가능), 반려는 사유 필수 */
+export const approveExplanation = (id) => api.post(`/attendance-explanations/${id}/approve`);
+export const rejectExplanation = (id, reason) => api.post(`/attendance-explanations/${id}/reject`, { reason });

@@ -1,11 +1,11 @@
 // 정정 대상(Figma 484-27817 · 482-11916) — 왼쪽 정정 대상 목록, 오른쪽 상세 · 정정 입력(ATTENDANCE_MANAGE)
-// Figma의 "소명 신청"(직원이 사유 · 희망 시각을 내는 기능)은 서버에 없어 뺐다 — 목록은 퇴근미기록 · 휴가·출장 충돌만
+// 목록은 퇴근미기록 · 휴가·출장 충돌 · 소명 대기(F-ATT-10 — 직원이 낸 사유 · 실제 시각을 승인하면 그 값으로 정정, 반려는 사유 필수)
 // 정산된 달을 고치면 서버가 warning PAY_MONTH_SETTLED 를 준다 → 위에 노란 안내(Figma 484-27817)
 import { useMemo, useState } from 'react';
 import { Form, Input, Select, TimePicker } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { attendanceCorrectionsKey, correctAttendance, getAttendanceCorrections } from '../../../api/attendance';
+import { approveExplanation, attendanceCorrectionsKey, correctAttendance, getAttendanceCorrections, rejectExplanation } from '../../../api/attendance';
 import { meKey } from '../../../api/auth';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
@@ -17,13 +17,17 @@ const KIND = {
   MISSING_CHECKOUT: ['퇴근미기록', 'alert'],
   LEAVE_CONFLICT: ['휴가 충돌', 'purple'],
   TRIP_CONFLICT: ['출장 충돌', 'purple'],
+  EXPLANATION: ['소명 대기', 'info'],
 };
 const CHIPS = [
   ['ALL', '전체', () => true],
   ['MISSING', '퇴근미기록', (c) => c.type === 'MISSING_CHECKOUT'],
-  ['CONFLICT', '휴가·출장 충돌', (c) => c.type !== 'MISSING_CHECKOUT'],
+  ['CONFLICT', '휴가·출장 충돌', (c) => c.type === 'LEAVE_CONFLICT' || c.type === 'TRIP_CONFLICT'],
+  ['EXPLANATION', '소명 대기', (c) => c.type === 'EXPLANATION'],
 ];
-const keyOf = (c) => `${c.attendanceId}-${c.type}`;
+// 결근 소명은 근태 행이 없어 attendanceId 가 null — 소명 ID 로 구분한다
+const keyOf = (c) => (c.type === 'EXPLANATION' ? `x-${c.explanation.id}` : `${c.attendanceId}-${c.type}`);
+const recordText = (c) => (c.attendanceId == null ? '기록 없음(결근)' : `출근 ${hm(c.checkInAt)} · 퇴근 ${c.checkOutAt ? hm(c.checkOutAt) : '–'}`);
 
 export default function CorrectionsTab() {
   const list = useQuery({ queryKey: attendanceCorrectionsKey, queryFn: getAttendanceCorrections });
@@ -42,7 +46,7 @@ export default function CorrectionsTab() {
           <div className="at-card-head is-col">
             <div>
               <strong>정정 대상 목록</strong>
-              <p className="at-muted">{`총 ${all.length}건 · 퇴근을 찍지 않았거나 승인된 휴가 · 출장과 겹친 날`}</p>
+              <p className="at-muted">{`총 ${all.length}건 · 퇴근 미기록, 승인된 휴가 · 출장과 겹친 날, 직원이 낸 소명`}</p>
             </div>
             <span className="at-count">{`${all.length}건`}</span>
           </div>
@@ -78,7 +82,7 @@ export default function CorrectionsTab() {
                       <td>
                         <Pill tone={KIND[c.type][1]}>{KIND[c.type][0]}</Pill>
                       </td>
-                      <td>{`출근 ${hm(c.checkInAt)} · 퇴근 ${c.checkOutAt ? hm(c.checkOutAt) : '–'}`}</td>
+                      <td>{recordText(c)}</td>
                     </tr>
                   ))
                 )}
@@ -89,7 +93,11 @@ export default function CorrectionsTab() {
 
         <section className="at-card at-detail">
           {selected ? (
-            <Detail key={keyOf(selected)} c={selected} onSettled={() => setSettledWarn(true)} />
+            selected.type === 'EXPLANATION' ? (
+              <ExplanationDetail key={keyOf(selected)} c={selected} onSettled={() => setSettledWarn(true)} />
+            ) : (
+              <Detail key={keyOf(selected)} c={selected} onSettled={() => setSettledWarn(true)} />
+            )
           ) : (
             <p className="at-empty">왼쪽 목록에서 정정할 기록을 고르세요.</p>
           )}
@@ -227,6 +235,95 @@ function Detail({ c, onSettled }) {
           </button>
         </div>
       </Form>
+    </>
+  );
+}
+
+/** 소명 대기 — 직원 사유와 요청 값을 지금 기록과 나란히 보여 주고 승인(요청 값으로 정정) · 반려(사유 필수) */
+function ExplanationDetail({ c, onSettled }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const x = c.explanation;
+  const asked = x.checkInAt || x.checkOutAt || x.workType;
+  const done = (message, res) => {
+    queryClient.invalidateQueries({ queryKey: ['attendance'] });
+    queryClient.invalidateQueries({ queryKey: meKey });
+    notify.success(message);
+    if (res?.warning === 'PAY_MONTH_SETTLED') onSettled();
+  };
+  const approve = useMutation({
+    mutationFn: () => approveExplanation(x.id),
+    onSuccess: (res) => done(`${c.name} ${c.workDate} 소명을 승인했습니다${asked ? ' — 근태를 정정했습니다' : ''}`, res),
+    onError: (err) => notify.error(err),
+  });
+  const reject = useMutation({
+    mutationFn: () => rejectExplanation(x.id, rejectReason.trim()),
+    onSuccess: () => done(`${c.name} ${c.workDate} 소명을 반려했습니다`),
+    onError: (err) => notify.error(err),
+  });
+  const busy = approve.isPending || reject.isPending;
+
+  return (
+    <>
+      <div className="at-detail-head">
+        <strong>소명 상세</strong>
+        <p className="at-muted">직원이 낸 사유와 실제 시각을 확인합니다. 승인하면 요청한 값으로 근태가 정정됩니다.</p>
+        <p className="at-strong">{`${c.name} · ${c.orgUnitName} · ${c.workDate.replaceAll('-', '.')}`}</p>
+      </div>
+
+      <div className="at-note-box">
+        <span>직원 사유</span>
+        <p>{x.reason}</p>
+      </div>
+
+      <div className="at-kv">
+        <h4>지금 기록 → 요청</h4>
+        <div>
+          <span>상태</span>
+          <strong>{c.status ? labelOf('attendanceStatus', c.status) : '기록 없음(결근)'}</strong>
+        </div>
+        <div>
+          <span>출근 시각</span>
+          <strong>{`${hm(c.checkInAt)} → ${x.checkInAt ? hm(x.checkInAt) : '그대로'}`}</strong>
+        </div>
+        <div>
+          <span>퇴근 시각</span>
+          <strong>{`${hm(c.checkOutAt)} → ${x.checkOutAt ? hm(x.checkOutAt) : '그대로'}`}</strong>
+        </div>
+        <div>
+          <span>근무 형태</span>
+          <strong>{`${c.workType ? labelOf('workType', c.workType) : '–'} → ${x.workType ? labelOf('workType', x.workType) : '그대로'}`}</strong>
+        </div>
+      </div>
+      {!asked && <p className="at-muted">요청한 시각이 없는 소명입니다. 승인하면 기록은 그대로 두고 확인했다는 사유만 남깁니다.</p>}
+
+      {rejecting ? (
+        <div className="at-form">
+          <h4>반려 사유 *</h4>
+          <Input.TextArea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} maxLength={255} autoSize={{ minRows: 3, maxRows: 5 }}
+            placeholder="반려 사유를 입력하세요. 직원에게 보입니다." />
+          <div className="at-form-foot">
+            <button type="button" className="at-btn is-line" disabled={busy} onClick={() => setRejecting(false)}>
+              취소
+            </button>
+            <button type="button" className="at-btn is-wide" disabled={busy || !rejectReason.trim()} onClick={() => reject.mutate()}>
+              반려
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="at-form-foot">
+          <button type="button" className="at-btn is-line" disabled={busy} onClick={() => setRejecting(true)}>
+            반려
+          </button>
+          <button type="button" className="at-btn is-wide" disabled={busy} onClick={() => approve.mutate()}>
+            승인
+          </button>
+        </div>
+      )}
+      <p className="at-muted is-11">※ 승인으로 바뀐 근태는 감사 로그에 남습니다.</p>
     </>
   );
 }
