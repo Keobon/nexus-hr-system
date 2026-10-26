@@ -532,6 +532,30 @@ CREATE TABLE attendance (
 );
 CREATE INDEX ix_attendance_company_date ON attendance (company_id, work_date);
 
+-- 근태 소명(F-ATT-10) — 직원이 사유와 실제 시각을 내고 ATTENDANCE_MANAGE 가 승인하면 근태를 정정한다.
+-- 결근인 날은 근태 행이 없으므로 직원 + 날짜로만 잇는다. 요청 값(req_*)이 모두 비면 사유만 낸 소명이다
+CREATE TABLE attendance_explanation (
+  id                BIGSERIAL PRIMARY KEY,
+  company_id        BIGINT NOT NULL REFERENCES company(id),
+  employee_id       BIGINT NOT NULL REFERENCES employee(id),
+  work_date         DATE NOT NULL,
+  reason            VARCHAR(250) NOT NULL,                          -- 정정 사유 "소명: {reason}" 가 255자를 넘지 않게
+  req_work_type     work_type,
+  req_check_in_at   TIMESTAMPTZ,
+  req_check_out_at  TIMESTAMPTZ,
+  status            request_status NOT NULL DEFAULT 'PENDING',
+  reviewed_by       BIGINT REFERENCES employee(id),
+  reviewed_at       TIMESTAMPTZ,
+  reject_reason     VARCHAR(255),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (req_check_out_at IS NULL OR req_check_in_at IS NULL OR req_check_in_at < req_check_out_at),
+  CHECK (status <> 'REJECTED' OR reject_reason IS NOT NULL)
+);
+CREATE UNIQUE INDEX ux_attendance_explanation_pending ON attendance_explanation (employee_id, work_date)
+  WHERE status = 'PENDING';
+CREATE INDEX ix_attendance_explanation_company ON attendance_explanation (company_id, status);
+
 CREATE TABLE expense_claim (
   id               BIGSERIAL PRIMARY KEY,
   company_id       BIGINT NOT NULL REFERENCES company(id),

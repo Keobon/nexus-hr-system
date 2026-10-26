@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.attendance.dto.AttendanceDay;
 import com.nexuslabs.hr.domain.attendance.dto.AttendanceSummary;
 import com.nexuslabs.hr.domain.attendance.dto.MonthlyAttendance;
 import com.nexuslabs.hr.domain.attendance.entity.AttendanceStatus;
+import com.nexuslabs.hr.domain.attendance.entity.RequestStatus;
 import com.nexuslabs.hr.domain.attendance.entity.WorkType;
 import com.nexuslabs.hr.domain.company.service.WorkCalendar;
 import com.nexuslabs.hr.domain.company.service.WorkScheduleView;
@@ -142,10 +143,25 @@ public class AttendanceCalculator {
                 },
                 companyId, ids, first, last);
 
+        // 날짜마다 가장 최근 근태 소명의 상태(F-ATT-10)
+        Map<Long, Map<LocalDate, RequestStatus>> explanations = new HashMap<>();
+        jdbc.query("""
+                        SELECT DISTINCT ON (employee_id, work_date) employee_id, work_date, status::text AS status
+                        FROM attendance_explanation
+                        WHERE company_id = ? AND employee_id = ANY(?) AND work_date BETWEEN ? AND ?
+                        ORDER BY employee_id, work_date, created_at DESC, id DESC
+                        """,
+                rs -> {
+                    explanations.computeIfAbsent(rs.getLong("employee_id"), k -> new HashMap<>())
+                            .put(rs.getObject("work_date", LocalDate.class), RequestStatus.valueOf(rs.getString("status")));
+                },
+                companyId, ids, first, last);
+
         trackingStart.forEach((employeeId, start) -> {
             List<StatusChange> changes = statusChanges.getOrDefault(employeeId, List.of());
             Map<LocalDate, Row> employeeRows = rows.getOrDefault(employeeId, Map.of());
             Map<LocalDate, Integer> employeeApproved = approved.getOrDefault(employeeId, Map.of());
+            Map<LocalDate, RequestStatus> employeeExplanations = explanations.getOrDefault(employeeId, Map.of());
             List<AttendanceDay> days = new ArrayList<>();
             for (LocalDate date = month.atDay(1); !date.isAfter(month.atEndOfMonth()); date = date.plusDays(1)) {
                 Row row = employeeRows.get(date);
@@ -153,7 +169,8 @@ public class AttendanceCalculator {
                         calendar.scheduleOn(date), row == null ? null : row.status(),
                         row == null ? null : row.workType(), row == null ? null : row.checkInAt(),
                         row == null ? null : row.checkOutAt(), employeeApproved.get(date),
-                        employmentOn(date, start, changes), today)).withAttendanceId(row == null ? null : row.id()));
+                        employmentOn(date, start, changes), today)).withRecord(row == null ? null : row.id(),
+                        employeeExplanations.get(date)));
             }
             result.put(employeeId, new MonthlyAttendance(month.toString(), days, summarize(days)));
         });
@@ -176,7 +193,7 @@ public class AttendanceCalculator {
         if (in.status() == AttendanceStatus.ON_BUSINESS_TRIP) {
             // 출장일은 1일 소정근로시간을 일한 것으로 본다(BR-ATT-005)
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), AttendanceDayStatus.ON_BUSINESS_TRIP,
-                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0, null);
+                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0, null, null);
         }
         LocalDateTime checkIn = minute(in.checkInAt());
         boolean late = in.workday()
@@ -185,7 +202,7 @@ public class AttendanceCalculator {
         AttendanceDayStatus status = AttendanceDayStatus.valueOf(in.status().name());
         if (in.checkOutAt() == null) {
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
-                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved, null);
+                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved, null, null);
         }
         LocalDateTime checkOut = minute(in.checkOutAt());
         boolean earlyLeave = in.workday() && checkOut.isBefore(in.date().atTime(schedule.endTime()));
@@ -212,7 +229,7 @@ public class AttendanceCalculator {
         }
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
                 seoul(in.checkInAt()), seoul(in.checkOutAt()), late, earlyLeave, work, overtime, night, holiday,
-                holidayOvertime, approved, null);
+                holidayOvertime, approved, null, null);
     }
 
     public static AttendanceSummary summarize(List<AttendanceDay> days) {
@@ -248,7 +265,7 @@ public class AttendanceCalculator {
 
     private static AttendanceDay noRecord(DayInput in, AttendanceDayStatus status) {
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, null, null, null, null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     /** 출근~퇴근이 야간 시간대와 겹치는 분. 야간 시간대는 보통 자정을 넘는다(22:00–06:00). 연장근무 신청의 예정 시간에도 쓴다. */
