@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { getMyAssignments, getMyEvalTodo, getMyEvaluations, myAssignmentsKey, myEvalTodoKey, myEvaluationsKey } from '../../../api/evaluations';
 import { getMyProfile, myProfileKey } from '../../../api/profile';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import iconBriefcase from '../../../assets/figma/icon-briefcase.svg';
@@ -57,7 +56,6 @@ function printOnly(cls) {
 
 /* ───── ① 인사발령 이력 ───── */
 function AssignTab({ data, status }) {
-  const pending = usePendingFeature();
   const [period, setPeriod] = useState('all');
   const [type, setType] = useState('all');
   const [applied, setApplied] = useState({ period: 'all', type: 'all' });
@@ -148,22 +146,6 @@ function AssignTab({ data, status }) {
         </div>
         <div className="ev-foot">
           <p className="ev-muted">발령 통지서는 각 기록에서 보거나 출력할 수 있습니다. 출력 창에서 &quot;PDF로 저장&quot;을 고르면 PDF 로 받습니다.</p>
-        </div>
-      </section>
-
-      <section className="ev-card ev-print-hide">
-        <div className="ev-sec-head">
-          <div>
-            <h2>사내 인사발령 공지</h2>
-            <p>전사 및 소속 부서에 공개된 공지사항입니다.</p>
-          </div>
-        </div>
-        <div className="ev-pending">
-          <strong>준비 중</strong>
-          <span>사내 공지 기능은 아직 제공하지 않습니다. 발령 공지는 인사팀 안내를 확인해 주세요.</span>
-          <button type="button" className="ev-link" style={{ alignSelf: 'flex-start' }} onClick={() => pending('사내 인사발령 공지', '사내 공지')}>
-            {'자세히 →'}
-          </button>
         </div>
       </section>
 
@@ -333,37 +315,11 @@ function EvalTab({ evaluations, onCriteria, todoCount }) {
         <p className="ev-muted is-11">미확정 평가 기간은 ‘확정 대기 중’으로 안내되며 결과가 공개되지 않습니다.</p>
       </section>
 
-      <section className="ev-card is-r16 ev-eval ev-print-hide">
-        <div className="ev-sec-head">
-          <div>
-            <h2>자기평가 작성</h2>
-            <p>평가는 평가자(조직장)가 작성합니다</p>
-          </div>
-          <span className="ev-badge">준비 중</span>
-        </div>
-        <div className="ev-pending">
-          <strong>자기평가는 아직 제공하지 않습니다</strong>
-          <span>이 시스템의 평가는 평가자가 대상자를 평가하는 방식입니다. 내가 평가자인 평가가 있으면 아래에서 바로 갈 수 있습니다.</span>
-        </div>
-        {todoCount > 0 && (
-          <button type="button" className="ev-btn" style={{ alignSelf: 'flex-end' }} onClick={() => navigate('/evaluations/todo')}>
-            {`평가하기 · ${todoCount}건`}
-          </button>
-        )}
-      </section>
-
-      <section className="ev-outside ev-print-hide">
-        <div className="ev-outside-head">
-          <h2>평가자 피드백 및 면담록</h2>
-          <span>{e ? `${e.cycleName} · 나에게 공개된 평가 의견` : '나에게 공개된 평가 의견'}</span>
-        </div>
-        <div className="ev-card is-r16">
-          <div className="ev-pending">
-            <strong>평가자별 의견 · 면담록은 준비 중입니다</strong>
-            <span>지금은 평가자 한 명의 종합 의견만 공개되며, 위 평가 결과의 종합 피드백에서 확인할 수 있습니다.</span>
-          </div>
-        </div>
-      </section>
+      {todoCount > 0 && (
+        <button type="button" className="ev-btn ev-print-hide" style={{ alignSelf: 'flex-end' }} onClick={() => navigate('/evaluations/todo')}>
+          {`내가 평가할 직원 · ${todoCount}건 평가하기`}
+        </button>
+      )}
     </>
   );
 }

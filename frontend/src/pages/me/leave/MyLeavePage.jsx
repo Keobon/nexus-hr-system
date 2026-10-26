@@ -24,10 +24,8 @@ import {
 import { useMe } from '../../../auth/useMe';
 import ApprovalSteps from '../../../components/common/ApprovalSteps';
 import { useNotify } from '../../../components/common/useNotify';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
-import iconPaperclip from '../../../assets/figma/icon-paperclip-sm.svg';
 import './leave.css';
 
 const STATUS_LABEL = { PENDING: '승인 대기', APPROVED: '결재 완료', REJECTED: '반려', CANCEL_REQUESTED: '취소 요청', CANCELLED: '취소 완료' };
@@ -84,7 +82,6 @@ function openPicker(e) {
 function RequestForm({ types, schedule, dailyHours, onDone }) {
   const queryClient = useQueryClient();
   const notify = useNotify();
-  const pending = usePendingFeature();
   const draft = useMemo(readDraft, []);
   const [typeId, setTypeId] = useState(draft?.typeId ?? types[0]?.id);
   const [startDate, setStartDate] = useState(draft?.startDate ?? '');
@@ -206,23 +203,6 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
-        </div>
-
-        <div className="lv-field">
-          <span className="lv-label">대직자 지정</span>
-          <button type="button" className="lv-select is-disabled" onClick={() => pending('대직자 지정', '대직자 지정')}>
-            <span>대직자 지정 준비 중</span>
-            <img src={iconChevron} alt="" />
-          </button>
-        </div>
-
-        <div className="lv-field">
-          <span className="lv-label">증빙 서류 첨부</span>
-          <button type="button" className="lv-file" onClick={() => pending('휴가 증빙 서류 첨부', '휴가 증빙 서류 첨부')}>
-            <img src={iconPaperclip} alt="" />
-            <span>파일을 선택해 주세요</span>
-          </button>
-          <p className="lv-hint">증빙 서류 첨부는 준비 중입니다.</p>
         </div>
 
         <div className="lv-field">
@@ -426,7 +406,6 @@ function HistoryCard({ requests, onOpen, onApply }) {
 
 /* ───── 사용 이력 및 통계 ───── */
 function StatsCard({ requests, dailyHours, leaveYear }) {
-  const pending = usePendingFeature();
   const [year, setYear] = useState(leaveYear);
   const [month, setMonth] = useState(dayjs().month() + 1);
   const used = requests
@@ -469,14 +448,6 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
           </div>
         ))}
       </div>
-      <p className="lv-sub-title">연차 사용 촉진 안내</p>
-      <button type="button" className="lv-link" onClick={() => pending('연차 사용 촉진 안내', '연차 사용 촉진')}>
-        {'안내 내역 확인  →'}
-      </button>
-      <button type="button" className="lv-link" style={{ color: '#0f172a', fontSize: '0.8125rem' }} onClick={() => pending('미사용 수당 정산 내역', '연차 미사용 수당 정산')}>
-        {'미사용 수당 정산 내역  →'}
-      </button>
-      <span className="lv-muted">정산 내역은 준비 중입니다.</span>
     </section>
   );
 }
@@ -606,7 +577,6 @@ function CalendarCard({ requests, me, full }) {
 export default function MyLeavePage() {
   const { me, can } = useMe();
   const fullTeam = can('LEAVE_READ'); // 휴가 조회 권한(팀 범위는 조직장만 — makeCan)
-  const pending = usePendingFeature();
   const [openId, setOpenId] = useState(null);
   // 휴가 신청 창 — 대시보드 [휴가 신청]은 ?apply=1 로 들어와 바로 연다
   const [params, setParams] = useSearchParams();
@@ -692,9 +662,6 @@ export default function MyLeavePage() {
           <span className="lv-muted">휴가 소멸 예정일</span>
           <p className="lv-sum-big">{dot(b.endDate)}</p>
           <span className="lv-muted lv-ellipsis">{main ? `잔여 ${main.leaveTypeName} ${main.remaining}일 · 사용 계획을 세워 주세요` : '부여된 휴가가 없습니다'}</span>
-          <button type="button" className="lv-link" onClick={() => pending('연차 사용 촉진 안내', '연차 사용 촉진')}>
-            {'연차 사용 촉진 안내 확인  →'}
-          </button>
         </div>
 
         <div className="lv-card lv-sum">

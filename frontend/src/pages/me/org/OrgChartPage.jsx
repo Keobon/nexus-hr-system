@@ -176,10 +176,6 @@ function DeptCard({ node, members, loading, includeSub, setIncludeSub, selectedM
           {all ? '미리보기로 접기' : `부서원 전체 보기 (${members.length}명)`}
         </button>
       )}
-      <div className="org-rr">
-        <strong>부서 R&amp;R</strong>
-        <span>부서 R&amp;R(역할 · 책임) 정보는 준비 중입니다.</span>
-      </div>
     </section>
   );
 }

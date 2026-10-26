@@ -1,5 +1,5 @@
 // 직원 급여 — Figma 458-17828(목록) · 458-18062(옆 창) · 458-18377(급여 변경) · 458-18729(수당·공제 추가) · 458-19078(미등록) · 458-19327(조회 전용)
-// 원천징수 비율(80 · 100 · 120%)은 서버에 없어 100% 읽기 전용 · 준비 중
+// 원천징수 비율(80 · 100 · 120%)은 서버에 없어 뺐다(모두 100%로 계산)
 import { useState } from 'react';
 import { DatePicker, Drawer, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Spin, Switch } from 'antd';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -220,21 +220,6 @@ function SalaryPanel({ row, manage, onClose }) {
                 );
               })}
             </div>
-          </section>
-
-          <section className="pr-box">
-            <div className="pr-box-head">
-              <strong>원천징수 비율</strong>
-              <span className="pr-muted">🔒 준비 중</span>
-            </div>
-            <div className="pr-seg-ro">
-              {['80%', '100%', '120%'].map((v) => (
-                <span key={v} className={v === '100%' ? 'is-on' : undefined}>
-                  {v}
-                </span>
-              ))}
-            </div>
-            <p className="pr-muted">지금은 모든 직원을 100%로 계산합니다. 직원별 선택은 준비 중입니다.</p>
           </section>
 
           <section className="pr-box">

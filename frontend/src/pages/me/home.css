@@ -90,6 +90,11 @@
   margin-top: 1.75rem;
 }
 
+/* 카드 수가 홀수면 마지막 카드(출근 추이)를 한 줄 전체로 */
+.home-panels > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .home-card {
   position: relative;
   box-sizing: border-box;

@@ -219,7 +219,7 @@ function CreateModal({ onClose, onCreated }) {
             <DatePicker className="full-width" format="YYYY.MM.DD" />
           </Form.Item>
         </div>
-        <p className="ea-hint">평가 기간을 저장하면 대상 지정과 평가 시작을 진행할 수 있습니다. 자기평가 제출 기간은 준비 중입니다.</p>
+        <p className="ea-hint">평가 기간을 저장하면 대상 지정과 평가 시작을 진행할 수 있습니다.</p>
         <ModalFoot onCancel={onClose} busy={save.isPending} okText="만들기" />
       </Form>
     </Modal>

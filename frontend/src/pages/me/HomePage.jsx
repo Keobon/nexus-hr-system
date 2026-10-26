@@ -5,7 +5,6 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import dayjs from 'dayjs';
 import { changeWorkType, checkIn, checkOut, getMyAttendances, myAttendancesKey, todayKey } from '../../api/attendance';
 import { getLeaveTypes, getMyLeaveRequests, leaveTypesKey, myLeaveRequestsKey } from '../../api/leaves';
-import { usePendingFeature } from '../../components/common/usePendingFeature';
 import { dashboardKey, getDashboardHome } from '../../api/dashboard';
 import { getMyProfile, myProfileKey } from '../../api/profile';
 import { useMe } from '../../auth/useMe';
@@ -244,25 +243,6 @@ function PendingCard({ pending }) {
       <div className="home-actions">
         <button type="button" className="home-btn" onClick={() => navigate('/me/work-requests')}>
           상세 보기
-        </button>
-      </div>
-    </section>
-  );
-}
-
-/** 회사 공지사항 — 공지 기능이 아직 없다(기능명세서 v2 범위 밖 · 노션 P-107) */
-function NoticeCard() {
-  const pending = usePendingFeature();
-  return (
-    <section className="home-card home-panel is-short">
-      <h2 className="home-card-title">회사 공지사항</h2>
-      <div className="home-notice">
-        <strong>준비 중</strong>
-        <span>회사 공지 기능은 아직 제공하지 않습니다. 인사 · 근태 안내는 인사팀 공지를 확인해 주세요.</span>
-      </div>
-      <div className="home-actions">
-        <button type="button" className="home-btn" onClick={() => pending('회사 공지사항', '회사 공지')}>
-          더 보기
         </button>
       </div>
     </section>
@@ -557,9 +537,8 @@ export default function HomePage() {
         <AttendancePanel today={mine.today} />
         <LeavePanel balances={mine.leaveBalances ?? []} />
         <PendingCard pending={mine.myPending} />
-        <NoticeCard />
-        <AttendanceTrend today={mine.today.workDate} />
         <LeaveDistribution />
+        <AttendanceTrend today={mine.today.workDate} />
       </div>
 
       <InfoCard profile={profile.data} payrollEligible={me.employee?.payrollEligible} />

@@ -1,11 +1,10 @@
 // 4대보험 탭(Figma 71:5113) + 요율 수정 창(452:9254)
-// 서버는 4대보험을 "과세 급여 × 요율" 공제 항목(TAXABLE_RATE)으로만 둔다 — 적용 시작일 · 변경 이력 · 산재보험은 준비 중
+// 서버는 4대보험을 "과세 급여 × 요율" 공제 항목(TAXABLE_RATE)으로만 둔다 — 적용 시작일 · 변경 이력 · 산재보험은 뺐다
 import { useState } from 'react';
 import { InputNumber, Modal, Select, Spin } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPayItems, payItemsKey, updatePayItem } from '../../../api/paySettings';
 import { useNotify } from '../../../components/common/useNotify';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { ModalFoot } from '../../hr/parts';
 import { pct, won } from './shared';
@@ -19,7 +18,6 @@ const EMPLOYMENT_COMPANY = [
 ];
 
 export default function InsuranceTab() {
-  const pending = usePendingFeature();
   const items = useQuery({ queryKey: payItemsKey, queryFn: getPayItems });
   const [editing, setEditing] = useState(false);
 
@@ -38,9 +36,6 @@ export default function InsuranceTab() {
         <div className="hr-actions">
           <button type="button" className="hr-btn" disabled={!rows.length} onClick={() => setEditing(true)}>
             요율 수정
-          </button>
-          <button type="button" className="hr-btn is-secondary" onClick={() => pending('4대보험 변경 이력', '4대보험 요율 적용 시작일 · 변경 이력')}>
-            변경 이력
           </button>
         </div>
       </div>
@@ -68,19 +63,8 @@ export default function InsuranceTab() {
             <span className="pay-c-num">{won(r.baseLowerLimit)}</span>
           </div>
         ))}
-        <div className="hr-tr pay-row is-off">
-          <span className="pay-c-name hr-strong">산재보험</span>
-          <span className="pay-c-num">–</span>
-          <span className="pay-c-num">
-            <span className="hr-badge is-gray">준비 중</span>
-          </span>
-          <span className="pay-c-num pay-muted">보수총액</span>
-          <span className="pay-c-num">–</span>
-          <span className="pay-c-num">–</span>
-        </div>
         <div className="pay-card-foot">
           <span>모든 보험은 과세 급여에 요율을 곱해 계산합니다(상한 · 하한이 있으면 그 사이로 맞춤). 근로자 요율만 급여에서 공제합니다.</span>
-          <span>산재보험(회사만 부담) · 적용 시작일 · 변경 이력은 준비 중입니다.</span>
         </div>
       </section>
 
@@ -164,7 +148,7 @@ function RateModal({ rows, onClose }) {
           />
         </div>
       )}
-      <p className="hr-notice">이미 확정된 급여는 바뀌지 않습니다. 적용 시작일을 정해 두는 기능은 준비 중이라, 저장하는 즉시 다음 정산에 쓰입니다.</p>
+      <p className="hr-notice">이미 확정된 급여는 바뀌지 않습니다. 저장하는 즉시 다음 정산부터 쓰입니다.</p>
       <ModalFoot onCancel={onClose} busy={busy} okType="button" onOk={save} />
     </Modal>
   );

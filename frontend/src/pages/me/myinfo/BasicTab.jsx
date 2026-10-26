@@ -1,10 +1,9 @@
 import { forwardRef } from 'react';
 import { labelOf } from '../../../constants/labels';
 import { formatDate } from '../../../utils/format';
-import { Badge, EMPTY, InfoRow, usePendingFeature } from './parts';
+import { Badge, EMPTY, InfoRow } from './parts';
 import { rem } from '../../../utils/size';
 
-const CERTIFICATES = ['재직증명서', '경력증명서', '원천징수영수증'];
 
 /** 개명 — 인사 담당이 직원 수정으로 처리한다(노션 수정사항 10/12). 화면은 문의 안내만 */
 const RenameCard = forwardRef(function RenameCard({ currentName }, ref) {
@@ -24,8 +23,6 @@ const RenameCard = forwardRef(function RenameCard({ currentName }, ref) {
 
 /** 기본정보 탭 — Figma EMP_기본정보. 사번 · 직무 정보는 조회 전용(추가사항 ③) */
 const BasicTab = forwardRef(function BasicTab({ profile }, renameRef) {
-  const pending = usePendingFeature();
-
   return (
     <div className="mi-row">
       <div className="mi-stack">
@@ -61,28 +58,6 @@ const BasicTab = forwardRef(function BasicTab({ profile }, renameRef) {
         <RenameCard ref={renameRef} currentName={profile.name} />
       </div>
 
-      <div className="mi-side">
-        <section className="mi-card">
-          <div className="mi-card-head">
-            <h2 className="mi-card-title">증명서 발급 / 신청</h2>
-          </div>
-          <div>
-            {CERTIFICATES.map((name) => (
-              <div key={name} className="mi-cert">
-                <span>{name}</span>
-                <span className="mi-cert-links">
-                  <button type="button" className="mi-link" onClick={() => pending(`${name} 신청`, '증명서 발급')}>
-                    신청하기
-                  </button>
-                  <button type="button" className="mi-link" onClick={() => pending(`${name} 출력`, '증명서 발급')}>
-                    출력하기
-                  </button>
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
     </div>
   );
 });

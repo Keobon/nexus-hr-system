@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { changePassword, meKey } from '../../../api/auth';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
-import { InfoRow, Note, usePendingFeature } from './parts';
+import { Note } from './parts';
 import { rem } from '../../../utils/size';
 
 // 8자 이상, 영문 · 숫자 포함(F-AUTH-03) — 서버 PasswordRule 과 같은 조건
@@ -11,7 +11,6 @@ const validPassword = (v) => v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v)
 
 /** 계정 및 보안 탭 — Figma EMP_계정및보안. 비밀번호는 본인이 바꾸면 즉시 반영(추가사항 ①) */
 export default function SecurityTab() {
-  const pending = usePendingFeature();
   const notify = useNotify();
   const queryClient = useQueryClient();
   const [current, setCurrent] = useState('');
@@ -93,39 +92,10 @@ export default function SecurityTab() {
           </div>
         </section>
 
-        <section className="mi-card">
-          <h2 className="mi-card-title">2차 인증</h2>
-          <InfoRow label="제공 여부">준비 중</InfoRow>
-          <p className="mi-text">2차 인증은 아직 제공하지 않습니다. 로그인은 사내 계정과 비밀번호로 합니다.</p>
-          <div className="mi-actions is-divided">
-            <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('2차 인증 등록 신청', '2차 인증')}>
-              2차 인증 등록 신청
-            </button>
-            <button type="button" className="mi-btn is-secondary" style={{ width: rem(171) }} onClick={() => pending('2차 인증 변경 신청', '2차 인증')}>
-              2차 인증 변경 신청
-            </button>
-          </div>
-        </section>
       </div>
 
-      <section className="mi-card">
-        <h2 className="mi-card-title">로그인 보안 설정</h2>
-        <InfoRow label="제공 여부">준비 중</InfoRow>
-        <p className="mi-text is-14">로그인 보안 설정(접속 기기 · 알림 등)은 아직 제공하지 않습니다.</p>
-        <div className="mi-actions is-divided">
-          <button
-            type="button"
-            className="mi-btn is-secondary"
-            style={{ width: rem(223) }}
-            onClick={() => pending('로그인 보안 설정 변경 신청', '로그인 보안 설정')}
-          >
-            로그인 보안 설정 변경 신청
-          </button>
-        </div>
-      </section>
-
       <Note variant="page">
-        비밀번호는 별도 승인 없이 변경 즉시 반영됩니다. 2차 인증과 로그인 보안 설정은 준비 중입니다.
+        비밀번호는 별도 승인 없이 변경 즉시 반영됩니다.
       </Note>
     </div>
   );
