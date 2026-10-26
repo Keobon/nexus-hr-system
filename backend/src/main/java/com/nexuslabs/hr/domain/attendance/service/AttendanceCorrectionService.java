@@ -33,6 +33,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +75,7 @@ public class AttendanceCorrectionService {
         this.clock = clock;
     }
 
-    /** 정정 대상 목록. 오래된 날짜부터. */
+    /** 정정 대상 목록(퇴근미기록 · 휴가/출장 겹침 · 소명 대기). 오래된 날짜부터. */
     @Transactional(readOnly = true)
     public List<CorrectionItem> list(LoginUser user) {
         return corrections(user.companyId());
@@ -237,11 +238,49 @@ public class AttendanceCorrectionService {
                                 rs.getString("employee_no"), rs.getString("name"), rs.getString("org_unit_name"),
                                 workDate, status, workType == null ? null : WorkType.valueOf(workType),
                                 seoul(rs.getObject("check_in_at", OffsetDateTime.class)),
-                                seoul(rs.getObject("check_out_at", OffsetDateTime.class)), conflict));
+                                seoul(rs.getObject("check_out_at", OffsetDateTime.class)), conflict, null));
                     }
                 },
                 companyId, Date.valueOf(openBefore), Date.valueOf(openBefore));
+        items.addAll(pendingExplanations(companyId));
+        items.sort(Comparator.comparing(CorrectionItem::workDate));
         return items;
+    }
+
+    /** 대기 중인 근태 소명(F-ATT-10). 근태 행이 없는 날(결근)이면 근태 칸은 비운다. */
+    private List<CorrectionItem> pendingExplanations(long companyId) {
+        return jdbc.query("""
+                        SELECT x.id, x.employee_id, e.employee_no, e.name, o.name AS org_unit_name, x.work_date, x.reason,
+                               x.req_check_in_at, x.req_check_out_at, x.req_work_type::text AS req_work_type, x.created_at,
+                               a.id AS attendance_id, a.status::text AS status, a.work_type::text AS work_type,
+                               a.check_in_at, a.check_out_at
+                        FROM attendance_explanation x
+                             JOIN employee e ON e.id = x.employee_id AND e.company_id = x.company_id
+                             JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id
+                             LEFT JOIN attendance a ON a.company_id = x.company_id AND a.employee_id = x.employee_id
+                                  AND a.work_date = x.work_date
+                        WHERE x.company_id = ? AND x.status = 'PENDING'
+                        ORDER BY x.work_date, x.id
+                        """,
+                (rs, i) -> {
+                    String status = rs.getString("status");
+                    String workType = rs.getString("work_type");
+                    String reqWorkType = rs.getString("req_work_type");
+                    Long attendanceId = rs.getObject("attendance_id") == null ? null : rs.getLong("attendance_id");
+                    return new CorrectionItem(CorrectionItem.Type.EXPLANATION, attendanceId, rs.getLong("employee_id"),
+                            rs.getString("employee_no"), rs.getString("name"), rs.getString("org_unit_name"),
+                            rs.getObject("work_date", LocalDate.class),
+                            status == null ? null : AttendanceStatus.valueOf(status),
+                            workType == null ? null : WorkType.valueOf(workType),
+                            seoul(rs.getObject("check_in_at", OffsetDateTime.class)),
+                            seoul(rs.getObject("check_out_at", OffsetDateTime.class)), null,
+                            new CorrectionItem.Explanation(rs.getLong("id"), rs.getString("reason"),
+                                    seoul(rs.getObject("req_check_in_at", OffsetDateTime.class)),
+                                    seoul(rs.getObject("req_check_out_at", OffsetDateTime.class)),
+                                    reqWorkType == null ? null : WorkType.valueOf(reqWorkType),
+                                    seoul(rs.getObject("created_at", OffsetDateTime.class))));
+                },
+                companyId);
     }
 
     /** 휴가 · 출장이 승인된 뒤에 정정했으면 관리자가 확인한 것이다. */
