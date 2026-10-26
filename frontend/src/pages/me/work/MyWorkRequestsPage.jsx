@@ -38,7 +38,6 @@ import ApprovalSteps from '../../../components/common/ApprovalSteps';
 import FileUpload from '../../../components/common/FileUpload';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { formatMinutes, formatMoney } from '../../../utils/format';
@@ -675,7 +674,6 @@ function RequestModal({ open, trips, onClose, onType }) {
 /** 연장 근무 / 출장(F-ATT-06–08) — Figma EMP_연장근무 */
 export default function MyWorkRequestsPage() {
   const navigate = useNavigate();
-  const pending = usePendingFeature();
   const [month, setMonth] = useState(() => dayjs().startOf('month'));
   const [tab, setTab] = useState('ALL');
   const [kindFilter, setKindFilter] = useState(null); // 'overtime' | 'trip'
@@ -758,7 +756,6 @@ export default function MyWorkRequestsPage() {
       links: [
         ['연장 근무 신청', '야간·휴일 / 근무 일자·예정 시간·업무 사유', () => setOpen({ type: 'overtime' })],
         ['연장 근무 결재 현황', '결재 대기 · 승인 · 반려 상태 확인', () => pick('overtime')],
-        ['실제 연장 근무 소명 / 확인', '사전 신청과 실제 수행 시간 차이 소명', () => pending('실제 연장 근무 소명', '연장 근무 소명')],
         ['주간 연장 근로 잔여 시간', '주 연장 12시간 기준 · 출퇴근 화면에서 조회', () => navigate('/me/attendance')],
       ],
     },
