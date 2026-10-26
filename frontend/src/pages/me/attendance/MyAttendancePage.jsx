@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { App, Result, Select, Spin } from 'antd';
+import { Result, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
@@ -12,7 +11,6 @@ import {
   getMyTrips,
   getTeamToday,
   getToday,
-  getTrip,
   getWorkSchedules,
   myAttendancesKey,
   myOvertimesKey,
@@ -55,8 +53,6 @@ const WORK_TYPE_OPTIONS = [
   { value: 'FIELD', label: '외근' },
 ];
 const TODAY_TONE = { BEFORE_WORK: '', OFFICE: 'green', REMOTE: 'green', FIELD: 'green', OFF_WORK: 'blue', BUSINESS_TRIP: 'amber', ON_VACATION: 'purple', ON_LEAVE: '' };
-const TRIP_TONE = { PENDING: 'amber', APPROVED: 'green', REJECTED: 'red', CANCELLED: '' };
-
 function Badge({ tone = '', children }) {
   return <span className={`att-badge ${tone}`}>{children}</span>;
 }
@@ -334,79 +330,7 @@ function HoursSection({ week, month, monthData, overtimes }) {
   );
 }
 
-/* ───── 4. 외근 및 출장 관리 ───── */
-function TripSection({ trips, monthData, today }) {
-  const navigate = useNavigate();
-  const { modal } = App.useApp();
-  const upcoming = trips
-    .filter((t) => t.status !== 'CANCELLED' && t.status !== 'REJECTED' && t.endDate >= today)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const next = upcoming[0];
-  const detail = useQuery({ queryKey: ['trip', next?.id], queryFn: () => getTrip(next.id), enabled: !!next });
-  const pendingCount = trips.filter((t) => t.status === 'PENDING').length;
-  const remoteDays = monthData.days.filter((d) => d.workType === 'REMOTE' && d.status && d.status !== 'NOT_RECORDED');
-  const lastRemote = remoteDays[remoteDays.length - 1];
-
-  return (
-    <section className="att-section">
-      <SectionHead title="외근 및 출장 관리" sub="휴가 외 특수근무" />
-      <div className="att-two">
-        <div className="att-card">
-          <div className="att-block-head">
-            <h3>외근/출장 신청 및 현황</h3>
-            <Badge tone={pendingCount ? 'amber' : ''}>{pendingCount ? '신청 중' : '없음'}</Badge>
-          </div>
-          <div className="att-stats">
-            <Stat label="예정 출장" value={`${upcoming.length}건`} />
-            <Stat label="승인 대기" value={`${pendingCount}건`} />
-          </div>
-          <div className="att-rows is-10">
-            <Row label="일정">{next ? (next.startDate === next.endDate ? dot(next.startDate) : `${dot(next.startDate)} ~ ${dot(next.endDate).slice(5)}`) : '예정된 출장 없음'}</Row>
-            <Row label="장소">{next?.destination}</Row>
-            <Row label="목적">{detail.data?.purpose}</Row>
-            <Row label="신청 상태">
-              {next ? <Badge tone={TRIP_TONE[next.status]}>{labelOf('requestStatus', next.status)}</Badge> : '-'}
-            </Row>
-          </div>
-          <button type="button" className="att-btn" onClick={() => navigate('/me/work-requests?tab=trip')}>
-            외근/출장 신청
-          </button>
-        </div>
-
-        <div className="att-card">
-          <div className="att-block-head">
-            <h3>재택근무 신청 및 현황</h3>
-            <Badge tone={monthData.summary.remoteDays ? 'green' : ''}>{monthData.summary.remoteDays ? '이번 달 재택' : '없음'}</Badge>
-          </div>
-          <div className="att-stats">
-            <Stat label="이번 달 재택" value={`${monthData.summary.remoteDays}일`} />
-            <Stat label="이번 달 외근" value={`${monthData.summary.fieldDays}일`} />
-          </div>
-          <div className="att-rows is-10">
-            <Row label="최근 재택일">{lastRemote ? dot(lastRemote.date) : '없음'}</Row>
-            <Row label="장소">재택</Row>
-            <Row label="신청 방법">출근할 때 근무 형태로 선택</Row>
-          </div>
-          <button
-            type="button"
-            className="att-btn"
-            onClick={() =>
-              modal.info({
-                title: '재택근무',
-                content: '재택근무는 따로 신청하지 않고, 출근할 때 근무 형태를 "재택"으로 고르면 됩니다. 근무 중에도 근무 형태를 바꿀 수 있습니다.',
-                okText: '확인',
-              })
-            }
-          >
-            재택근무 신청
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ───── 5. 근태 캘린더 ───── */
+/* ───── 4. 근태 캘린더 ───── */
 function CalendarSection({ today }) {
   const [month, setMonth] = useState(monthOf(today));
   const q = useQuery({ queryKey: myAttendancesKey(month), queryFn: () => getMyAttendances(month) });
@@ -457,7 +381,7 @@ function CalendarSection({ today }) {
   );
 }
 
-/* ───── 6. 부서원 근태 현황 — 직원 조회 · 근태 조회 권한(팀은 조직장)이 있을 때만 ───── */
+/* ───── 5. 부서원 근태 현황 — 직원 조회 · 근태 조회 권한(팀은 조직장)이 있을 때만 ───── */
 /** 부서원 오늘 근태의 비고 — 자정 넘긴 퇴근 · 근무 장소 */
 function teamNote(row, today) {
   if (row.checkOutAt && row.checkOutAt.slice(0, 10) !== today) return '자정 넘긴 퇴근';
@@ -556,7 +480,7 @@ export default function MyAttendancePage() {
     <div className="att">
       <header className="att-head">
         <h1>출퇴근 및 근태 조회</h1>
-        <p>오늘의 출퇴근, 근태 이력, 근무시간, 외근/출장, 재택근무를 한 화면에서 관리합니다.</p>
+        <p>오늘의 출퇴근, 근태 이력, 근무시간을 한 화면에서 관리합니다.</p>
       </header>
 
       <div className="att-summary">
@@ -606,7 +530,6 @@ export default function MyAttendancePage() {
         monthData={cur.data}
         overtimes={overtimes.data?.content ?? []}
       />
-      <TripSection trips={tripRows} monthData={cur.data} today={t.workDate} />
       <CalendarSection today={t.workDate} />
       {showTeam && <TeamSection me={me} today={t.workDate} />}
     </div>
