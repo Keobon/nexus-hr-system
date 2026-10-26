@@ -1,36 +1,42 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Result, Select, Spin } from 'antd';
+import { Form, Input, Modal, Result, Select, Spin, TimePicker } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
   changeWorkType,
   checkIn,
   checkOut,
+  createExplanation,
   getMyAttendances,
+  getMyExplanations,
   getMyOvertimes,
   getMyTrips,
   getTeamToday,
   getToday,
   getWorkSchedules,
   myAttendancesKey,
+  myExplanationsKey,
   myOvertimesKey,
   myTripsKey,
   teamTodayKey,
   todayKey,
+  withdrawExplanation,
   workSchedulesKey,
 } from '../../../api/attendance';
+import { applyFieldErrors } from '../../../components/common/formErrors';
 import { dashboardKey, getDashboardHome } from '../../../api/dashboard';
 import { useMe } from '../../../auth/useMe';
 import { useNotify } from '../../../components/common/useNotify';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
 import { tryLocation } from '../../../utils/location';
 import {
   WEEK_LIMIT,
   WEEK_OT_LIMIT,
+  EXPLANATION_BADGE,
   WEEKDAY,
   calendarDates,
+  canExplain,
   clock,
   dayBadge,
   dayCell,
@@ -221,8 +227,21 @@ function TodaySection({ today, todayRow, schedule, updatedAt }) {
 }
 
 /* ───── 2. 출퇴근 기록 및 소명 ───── */
-function HistorySection({ rows, today }) {
-  const pending = usePendingFeature();
+/** 소명(F-ATT-10) — 지각 · 조퇴 · 퇴근미기록 · 결근인 날에 사유와 실제 시각(선택)을 내면 인사 담당이 승인하면서 근태를 고친다 */
+function HistorySection({ rows, today, eligible, month }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const [target, setTarget] = useState(null); // { date } | { pick: true }
+  const mine = useQuery({ queryKey: myExplanationsKey(month), queryFn: () => getMyExplanations(month), enabled: !!month });
+  const withdraw = useMutation({
+    mutationFn: withdrawExplanation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      notify.success('소명을 철회했습니다');
+    },
+    onError: (err) => notify.error(err),
+  });
+
   return (
     <section className="att-section">
       <SectionHead title="출퇴근 기록 및 소명" sub="최근 7일 이력" />
@@ -230,9 +249,10 @@ function HistorySection({ rows, today }) {
         <div className="att-table-top">
           <div>
             <h3>일자별 출퇴근 이력</h3>
-            <p>날짜별 출근/퇴근 기록 시각과 근태 상태를 확인합니다.</p>
+            <p>지각 · 조퇴 · 퇴근 미기록 · 결근인 날은 사유와 실제 시각을 내 소명할 수 있습니다.</p>
           </div>
-          <button type="button" className="att-btn" onClick={() => pending('소명 신청', '근태 소명')}>
+          <button type="button" className="att-btn" disabled={eligible.length === 0} onClick={() => setTarget({ pick: true })}
+            title={eligible.length === 0 ? '소명할 날이 없습니다' : undefined}>
             소명 신청
           </button>
         </div>
@@ -242,10 +262,12 @@ function HistorySection({ rows, today }) {
             <span>출근 시각</span>
             <span>퇴근 시각</span>
             <span>근태 상태</span>
+            <span>소명</span>
             <span>비고</span>
           </div>
           {rows.map(({ date, day }) => {
             const badge = dayBadge(day, today);
+            const x = day?.explanationStatus && EXPLANATION_BADGE[day.explanationStatus];
             return (
               <div key={date} className="att-tr is-history">
                 <span className="is-strong">{dot(date)}</span>
@@ -254,13 +276,140 @@ function HistorySection({ rows, today }) {
                 <span>
                   <Badge tone={badge.tone}>{badge.label}</Badge>
                 </span>
+                <span className="att-expl">
+                  {x && <Badge tone={x[0]}>{x[1]}</Badge>}
+                  {canExplain(day, today) && (
+                    <button type="button" className="att-link" onClick={() => setTarget({ date })}>
+                      소명
+                    </button>
+                  )}
+                  {!x && !canExplain(day, today) && '-'}
+                </span>
                 <span className="is-muted">{dayNote(day)}</span>
               </div>
             );
           })}
         </div>
       </div>
+
+      {(mine.data ?? []).length > 0 && (
+        <div className="att-card is-flush">
+          <div className="att-table-top">
+            <div>
+              <h3>이번 달 소명 내역</h3>
+              <p>대기 중인 소명은 철회할 수 있고, 반려되면 같은 날 다시 낼 수 있습니다.</p>
+            </div>
+          </div>
+          <div className="att-table">
+            <div className="att-tr is-expl is-head">
+              <span>날짜</span>
+              <span>사유</span>
+              <span>요청</span>
+              <span>상태</span>
+              <span />
+            </div>
+            {mine.data.map((x) => (
+              <div key={x.id} className="att-tr is-expl">
+                <span className="is-strong">{dot(x.workDate)}</span>
+                <span>
+                  {x.reason}
+                  {x.rejectReason && <em className="att-reject">{`반려 사유: ${x.rejectReason}`}</em>}
+                </span>
+                <span className="is-muted">{requestText(x)}</span>
+                <span>
+                  <Badge tone={EXPLANATION_BADGE[x.status][0]}>{EXPLANATION_BADGE[x.status][1]}</Badge>
+                </span>
+                <span>
+                  {x.status === 'PENDING' && (
+                    <button type="button" className="att-link" disabled={withdraw.isPending} onClick={() => withdraw.mutate(x.id)}>
+                      철회
+                    </button>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {target && (
+        <ExplanationModal
+          days={target.pick ? eligible : eligible.filter((d) => d.date === target.date)}
+          onClose={() => setTarget(null)}
+        />
+      )}
     </section>
+  );
+}
+
+const requestText = (x) => {
+  const parts = [
+    x.checkInAt && `출근 ${clock(x.checkInAt)}`,
+    x.checkOutAt && `퇴근 ${clock(x.checkOutAt)}`,
+    x.workType && labelOf('workType', x.workType),
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : '사유만';
+};
+
+/** 소명 신청 창 — 날짜(목록에서 고르거나 행에서 정해짐) · 지금 기록 · 사유(필수) · 실제 출퇴근 시각 · 근무 형태(선택) */
+function ExplanationModal({ days, onClose }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const [form] = Form.useForm();
+  const date = Form.useWatch('workDate', form) ?? days[0]?.date;
+  const day = days.find((d) => d.date === date);
+  const absent = day?.status === 'ABSENT';
+  const at = (t) => (t ? dayjs(`${date}T${t.format('HH:mm')}:00`).format() : undefined);
+
+  const save = useMutation({
+    mutationFn: (v) =>
+      createExplanation({ workDate: v.workDate, reason: v.reason.trim(), checkInAt: at(v.checkIn), checkOutAt: at(v.checkOut), workType: v.workType }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      notify.success(`${dot(date)} 소명을 냈습니다. 인사팀이 승인하면 근태가 정정됩니다`);
+      onClose();
+    },
+    onError: (err) => {
+      if (!applyFieldErrors(form, err)) notify.error(err);
+    },
+  });
+
+  const current = day
+    ? `${dayBadge(day, '9999-12-31').label} · 출근 ${clock(day.checkInAt)} · 퇴근 ${clock(day.checkOutAt)}`
+    : '-';
+
+  return (
+    <Modal open title="근태 소명" footer={null} onCancel={onClose} width={520} destroyOnHidden centered>
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={{ workDate: days[0]?.date }} onFinish={(v) => save.mutate(v)}>
+        <Form.Item name="workDate" label="날짜">
+          <Select disabled={days.length === 1} options={days.map((d) => ({ value: d.date, label: `${dot(d.date)} · ${dayBadge(d, '9999-12-31').label}` }))} />
+        </Form.Item>
+        <p className="att-hint" style={{ marginTop: '-0.5rem' }}>{`지금 기록: ${current}`}</p>
+        <Form.Item name="reason" label="사유 *" rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
+          <Input.TextArea maxLength={250} showCount autoSize={{ minRows: 2, maxRows: 4 }} placeholder="예: 퇴근 시 카드 미태깅, 외부 미팅으로 늦게 출근" />
+        </Form.Item>
+        <div className="att-two">
+          <Form.Item name="checkIn" label="실제 출근 시각" extra={absent ? '결근인 날은 출근 · 퇴근을 둘 다 넣어야 정정됩니다' : '비우면 그대로'}>
+            <TimePicker className="full-width" format="HH:mm" minuteStep={5} needConfirm={false} />
+          </Form.Item>
+          <Form.Item name="checkOut" label="실제 퇴근 시각">
+            <TimePicker className="full-width" format="HH:mm" minuteStep={5} needConfirm={false} />
+          </Form.Item>
+        </div>
+        <Form.Item name="workType" label="근무 형태">
+          <Select allowClear placeholder="그대로" options={['OFFICE', 'REMOTE', 'FIELD'].map((v) => ({ value: v, label: labelOf('workType', v) }))} />
+        </Form.Item>
+        <p className="att-hint">시각 없이 사유만 내면 인사팀이 확인만 하고 기록은 그대로 둡니다.</p>
+        <div className="att-modal-foot">
+          <button type="button" className="att-btn is-line" onClick={onClose}>
+            취소
+          </button>
+          <button type="submit" className="att-btn" disabled={save.isPending}>
+            소명 내기
+          </button>
+        </div>
+      </Form>
+    </Modal>
   );
 }
 
@@ -523,7 +672,8 @@ export default function MyAttendancePage() {
       </div>
 
       <TodaySection today={t} todayRow={todayRow} schedule={schedule} updatedAt={today.dataUpdatedAt} />
-      <HistorySection rows={historyRows} today={t.workDate} />
+      <HistorySection rows={historyRows} today={t.workDate} month={month}
+        eligible={allDays.filter((d) => canExplain(d, t.workDate)).sort((a, b) => b.date.localeCompare(a.date))} />
       <HoursSection
         week={week}
         month={monthTotals}

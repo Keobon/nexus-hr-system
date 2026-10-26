@@ -295,6 +295,17 @@
   cursor: pointer;
 }
 
+.att-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.att-btn.is-line {
+  border: 1px solid #38bdf8;
+  background: #fff;
+  color: #0284c7;
+}
+
 /* 줄 목록(라벨 · 값) */
 .att-rows {
   display: flex;
@@ -403,7 +414,49 @@
 }
 
 .att-tr.is-history {
-  grid-template-columns: 7.5rem 8.75rem 8.75rem 7.5rem minmax(0, 1fr);
+  grid-template-columns: 7.5rem 8.75rem 8.75rem 7.5rem 9rem minmax(0, 1fr);
+}
+
+/* 소명(F-ATT-10) — 기록 표의 소명 칸 · 이번 달 소명 내역 · 소명 창 */
+.att-tr.is-expl {
+  grid-template-columns: 7.5rem minmax(0, 1fr) 12rem 6.5rem 4rem;
+}
+
+.att-expl {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.att-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #0284c7;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.att-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.att-reject {
+  display: block;
+  margin-top: 0.25rem;
+  color: #dc2626;
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+
+.att-modal-foot {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
 }
 
 .att-tr.is-team {

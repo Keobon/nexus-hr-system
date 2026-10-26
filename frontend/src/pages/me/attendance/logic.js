@@ -85,6 +85,23 @@ export function dayCell(day, today) {
 }
 
 /** 표의 비고 — 휴일 이름 · 근무 형태 · 자정 넘긴 퇴근 */
+/**
+ * 소명할 수 있는 날(F-ATT-10) — 어제까지의 지각 · 조퇴 · 퇴근미기록 · 결근 · (지난) 출근 상태인 날, 대기 중인 소명이 없을 때.
+ * 그 달 정산 여부는 서버가 본다(PAY_MONTH_SETTLED)
+ */
+export function canExplain(day, today) {
+  if (!day || day.date >= today || day.explanationStatus === 'PENDING') return false;
+  return !!(day.late || day.earlyLeave) || ['MISSING_CHECKOUT', 'ABSENT', 'CHECKED_IN'].includes(day.status);
+}
+
+/** 소명 상태 배지 */
+export const EXPLANATION_BADGE = {
+  PENDING: ['amber', '소명 대기'],
+  APPROVED: ['blue', '소명 승인'],
+  REJECTED: ['red', '소명 반려'],
+  CANCELLED: ['', '소명 철회'],
+};
+
 export function dayNote(day) {
   if (!day) return '-';
   if (day.holidayName) return day.holidayName;
