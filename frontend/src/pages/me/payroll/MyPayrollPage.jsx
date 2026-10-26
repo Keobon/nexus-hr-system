@@ -6,7 +6,6 @@ import { downloadFile, openFile } from '../../../api/files';
 import { useMe } from '../../../auth/useMe';
 import { getMyDocuments, myDocumentsKey } from '../../../api/profile';
 import { useNotify } from '../../../components/common/useNotify';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { formatMoney } from '../../../utils/format';
@@ -21,8 +20,7 @@ const ym = (m) => (m ? `${m.slice(0, 4)}년 ${Number(m.slice(5, 7))}월` : '-');
 const MENU = [
   ['monthly', '월별 급여 명세서'],
   ['bonus', '직접 입력 지급'],
-  ['tax', '원천징수·연말정산'],
-  ['contract', '연봉 계약·퇴직금'],
+  ['contract', '연봉 계약'],
   ['history', '급여 변경 이력'],
 ];
 
@@ -167,7 +165,7 @@ function BonusCard({ rows }) {
   const total = items.reduce((a, [, v]) => a + v, 0);
 
   return (
-    <section className="ps-card is-side ps-print-hide" id="ps-bonus">
+    <section className="ps-card is-grow ps-print-hide" id="ps-bonus">
       <h2>직접 입력 지급 명세</h2>
       <div className="ps-rows">
         {loading && <Spin />}
@@ -188,33 +186,8 @@ function BonusCard({ rows }) {
   );
 }
 
-/* ───── 원천징수영수증 · 연말정산 — 기능명세서 v2 범위 밖 ───── */
-function TaxCard() {
-  return (
-    <section className="ps-card is-grow ps-print-hide" id="ps-tax">
-      <h2>원천징수영수증 및 연말정산</h2>
-      <div className="ps-rows">
-        {['근로소득 원천징수영수증 발급', '연말정산 예상 결과 · 환급 예정일'].map((t) => (
-          <div key={t} className="ps-row">
-            <span>{t}</span>
-            <span className="is-muted">준비 중</span>
-          </div>
-        ))}
-      </div>
-      <div className="ps-note">
-        <strong>연말정산 안내</strong>
-        <p>
-          원천징수영수증 발급과 연말정산은 이 시스템에서 아직 제공하지 않습니다. 필요하면 인사 · 급여 담당자에게 문의해 주세요. 월별
-          명세서의 소득세 · 지방소득세는 위 명세서에서 확인할 수 있습니다.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ───── 연봉 계약 · 퇴직금 ───── */
+/* ───── 연봉 계약 ───── */
 function ContractCard({ salaries, onHistory }) {
-  const pending = usePendingFeature();
   const notify = useNotify();
   const docs = useQuery({ queryKey: myDocumentsKey, queryFn: getMyDocuments });
   const labor = (docs.data ?? []).find((g) => g.docType === 'LABOR_CONTRACT');
@@ -224,7 +197,7 @@ function ContractCard({ salaries, onHistory }) {
   const past = Math.max(0, (salaries?.salaries?.length ?? 0) - 1);
   return (
     <section className="ps-card ps-print-hide" id="ps-contract">
-      <div className="ps-two">
+      <div>
         <div>
           <h2>연봉 계약</h2>
           <div className="ps-rows">
@@ -258,8 +231,7 @@ function ContractCard({ salaries, onHistory }) {
           <div className="ps-note">
             <strong>계약 조회 안내</strong>
             <p>
-              급여는 인사 담당이 등록한 기준(연봉 · 월 기본급)이고, 근로계약서는 인사 담당이 올린 최신본입니다. 전자서명은 아직 제공하지
-              않습니다.
+              급여는 인사 담당이 등록한 기준(연봉 · 월 기본급)이고, 근로계약서는 인사 담당이 올린 최신본입니다.
             </p>
           </div>
           <div className="ps-links">
@@ -274,26 +246,6 @@ function ContractCard({ salaries, onHistory }) {
                 </button>
               </>
             )}
-            <button type="button" onClick={() => pending('전자서명', '연봉 계약서 · 전자서명')}>
-              전자서명
-            </button>
-          </div>
-        </div>
-        <div>
-          <h2>예상 퇴직금</h2>
-          <div className="ps-rows">
-            {['현재 기준 예상 퇴직금', '퇴직연금 가입 유형'].map((t) => (
-              <div key={t} className="ps-row">
-                <span>{t}</span>
-                <span className="is-muted">준비 중</span>
-              </div>
-            ))}
-          </div>
-          <div className="ps-note">
-            <strong>예상 퇴직금 안내</strong>
-            <p>
-              퇴직금 추정 · 퇴직연금 정보는 아직 제공하지 않습니다(기능명세서 v2 범위 밖). 필요하면 인사 · 급여 담당자에게 문의해 주세요.
-            </p>
           </div>
         </div>
       </div>
@@ -419,7 +371,6 @@ export default function MyPayrollPage() {
 
       <div className="ps-bottom">
         <BonusCard rows={rows} />
-        <TaxCard />
       </div>
 
       <ContractCard salaries={salaries.data} onHistory={() => go('history')} />

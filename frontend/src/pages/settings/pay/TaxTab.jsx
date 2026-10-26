@@ -1,5 +1,5 @@
 // 소득세 탭(Figma 71:5717) — 서버는 간이세액표가 아니라 누진세율 구간(이상 · 미만 · 세율 · 누진공제)으로 계산한다.
-// 그래서 구간 표를 보여 주고 고치게 한다(전체 교체 PUT). 간이세액표 엑셀 업로드는 준비 중
+// 그래서 구간 표를 보여 주고 고치게 한다(전체 교체 PUT). 간이세액표 엑셀 업로드는 뺐다
 import { useState } from 'react';
 import { InputNumber, Modal, Spin } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -92,7 +92,6 @@ export default function TaxTab() {
             <dt>지방소득세</dt>
             <dd>{`소득세 × ${v('LOCAL_TAX_RATE') ?? '지방소득세율'}%`}</dd>
           </dl>
-          <p className="pay-hint">국세청 간이세액표(엑셀) 업로드는 준비 중입니다.</p>
         </section>
       </div>
 

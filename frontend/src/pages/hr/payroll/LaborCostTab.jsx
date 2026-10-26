@@ -1,11 +1,10 @@
-// 인건비 현황 — Figma 464-15910. 서버는 월 단위만(GET /statistics/labor-cost) → 분기 · 연은 준비 중
+// 인건비 현황 — Figma 464-15910. 서버는 월 단위만(GET /statistics/labor-cost) → 귀속연월로 조회(분기 · 연 칩은 뺐다)
 // 합계 · 전월 대비 · 6개월 추이는 정산 목록(totals), 조직별 인원 · 지급 · 회사 부담은 그달 명세서를 조직 트리로 더한다(상위는 하위 소계)
 import { useMemo, useState } from 'react';
 import { Select, Spin } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAllPages } from '../../../api/employees';
 import { getLaborCost, getPayrollRuns, getPayslips, laborCostKey, payrollRunsKey, payslipsKey } from '../../../api/payrollAdmin';
-import { usePendingFeature } from '../../../components/common/usePendingFeature';
 import { errorMessage } from '../../../constants/errors';
 import { useOrgOptions } from '../parts';
 import { monthOptions, won, ym } from './shared';
@@ -13,7 +12,6 @@ import { monthOptions, won, ym } from './shared';
 const total = (t) => (t ? t.grossPay + t.companyBurdenTotal : 0);
 
 export default function LaborCostTab({ month, setMonth }) {
-  const pending = usePendingFeature();
   const org = useOrgOptions();
   const [orgUnitId, setOrgUnitId] = useState();
   const runs = useQuery({ queryKey: payrollRunsKey, queryFn: getPayrollRuns });
@@ -57,20 +55,6 @@ export default function LaborCostTab({ month, setMonth }) {
   return (
     <>
       <div className="pr-bar">
-        <div className="hr-field">
-          <label>조회 기간</label>
-          <div className="pr-chips">
-            <button type="button" className="is-on">
-              월
-            </button>
-            <button type="button" onClick={() => pending('분기 · 연 인건비', '인건비 분기 · 연 집계')}>
-              분기
-            </button>
-            <button type="button" onClick={() => pending('분기 · 연 인건비', '인건비 분기 · 연 집계')}>
-              연
-            </button>
-          </div>
-        </div>
         <div className="hr-field">
           <label>귀속연월</label>
           <Select className="pr-select" value={month} onChange={setMonth} options={monthOptions(runs.data)} />

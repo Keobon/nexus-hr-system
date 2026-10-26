@@ -1,5 +1,5 @@
 // 평가 결과 — Figma 72-7648(확정) · 473-13124(확정 대기). 왼쪽 대상자 표, 오른쪽 고른 사람의 결과 · 확정 / 확정 취소
-// 서버: 평가자 한 명(1차 · 2차 없음) · 등급 없음 · 자기평가 없음 · 종합 의견은 평가자만 고친다 → 평가 상태 한 칸, 척도 수준, 자기평가 · 평가자 피드백은 준비 중
+// 서버: 평가자 한 명 · 등급 없음 · 종합 의견은 평가자만 고친다 → 평가 상태 한 칸, 척도 수준
 import { useState } from 'react';
 import { App, Input, Modal, Select, Spin } from 'antd';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -145,7 +145,6 @@ function ManageResults({ initialCycle }) {
 
         <div className="ea-side">
           {selected ? <ResultPanel item={selected} cycle={cycle} detail={detailById[selected.evaluationId]} /> : <div className="hr-card ea-empty">대상자를 고르면 결과가 보입니다.</div>}
-          <Pending />
         </div>
       </div>
     </>
@@ -284,22 +283,6 @@ function ReopenModal({ item, onDone, onClose }) {
       <p className="hr-modal-sub">{`${item.targetName}님에게 공개된 결과가 내려가고, 평가자(${item.evaluatorName})가 다시 고쳐 제출할 수 있게 됩니다.`}</p>
       <Input.TextArea rows={3} maxLength={255} placeholder="사유 (필수) — 예: 성과 점수 재검토 요청" value={reason} onChange={(e) => setReason(e.target.value)} />
     </Modal>
-  );
-}
-
-/** 자기평가 · 평가자 피드백 — 서버에 없어 준비 중(Figma 의 아래 두 카드) */
-function Pending() {
-  return (
-    <>
-      <section className="hr-card ea-pending">
-        <strong>자기평가</strong>
-        <span>자기평가는 준비 중입니다. 이 시스템의 평가는 평가자(조직장)가 대상자를 평가합니다.</span>
-      </section>
-      <section className="hr-card ea-pending">
-        <strong>평가자 피드백 및 면담록</strong>
-        <span>1차 · 2차 평가자별 의견과 면담록은 준비 중입니다. 지금은 평가자 한 명의 종합 피드백만 위 결과에 보입니다.</span>
-      </section>
-    </>
   );
 }
 
