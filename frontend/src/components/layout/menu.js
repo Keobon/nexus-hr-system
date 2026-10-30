@@ -35,8 +35,17 @@ const always = () => true;
  */
 const isSuperAdmin = (me) => me?.role?.name === '최고 관리자';
 
+/**
+ * 경영진 — 회사 대시보드(DASHBOARD_COMPANY)는 보고 관리 권한(…_MANAGE)은 하나도 없는 역할(대표 · 임원).
+ * Figma 사장 화면(133-6428 외) — 첫 화면은 경영 총괄 대시보드, 사이드바는 승인·평가 · 전사 정보로 나눈다
+ */
+const MANAGE_PERMS = ['COMPANY_MANAGE', 'ROLE_MANAGE', 'ORG_MANAGE', 'EMPLOYEE_MANAGE', 'ATTENDANCE_MANAGE', 'LEAVE_MANAGE', 'PAYROLL_MANAGE', 'ASSIGNMENT_MANAGE', 'EVAL_MANAGE', 'APPROVAL_MANAGE'];
+export const isExecutive = ({ can, canAny }) => can('DASHBOARD_COMPANY') && !canAny(...MANAGE_PERMS);
+
 // 묶음 단위로 숨기는 조건은 hiddenFor(ctx). 아래 MENU_GROUPS 가 각 메뉴의 visible 에 합쳐서
 // 사이드바와 주소 접근(MenuGuard)이 같은 규칙을 쓴다.
+// 역할에 따라 이름만 바꿀 때는 titleFor(ctx) · labelFor(ctx) — 없으면 title · label
+// 사이드바에서만 숨길 때(주소로는 들어갈 수 있게)는 navHiddenFor(ctx)
 const GROUPS = [
   // Figma EMP_Sidebar — MAIN(대시보드) · 인사 서비스(내 업무). 이름 · 아이콘이 Figma 에 있는 메뉴는 그대로 쓴다(navIcon)
   {
@@ -47,8 +56,10 @@ const GROUPS = [
   {
     key: 'me',
     title: '인사 서비스',
+    // 경영진은 사이드바에 개인 메뉴(내 근태 · 휴가 · 급여 …) 없이 승인 · 평가만 — 주소 · 프로필 메뉴(내 정보)로는 들어간다
+    titleFor: (ctx) => (isExecutive(ctx) ? '승인·평가' : null),
     items: [
-      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always },
+      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always, navHiddenFor: isExecutive },
       {
         key: 'my-attendance',
         path: '/me/attendance',
@@ -56,6 +67,7 @@ const GROUPS = [
         icon: ClockCircleOutlined,
         navIcon: navClock,
         visible: always,
+        navHiddenFor: isExecutive,
       },
       {
         key: 'my-leaves',
@@ -64,8 +76,9 @@ const GROUPS = [
         icon: CalendarOutlined,
         navIcon: navCalendar,
         visible: always,
+        navHiddenFor: isExecutive,
       },
-      { key: 'my-work-requests', path: '/me/work-requests', label: '연장근무·출장', icon: CarOutlined, visible: always },
+      { key: 'my-work-requests', path: '/me/work-requests', label: '연장근무·출장', icon: CarOutlined, visible: always, navHiddenFor: isExecutive },
       {
         key: 'my-payroll',
         path: '/me/payroll',
@@ -73,6 +86,7 @@ const GROUPS = [
         icon: DollarOutlined,
         navIcon: navMoney,
         visible: ({ me }) => me.employee?.payrollEligible === true,
+        navHiddenFor: isExecutive,
       },
       {
         key: 'my-evaluations',
@@ -81,8 +95,9 @@ const GROUPS = [
         icon: StarOutlined,
         navIcon: navStatistic,
         visible: always,
+        navHiddenFor: isExecutive,
       },
-      { key: 'org-chart', path: '/org-chart', label: '조직도', icon: ApartmentOutlined, navIcon: navPeople, visible: always },
+      { key: 'org-chart', path: '/org-chart', label: '조직도', icon: ApartmentOutlined, navIcon: navPeople, visible: always, navHiddenFor: isExecutive },
       {
         // 결재하는 사람만 — 조직장이거나, 승인선에서 직책 · 직원으로 지정돼 지금 처리할 건이 있을 때(일반 직원 화면에는 없다)
         key: 'approvals',
@@ -97,6 +112,7 @@ const GROUPS = [
         key: 'eval-todo',
         path: '/evaluations/todo',
         label: '평가하기',
+        labelFor: (ctx) => (isExecutive(ctx) ? '팀 평가' : null),
         icon: FormOutlined,
         visible: ({ me }) => (me.leadOrgUnitIds?.length ?? 0) > 0 || (me.todos?.evaluationsToSubmit ?? 0) > 0,
         badge: 'evaluationsToSubmit',
@@ -106,6 +122,7 @@ const GROUPS = [
   {
     key: 'hr',
     title: '인사 관리',
+    titleFor: (ctx) => (isExecutive(ctx) ? '전사 정보' : null),
     lockedDuringSetup: true,
     // 최고 관리자는 인사 관리를 보지 않는다 — 인사 업무는 인사 담당 계정으로 한다(노션 추가사항, 2026-10-11)
     hiddenFor: ({ me }) => isSuperAdmin(me),
@@ -114,6 +131,7 @@ const GROUPS = [
         key: 'employees',
         path: '/employees',
         label: '직원',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전직원 현황' : null),
         icon: TeamOutlined,
         visible: ({ canAny }) => canAny('EMPLOYEE_READ', 'EMPLOYEE_MANAGE'),
       },
@@ -121,6 +139,7 @@ const GROUPS = [
         key: 'attendance',
         path: '/attendance',
         label: '근태 현황',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전사 근태 현황' : null),
         icon: ClockCircleOutlined,
         visible: ({ canAny }) => canAny('ATTENDANCE_READ', 'ATTENDANCE_MANAGE'),
         badge: 'attendanceCorrections',
@@ -129,6 +148,7 @@ const GROUPS = [
         key: 'leaves',
         path: '/leaves',
         label: '휴가 현황',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전사 휴가 현황' : null),
         icon: CalendarOutlined,
         visible: ({ canAny }) => canAny('LEAVE_READ', 'LEAVE_MANAGE'),
       },
@@ -136,6 +156,7 @@ const GROUPS = [
         key: 'payroll',
         path: '/payroll',
         label: '급여',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전직원 급여 현황' : null),
         icon: DollarOutlined,
         visible: ({ canAny }) => canAny('PAYROLL_READ', 'PAYROLL_MANAGE'),
       },
@@ -143,6 +164,7 @@ const GROUPS = [
         key: 'assignments',
         path: '/assignments',
         label: '인사발령',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전사 인사발령' : null),
         icon: IdcardOutlined,
         visible: ({ canAny }) => canAny('ASSIGNMENT_READ', 'ASSIGNMENT_MANAGE'),
       },
@@ -150,6 +172,7 @@ const GROUPS = [
         key: 'evaluations',
         path: '/evaluations',
         label: '평가 관리',
+        labelFor: (ctx) => (isExecutive(ctx) ? '전사 평가 결과' : null),
         icon: StarOutlined,
         visible: ({ canAny }) => canAny('EVAL_READ', 'EVAL_MANAGE'),
       },

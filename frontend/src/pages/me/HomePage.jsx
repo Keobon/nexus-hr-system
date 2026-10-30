@@ -8,6 +8,7 @@ import { getLeaveTypes, getMyLeaveRequests, leaveTypesKey, myLeaveRequestsKey } 
 import { dashboardKey, getDashboardHome } from '../../api/dashboard';
 import { getMyProfile, myProfileKey } from '../../api/profile';
 import { useMe } from '../../auth/useMe';
+import { isExecutive } from '../../components/layout/menu';
 import ExecutiveHome from './ExecutiveHome';
 import { useNotify } from '../../components/common/useNotify';
 import { labelOf } from '../../constants/labels';
@@ -481,9 +482,6 @@ function InfoCard({ profile, payrollEligible }) {
 }
 
 /** 대시보드(F-DASH-01) — Figma EMP_home. 응답에 있는 것만 그린다 */
-/** 경영진 — 회사 대시보드를 보고 관리 권한(…_MANAGE)은 없는 역할. 첫 화면을 경영 총괄 대시보드로 */
-const MANAGE_PERMS = ['COMPANY_MANAGE', 'ROLE_MANAGE', 'ORG_MANAGE', 'EMPLOYEE_MANAGE', 'ATTENDANCE_MANAGE', 'LEAVE_MANAGE', 'PAYROLL_MANAGE', 'ASSIGNMENT_MANAGE', 'EVAL_MANAGE', 'APPROVAL_MANAGE'];
-
 export default function HomePage() {
   const { me, can, canAny } = useMe();
   const home = useQuery({ queryKey: dashboardKey, queryFn: getDashboardHome });
@@ -500,7 +498,8 @@ export default function HomePage() {
     return <Result status="warning" title="화면을 불러오지 못했습니다" subTitle={errorMessage(home.error ?? profile.error)} />;
   }
 
-  if (home.data.company && can('DASHBOARD_COMPANY') && !canAny(...MANAGE_PERMS)) return <ExecutiveHome company={home.data.company} />;
+  // 경영진(menu.js isExecutive)은 첫 화면이 경영 총괄 대시보드
+  if (home.data.company && isExecutive({ can, canAny })) return <ExecutiveHome company={home.data.company} />;
 
   const { me: mine } = home.data;
   const today = todaySummary(mine.today);
