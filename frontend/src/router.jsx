@@ -30,6 +30,7 @@ import ExpenseTypeSettingsPage from './pages/settings/expenseTypes/ExpenseTypeSe
 import PaySettingsPage from './pages/settings/pay/PaySettingsPage';
 import EvalTemplatePage from './pages/settings/evalTemplates/EvalTemplatePage';
 import EvalTodoPage from './pages/me/evalTodo/EvalTodoPage';
+import ApprovalInboxPage from './pages/me/approvals/ApprovalInboxPage';
 import EmploymentTypeSettingsPage from './pages/settings/EmploymentTypeSettingsPage';
 import CompanyPage from './pages/settings/admin/company/CompanyPage';
 import WorkSettingsPage from './pages/settings/admin/work/WorkSettingsPage';
@@ -55,6 +56,7 @@ const PAGES = {
   'my-payroll': MyPayrollPage,
   'my-evaluations': MyEvaluationPage,
   'eval-todo': EvalTodoPage,
+  approvals: ApprovalInboxPage,
   'org-chart': OrgChartPage,
   employees: EmployeeListPage,
   assignments: AssignmentListPage,
