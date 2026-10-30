@@ -52,10 +52,12 @@ function Sidebar({ activeKey, onLogout }) {
     const locked = isSetupLocked(me);
     return MENU_GROUPS.map((group) => ({
       ...group,
+      title: group.titleFor?.(ctx) ?? group.title,
       items: group.items
-        .filter((item) => item.visible(ctx))
+        .filter((item) => item.visible(ctx) && !item.navHiddenFor?.(ctx))
         .map((item) => ({
           ...item,
+          label: item.labelFor?.(ctx) ?? item.label,
           disabled: locked && group.lockedDuringSetup && !item.unlockedDuringSetup,
           count: item.badge ? me.todos?.[item.badge] : null,
         })),
