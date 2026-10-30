@@ -6,6 +6,7 @@ import { PageHead } from '../parts';
 import RequestsTab from './RequestsTab';
 import BalancesTab from './BalancesTab';
 import GrantsTab from './GrantsTab';
+import LeaveReadView from './LeaveReadView';
 import '../attendance/at.css';
 import './lv-admin.css';
 
@@ -19,6 +20,8 @@ export default function LeaveAdminPage() {
   const { can } = useMe();
   const [sp, setSp] = useSearchParams();
   const tabs = TABS.filter(([k]) => k !== 'grants' || can('LEAVE_MANAGE'));
+  // 조회만 하는 사람(경영진 · 조직장) — Figma 70-3665 조회 전용 화면
+  if (!can('LEAVE_MANAGE')) return <LeaveReadView />;
   const [key, , desc, Tab] = tabs.find(([k]) => k === sp.get('tab')) ?? tabs[0];
 
   return (

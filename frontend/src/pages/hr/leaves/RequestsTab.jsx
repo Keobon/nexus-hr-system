@@ -9,10 +9,10 @@ import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
 import { Field, ListCard, OrgField, Pill, SearchButton, Table, useApplied } from '../attendance/shared';
 
-const TONE = { PENDING: 'warn', APPROVED: 'ok', REJECTED: 'alert', CANCEL_REQUESTED: 'warn', CANCELLED: 'gray' };
-const STATUS = [{ value: 'ALL', label: '전체 상태' }, ...['PENDING', 'APPROVED', 'REJECTED', 'CANCEL_REQUESTED', 'CANCELLED'].map((v) => ({ value: v, label: labelOf('leaveStatus', v) }))];
-const stepText = (r) => (r.currentStep && ['PENDING', 'CANCEL_REQUESTED'].includes(r.status) ? `${r.currentStep.stepOrder}/${r.currentStep.totalSteps} · ${r.currentStep.approverName} 대기` : '–');
-const period = (a, b) => (a === b ? a : `${a} ~ ${b}`);
+export const TONE = { PENDING: 'warn', APPROVED: 'ok', REJECTED: 'alert', CANCEL_REQUESTED: 'warn', CANCELLED: 'gray' };
+export const STATUS = [{ value: 'ALL', label: '전체 상태' }, ...['PENDING', 'APPROVED', 'REJECTED', 'CANCEL_REQUESTED', 'CANCELLED'].map((v) => ({ value: v, label: labelOf('leaveStatus', v) }))];
+export const stepText = (r) => (r.currentStep && ['PENDING', 'CANCEL_REQUESTED'].includes(r.status) ? `${r.currentStep.stepOrder}/${r.currentStep.totalSteps} · ${r.currentStep.approverName} 대기` : '–');
+export const period = (a, b) => (a === b ? a : `${a} ~ ${b}`);
 
 export default function RequestsTab() {
   const thisMonth = dayjs();
@@ -92,7 +92,7 @@ export default function RequestsTab() {
 }
 
 /* ───── 오른쪽 상세 — 신청 요약 · 승인 타임라인 · 반려 사유 ───── */
-function DetailDrawer({ row, onClose }) {
+export function DetailDrawer({ row, onClose }) {
   const detail = useQuery({ queryKey: leaveRequestKey(row.id), queryFn: () => getLeaveRequest(row.id) });
   const d = detail.data;
   const steps = (d?.approvalSteps ?? []).filter((s) => s.status !== 'SKIPPED');
