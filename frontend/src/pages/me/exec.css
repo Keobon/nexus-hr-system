@@ -1,0 +1,329 @@
+/* 경영 총괄 대시보드 — Figma 133-6428. 값은 rem(Figma px ÷ 16) — 전체 크기는 styles.css --ui-scale */
+
+.ex {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ex-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.ex-sec {
+  margin: 0.5rem 0 -0.5rem;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* 집계 카드 4칸 */
+.ex-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.ex-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem 1rem 1.125rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.ex-tile > span {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.ex-tile strong {
+  color: #0f172a;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ex-tile small {
+  margin-left: 0.375rem;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.ex-tile em {
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.ex-tile em.is-green {
+  color: #16a34a;
+}
+
+.ex-tile em.is-blue {
+  color: #38bdf8;
+}
+
+.ex-tile em.is-orange {
+  color: #f59e0b;
+}
+
+/* 차트 두 칸 */
+.ex-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 1.5rem;
+}
+
+.ex-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.ex-card-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ex-card-head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.ex-card-head h3.is-lg {
+  font-size: 1.25rem;
+}
+
+.ex-chip {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #e1e7ec;
+  border-radius: 0.25rem;
+  color: #2a2e33;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.ex-empty {
+  margin: 0;
+  padding: 3rem 1rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* 도넛 */
+.ex-donut {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.ex-donut svg {
+  flex: none;
+}
+
+.ex-donut-total {
+  fill: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.ex-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ex-legend li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ex-legend i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+/* 막대 — 정상출근(진한 파랑) · 휴가(하늘색) */
+.ex-bars {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-around;
+  height: 13rem;
+  padding: 1.5rem 1.5rem 0;
+}
+
+.ex-bar-col {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.ex-bar-pair {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0.375rem;
+  align-items: flex-end;
+  width: 100%;
+  justify-content: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ex-bar-pair span {
+  width: 0.875rem;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.ex-bar-pair .is-work,
+.ex-bar-legend .is-work {
+  background: #60a5fa;
+}
+
+.ex-bar-pair .is-vac,
+.ex-bar-legend .is-vac {
+  background: #38bdf8;
+  opacity: 0.85;
+}
+
+.ex-bar-col em {
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.ex-bar-col em:first-of-type {
+  margin-top: 0.375rem;
+}
+
+.ex-bar-legend {
+  display: flex;
+  gap: 1.25rem;
+  padding: 0.75rem 1.5rem 1.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ex-bar-legend span {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.ex-bar-legend i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+/* 최근 인사발령 표 */
+.ex-assign .ex-card-head {
+  border-bottom: 0;
+  padding-bottom: 0.5rem;
+}
+
+.ex-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2563eb;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.ex-table {
+  width: calc(100% - 3rem);
+  margin: 0 1.5rem 1.25rem;
+  border-collapse: collapse;
+  color: #0f172a;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.ex-table th {
+  padding: 0.75rem 0.5rem;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ex-table td {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ex-table td + td {
+  border-left: 1px solid #e2e8f0;
+}
+
+.ex-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ex-pill {
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.ex-pill.is-green {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.ex-pill.is-blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ex-pill.is-purple {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.ex-done {
+  color: #16a34a;
+}
+
+.ex-soon {
+  color: #f59e0b;
+}
+
+@media (max-width: 1100px) {
+  .ex-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ex-charts {
+    grid-template-columns: 1fr;
+  }
+}
