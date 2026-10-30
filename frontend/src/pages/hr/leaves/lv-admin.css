@@ -230,3 +230,14 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* 조회 전용(Figma 70-3665) — 카드 안 탭 · 잔여 강조 */
+.lv-inner-tabs {
+  padding: 1rem 1.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.lv-remain {
+  color: #38bdf8 !important;
+  font-weight: 700;
+}
