@@ -1,5 +1,5 @@
 // 인사 관리 › 급여(F-PAY-03 ~ 07) — Figma 급여(456-15895 외 20장). 탭: 월 급여 정산 · 직원 급여 · 급여명세서 · 인건비 현황
-// 탭 · 귀속 월은 주소(?tab=&month=)에 둔다. 변경 버튼은 PAYROLL_MANAGE 일 때만(조회만 되는 사람은 읽기 화면)
+// 탭 · 귀속 월은 주소(?tab=&month=)에 둔다. PAYROLL_MANAGE 가 없으면(경영진 조회) 부서 예산 대비 지출 조회 화면
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -9,6 +9,7 @@ import RunTab from './RunTab';
 import SalaryTab from './SalaryTab';
 import PayslipsTab from './PayslipsTab';
 import LaborCostTab from './LaborCostTab';
+import BudgetReadView from './BudgetReadView';
 import './pr.css';
 
 const TABS = [
@@ -27,6 +28,8 @@ export default function PayrollPage() {
   const go = (next, extra = {}) => setSp(Object.fromEntries(Object.entries({ tab: next === 'run' ? undefined : next, month: sp.get('month') ?? undefined, ...extra }).filter(([, v]) => v)));
   const setMonth = (m) => go(tab, { month: m });
   const [registering, setRegistering] = useState(false); // 직원 급여 › [급여 등록]
+  // 조회만 하는 사람(경영진) — 부서 예산 대비 지출 조회(Figma 71-5459)
+  if (!manage) return <BudgetReadView />;
 
   return (
     <div className="hr pr">
