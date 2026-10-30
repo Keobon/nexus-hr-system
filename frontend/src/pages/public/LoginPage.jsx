@@ -27,6 +27,7 @@ const DEMO_ACCOUNTS = [
   { value: 'haneul.kang@nexuslabs.example', label: '강하늘 — 2단계 승인(본부장)' },
   { value: 'sua.jung@nexuslabs.example', label: '정수아 — 인사 담당' },
   { value: 'admin@nexuslabs.example', label: '이지원 — 최고 관리자' },
+  { value: 'ceo@nexuslabs.example', label: '박서준 — 대표(경영진)' },
 ];
 
 // 로그인 실패 문구는 Figma(Auth_Login_Fail) 그대로 — 잠금 안내를 같이 보여 준다
