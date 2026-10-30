@@ -470,3 +470,87 @@
     min-width: 46rem;
   }
 }
+
+/* 평가 결과 조회 전용(Figma 72-7789) — 경영진 · 조직장 */
+.erv-box {
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.erv-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.erv-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.erv-detail h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.erv-kv {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  gap: 0.625rem 1rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.erv-kv dt {
+  color: #64748b;
+}
+
+.erv-kv dt.is-strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.erv-kv dd {
+  margin: 0;
+  color: #0f172a;
+}
+
+.erv-total {
+  color: #38bdf8 !important;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.erv-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.erv-comment span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.erv-comment p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1100px) {
+  .erv-split {
+    grid-template-columns: 1fr;
+  }
+}
