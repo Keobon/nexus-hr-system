@@ -144,7 +144,7 @@ export default function CycleTab({ onResults }) {
       </section>
 
       {creating && <CreateModal onClose={() => setCreating(false)} onCreated={(c) => setTargeting(c)} />}
-      {targeting && <TargetModal cycle={targeting} onClose={() => setTargeting(null)} />}
+      {targeting && (targeting.kind === 'PROMOTION' ? <PromotionTargetModal cycle={targeting} onClose={() => setTargeting(null)} /> : <TargetModal cycle={targeting} onClose={() => setTargeting(null)} />)}
     </>
   );
 }
@@ -327,6 +327,78 @@ function TargetModal({ cycle, onClose }) {
               <span>{`대상 ${preview.data.targets.length}명 · 제외 ${preview.data.excluded.length}명${preview.data.targets.length ? ` — ${preview.data.targets.slice(0, 5).map((t) => `${t.name}(${t.evalTemplateName})`).join(', ')}${preview.data.targets.length > 5 ? ' 외' : ''}` : ''}`}</span>
             )}
           </div>
+        </>
+      )}
+      <ModalFoot onCancel={onClose} busy={busy} okType="button" onOk={save} />
+    </Modal>
+  );
+}
+
+/* ───── 승진 고과 대상 지정 — 대상은 서버가 체류 연수로 정한다. 여기서는 고과 평가지 하나만 고르고 대상 · 제외를 확인한다 ───── */
+const EXCLUDE_REASON = {
+  ON_LEAVE: '휴직',
+  NO_EVALUATOR: '평가자 없음(최상위 조직장)',
+  NO_RULE: '평가지 미지정',
+  RULE_EXCLUDED: '평가 제외',
+};
+
+function PromotionTargetModal({ cycle, onClose }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const templates = useQuery({ queryKey: evalTemplatesKey, queryFn: getEvalTemplates });
+  const current = useQuery({ queryKey: evalTargetsKey(cycle.id), queryFn: () => getEvalTargets(cycle.id) });
+  const preview = useQuery({ queryKey: evalTargetsPreviewKey(cycle.id), queryFn: () => getEvalTargetsPreview(cycle.id) });
+  // 고과는 전원 같은 평가지 — 저장된 규칙의 평가지, 없으면 이름에 '고과'가 든 템플릿
+  const saved = (current.data?.rules ?? []).find((r) => r.evalTemplateId)?.evalTemplateId;
+  const fallback = (templates.data ?? []).find((t) => t.name.includes('고과'))?.id;
+  const [picked, setPicked] = useState();
+  const templateId = picked ?? saved ?? fallback;
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!templateId) return notify.error('고과 평가지를 고르세요');
+    setBusy(true);
+    try {
+      await putEvalTargets(cycle.id, { rules: [{ priority: 1, evalTemplateId: templateId }] });
+      queryClient.invalidateQueries({ queryKey: ['eval-cycles', cycle.id] });
+      notify.success('고과 평가지를 저장했습니다');
+      onClose();
+    } catch (err) {
+      notify.error(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const targets = preview.data?.targets ?? [];
+  const excluded = preview.data?.excluded ?? [];
+
+  return (
+    <Modal open title={`대상 확인 · ${cycle.name}`} footer={null} onCancel={onClose} width={620} className="hr-modal ea-modal" destroyOnHidden centered>
+      <p className="hr-modal-sub">{`${cycle.startDate} 기준 지금 직급에 ${cycle.minYearsInGrade}년 이상인 재직 직원이 대상입니다(최고 직급 제외). 평가자는 대상자의 조직장으로 자동 지정됩니다.`}</p>
+      {current.isLoading ? (
+        <Spin />
+      ) : (
+        <>
+          <div className="ea-field">
+            <label>고과 평가지</label>
+            <Select value={templateId} onChange={setPicked} loading={templates.isLoading} placeholder="평가 템플릿" options={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))} />
+          </div>
+          <div className="ea-preview">
+            <strong>{`대상 ${targets.length}명`}</strong>
+            {preview.isLoading && <Spin size="small" />}
+            {targets.map((t) => (
+              <span key={t.employeeId}>{`${t.name} · ${t.orgUnitName} — 평가자 ${t.evaluatorName}`}</span>
+            ))}
+          </div>
+          {excluded.length > 0 && (
+            <div className="ea-preview">
+              <strong>{`제외 ${excluded.length}명`}</strong>
+              {excluded.map((x) => (
+                <span key={x.employeeId}>{`${x.name} · ${x.orgUnitName} — ${x.reason === 'NOT_ELIGIBLE' ? `지금 직급 ${cycle.minYearsInGrade}년 미만 또는 최고 직급` : (EXCLUDE_REASON[x.reason] ?? x.reason)}`}</span>
+              ))}
+            </div>
+          )}
+          {!saved && <p className="ea-hint">아직 저장된 평가지가 없습니다. [저장]을 눌러야 평가를 시작할 수 있습니다.</p>}
         </>
       )}
       <ModalFoot onCancel={onClose} busy={busy} okType="button" onOk={save} />
