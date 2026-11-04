@@ -216,6 +216,8 @@
 
 .pay-c-grow {
   flex: 40 0 24rem;
+  white-space: normal;
+  overflow: visible;
 }
 
 .pay-c-val {
