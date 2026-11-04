@@ -22,6 +22,15 @@ export const deletePayItem = (id) => api.delete(`/pay-items/${id}`);
  * Row = { value, effectiveFrom, createdAt, superseded } — 같은 적용 시작일이 여럿이면 나중 것이 정정본(앞 것 superseded)
  * varCode: DEPENDENT_DEDUCTION · MULTI_CHILD_DEDUCTION · LOCAL_TAX_RATE · ANNUAL_SPLIT_MONTHS · MONTHLY_STANDARD_HOURS
  */
+/**
+ * 보험 요율 · 상한 · 하한 이력 — 값을 덮어쓰지 않고 적용 시작일과 함께 더한다. 정산은 귀속 월 말일에 유효한 값을 쓴다
+ * 항목 { payItemId, name, current, upcoming[], history[] }, 행 { employeeRate, companyRate, baseUpperLimit, baseLowerLimit, effectiveFrom, createdAt, superseded }
+ */
+export const insuranceRatesKey = ['insurance-rates'];
+export const getInsuranceRates = () => api.get('/pay-items/insurance-rates');
+/** body: { effectiveFrom, items: [{ payItemId, employeeRate, companyRate, baseUpperLimit, baseLowerLimit }] } — 한 트랜잭션 */
+export const saveInsuranceRates = (body) => api.post('/pay-items/insurance-rates', body);
+
 export const payVariablesKey = ['pay-variables'];
 export const getPayVariables = () => api.get('/pay-variables');
 /** POST /pay-variables { varCode, value, effectiveFrom } — 값을 바꾸는 게 아니라 적용 시작일이 있는 새 행 */

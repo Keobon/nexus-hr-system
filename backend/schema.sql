@@ -678,10 +678,6 @@ CREATE TABLE pay_item (
   apply_to          pay_apply_to NOT NULL DEFAULT 'ALL',
   default_amount    BIGINT CHECK (default_amount IS NULL OR default_amount >= 0),
   base_rate         DECIMAL(7,4),
-  employee_rate     DECIMAL(7,4),
-  company_rate      DECIMAL(7,4),
-  base_upper_limit  BIGINT,
-  base_lower_limit  BIGINT,
   attendance_basis  attendance_basis,
   multiplier        DECIMAL(4,2) CHECK (multiplier IS NULL OR multiplier > 0),
   in_ordinary_wage  BOOLEAN NOT NULL DEFAULT FALSE,
@@ -691,20 +687,36 @@ CREATE TABLE pay_item (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (company_id, name),
   CHECK (calc_method <> 'BASE_RATE'    OR base_rate IS NOT NULL),
-  CHECK (calc_method <> 'TAXABLE_RATE' OR (item_kind = 'DEDUCTION' AND employee_rate IS NOT NULL AND company_rate IS NOT NULL)),
+  CHECK (calc_method <> 'TAXABLE_RATE' OR item_kind = 'DEDUCTION'),
   CHECK (calc_method <> 'ATTENDANCE'   OR (attendance_basis IS NOT NULL AND multiplier IS NOT NULL)),
   CHECK (attendance_basis IS NULL      OR calc_method = 'ATTENDANCE'),
   CHECK (attendance_basis IS DISTINCT FROM 'ABSENCE' OR item_kind = 'DEDUCTION'),
   CHECK (attendance_basis IS NULL OR attendance_basis = 'ABSENCE' OR item_kind = 'EARNING'),
   CHECK (calc_method <> 'TRIP_EXPENSE' OR item_kind = 'EARNING'),
   CHECK (NOT in_ordinary_wage OR (item_kind = 'EARNING' AND calc_method IN ('FIXED','BASE_RATE'))),
-  CHECK (non_taxable_limit IS NULL OR (item_kind = 'EARNING' AND NOT is_taxable)),
-  CHECK (base_upper_limit IS NULL OR base_lower_limit IS NULL OR base_lower_limit <= base_upper_limit)
+  CHECK (non_taxable_limit IS NULL OR (item_kind = 'EARNING' AND NOT is_taxable))
 );
 CREATE UNIQUE INDEX ux_pay_item_attendance ON pay_item (company_id, attendance_basis)
   WHERE is_active AND calc_method = 'ATTENDANCE';
 CREATE UNIQUE INDEX ux_pay_item_trip_expense ON pay_item (company_id)
   WHERE is_active AND calc_method = 'TRIP_EXPENSE';
+
+-- 과세액 대비 요율 항목(4대보험)의 요율 · 기준 상한 · 하한 이력. append-only. 정산은 귀속 월 말일에 유효한 행을 쓴다
+CREATE TABLE pay_item_rate (
+  id               BIGSERIAL PRIMARY KEY,
+  company_id       BIGINT NOT NULL REFERENCES company(id),
+  pay_item_id      BIGINT NOT NULL REFERENCES pay_item(id) ON DELETE CASCADE,
+  employee_rate    DECIMAL(7,4) NOT NULL CHECK (employee_rate BETWEEN 0 AND 100),
+  company_rate     DECIMAL(7,4) NOT NULL CHECK (company_rate BETWEEN 0 AND 100),
+  base_upper_limit BIGINT CHECK (base_upper_limit IS NULL OR base_upper_limit >= 0),
+  base_lower_limit BIGINT CHECK (base_lower_limit IS NULL OR base_lower_limit >= 0),
+  effective_from   DATE NOT NULL,
+  created_by       BIGINT REFERENCES employee(id),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (base_upper_limit IS NULL OR base_lower_limit IS NULL OR base_lower_limit <= base_upper_limit)
+);
+-- 같은 적용 시작일 행이 여러 개면 나중에 만든 행이 정정본 — pay_variable 과 같다
+CREATE INDEX ix_pay_item_rate ON pay_item_rate (pay_item_id, effective_from, created_at);
 
 CREATE TABLE pay_variable (
   id             BIGSERIAL PRIMARY KEY,

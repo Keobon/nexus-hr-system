@@ -50,7 +50,7 @@ public class CompanyBootstrapService {
         createLeaveTypes(companyId);
         createExpenseTypes(companyId);
         createApprovalLines(companyId);
-        createPayItems(companyId);
+        createPayItems(companyId, today);
         createPayVariables(companyId, today);
         createTaxBrackets(companyId);
         return new Defaults(superAdminRoleId, rootOrgUnitId, regularTypeId);
@@ -134,16 +134,24 @@ public class CompanyBootstrapService {
                 """, companyId, companyId);
     }
 
-    private void createPayItems(long companyId) {
+    private void createPayItems(long companyId, LocalDate today) {
         // 4대보험(공제 · 과세액 대비 요율 · 전원)
         jdbc.update("""
-                INSERT INTO pay_item (company_id, name, item_kind, is_taxable, calc_method, apply_to,
-                                      employee_rate, company_rate, sort_order)
-                SELECT ?, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', i.er, i.cr, 100 + i.o FROM (VALUES
-                  ('국민연금', 4.5, 4.5, 1), ('건강보험', 3.545, 3.545, 2),
-                  ('장기요양보험', 0.4591, 0.4591, 3), ('고용보험', 0.9, 1.15, 4)
-                ) AS i(n, er, cr, o)
+                INSERT INTO pay_item (company_id, name, item_kind, is_taxable, calc_method, apply_to, sort_order)
+                SELECT ?, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', 100 + i.o FROM (VALUES
+                  ('국민연금', 1), ('건강보험', 2), ('장기요양보험', 3), ('고용보험', 4)
+                ) AS i(n, o)
                 """, companyId);
+        // 2026년 요율 · 국민연금 기준소득월액 상한 · 하한(보건복지부 고시 제2026-31호). 바뀌면 회사가 적용 시작일과 함께 추가한다
+        jdbc.update("""
+                INSERT INTO pay_item_rate (company_id, pay_item_id, employee_rate, company_rate, base_upper_limit,
+                                           base_lower_limit, effective_from)
+                SELECT ?, p.id, i.er, i.cr, i.up, i.lo, ? FROM (VALUES
+                  ('국민연금', 4.75, 4.75, 6590000::bigint, 410000::bigint), ('건강보험', 3.595, 3.595, NULL, NULL),
+                  ('장기요양보험', 0.4724, 0.4724, NULL, NULL), ('고용보험', 0.9, 1.15, NULL, NULL)
+                ) AS i(n, er, cr, up, lo)
+                JOIN pay_item p ON p.company_id = ? AND p.name = i.n
+                """, companyId, Date.valueOf(today), companyId);
         // 근태 연동 수당 · 결근 공제
         jdbc.update("""
                 INSERT INTO pay_item (company_id, name, item_kind, is_taxable, calc_method, attendance_basis,
