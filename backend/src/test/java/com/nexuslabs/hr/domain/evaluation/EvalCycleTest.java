@@ -22,6 +22,7 @@ import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -220,5 +221,32 @@ class EvalCycleTest {
                 INSERT INTO eval_cycle (company_id, name, start_date, end_date) VALUES (?, '남의 기간', '2030-01-01', '2030-01-31')
                 RETURNING id""", Long.class, other.id());
         as(hr, post("/api/eval-cycles/" + otherCycle + "/start")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 예정인_평가는_대상_규칙과_함께_삭제하고_시작한_평가는_지울_수_없다() throws Exception {
+        long scheduled = cycle("잘못 만든 평가", "2030-03-01", "2030-03-31");
+        putRules(scheduled, internType()).andExpect(status().isOk());
+        as(hr, delete("/api/eval-cycles/" + scheduled)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("DELETED"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM eval_cycle WHERE id = ?", Long.class, scheduled)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM eval_cycle_target WHERE eval_cycle_id = ?", Long.class,
+                scheduled)).isZero();
+
+        long started = cycle("진행 평가", "2030-04-01", "2030-04-30");
+        putRules(started, internType()).andExpect(status().isOk());
+        as(hr, post("/api/eval-cycles/" + started + "/start")).andExpect(status().isOk());
+        as(hr, delete("/api/eval-cycles/" + started)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM eval_cycle WHERE id = ?", Long.class, started)).isOne();
+
+        // 권한 · 다른 회사
+        long another = cycle("또 다른 평가", "2030-05-01", "2030-05-31");
+        as(org.seo, delete("/api/eval-cycles/" + another)).andExpect(status().isForbidden());
+        TestFixture.Company other = fixture.company("삭제다른회사");
+        long otherCycle = jdbc.queryForObject("""
+                INSERT INTO eval_cycle (company_id, name, start_date, end_date) VALUES (?, '남의 기간', '2030-01-01', '2030-01-31')
+                RETURNING id""", Long.class, other.id());
+        as(hr, delete("/api/eval-cycles/" + otherCycle)).andExpect(status().isNotFound());
     }
 }
