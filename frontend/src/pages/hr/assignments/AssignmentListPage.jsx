@@ -8,12 +8,32 @@ import { assignmentsKey, currentAssignmentsKey, getAssignments, getCurrentAssign
 import { useMe } from '../../../auth/useMe';
 import { errorMessage } from '../../../constants/errors';
 import { optionsOf } from '../../../constants/labels';
-import { PageHead } from '../parts';
+import { PageHead, TabBar } from '../parts';
+import PromotionTab from './PromotionTab';
 import { changeText, correctionText, typeBadge } from './shared';
 
 const PAGE_SIZE = 20;
 
 export default function AssignmentListPage() {
+  const { me } = useMe();
+  const [sp, setSp] = useSearchParams();
+  // 승진 대상자 API 는 전사 범위만 — 팀 범위 조직장에게는 탭을 보이지 않는다
+  const whole = (me?.permissions ?? []).some((p) => p.code === 'ASSIGNMENT_READ' && p.scope === 'ALL');
+  const tab = whole && sp.get('tab') === 'promotion' ? 'promotion' : 'history';
+  const tabs = whole ? (
+    <TabBar
+      tabs={[
+        { value: 'history', label: '발령 이력' },
+        { value: 'promotion', label: '승진 대상자' },
+      ]}
+      value={tab}
+      onChange={(v) => setSp(v === 'promotion' ? { tab: v } : {})}
+    />
+  ) : null;
+  return tab === 'promotion' ? <PromotionTab tabs={tabs} /> : <HistoryTab tabs={tabs} />;
+}
+
+function HistoryTab({ tabs }) {
   const navigate = useNavigate();
   const { can } = useMe();
   const [sp, setSp] = useSearchParams();
@@ -55,6 +75,7 @@ export default function AssignmentListPage() {
           </>
         )}
       </PageHead>
+      {tabs}
 
       <div className="hr-filter">
         <div className="hr-field">

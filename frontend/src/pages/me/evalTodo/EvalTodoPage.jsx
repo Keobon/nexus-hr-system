@@ -89,7 +89,7 @@ export default function EvalTodoPage() {
 
   return (
     <div className="hr eo">
-      <PageHead title="평가하기" desc="내가 평가자인 평가를 입력하고 제출합니다. 제출한 평가는 인사팀이 확정하면 본인에게 공개됩니다." />
+      <PageHead title="평가하기" desc="내가 평가자인 평가를 입력하고 제출합니다. 제출한 평가는 인사팀이 확정하면 본인에게 공개됩니다(승진 고과는 공개하지 않습니다)." />
 
       {todo.isLoading ? (
         <div className="page-center" style={{ minHeight: '20rem' }}>
@@ -221,7 +221,7 @@ function EvalForm({ e, onDirty }) {
       )}
       {!editable && done(e.status) && (
         <div className="eo-notice">
-          <span>{e.status === 'CONFIRMED' ? `확정된 평가입니다(${e.confirmedAt?.slice(0, 10).replaceAll('-', '.')}). 본인에게 공개되었습니다.` : `제출한 평가입니다(${e.submittedAt?.slice(0, 10).replaceAll('-', '.')}). 인사팀 확정을 기다리고 있습니다.`}</span>
+          <span>{e.status === 'CONFIRMED' ? `확정된 평가입니다(${e.confirmedAt?.slice(0, 10).replaceAll('-', '.')}).` : `제출한 평가입니다(${e.submittedAt?.slice(0, 10).replaceAll('-', '.')}). 인사팀 확정을 기다리고 있습니다.`}</span>
         </div>
       )}
       {!editable && !done(e.status) && (
@@ -274,7 +274,7 @@ function EvalForm({ e, onDirty }) {
 
       <div className="eo-bottom">
         <label className="eo-comment">
-          <span>종합 의견 <em>제출할 때 꼭 써야 합니다 · 확정되면 본인과 조회 권한자에게 공개됩니다</em></span>
+          <span>종합 의견 <em>제출할 때 꼭 써야 합니다 · 확정되면 본인과 조회 권한자에게 공개됩니다(승진 고과는 본인에게 공개하지 않습니다)</em></span>
           <Input.TextArea value={comment} disabled={!editable} maxLength={2000} showCount autoSize={{ minRows: 4, maxRows: 10 }} placeholder="잘한 점과 보완할 점을 구체적으로 적어 주세요" onChange={(ev) => setComment(ev.target.value)} />
         </label>
         <div className="eo-total">

@@ -3,16 +3,13 @@
 import { useState } from 'react';
 import { App, Input, Modal, Select, Spin } from 'antd';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchAllPages } from '../../../api/employees';
 import {
   confirmEvaluation,
   evalCyclesKey,
   evalProgressKey,
-  evalResultsKey,
   evaluationKey,
   getEvalCycles,
   getEvalProgress,
-  getEvalResults,
   getEvaluation,
   reopenEvaluation,
 } from '../../../api/evalAdmin';
@@ -21,7 +18,8 @@ import { errorMessage } from '../../../constants/errors';
 import { HALF_MONTHS, EvalStatusChip, avgOf, cycleParts, levelOf, num, resultState, yearOptions } from './shared';
 
 export default function ResultTab({ manage, initialCycle }) {
-  return manage ? <ManageResults initialCycle={initialCycle} /> : <ReadResults />;
+  // 조회만 하는 사람은 EvalReadView(EvaluationAdminPage 에서 분기)
+  return manage ? <ManageResults initialCycle={initialCycle} /> : null;
 }
 
 /* ───── 인사 담당(EVAL_MANAGE) — 진행 현황으로 전원 · 확정 / 확정 취소 ───── */
@@ -168,7 +166,7 @@ function ResultPanel({ item, cycle, detail, readOnly }) {
   const confirm = () =>
     modal.confirm({
       title: `${item.targetName}님의 평가를 확정할까요?`,
-      content: '확정하면 본인에게 결과가 공개됩니다. 고칠 일이 생기면 확정 취소(재오픈)로 평가자에게 다시 열 수 있습니다.',
+      content: `${cycle?.kind === 'PROMOTION' ? '승진 고과 결과는 본인에게 공개되지 않습니다.' : '확정하면 본인에게 결과가 공개됩니다.'} 고칠 일이 생기면 확정 취소(재오픈)로 평가자에게 다시 열 수 있습니다.`,
       okText: '확정',
       cancelText: '취소',
       onOk: async () => {
@@ -280,61 +278,8 @@ function ReopenModal({ item, onDone, onClose }) {
       className="hr-modal"
       centered
     >
-      <p className="hr-modal-sub">{`${item.targetName}님에게 공개된 결과가 내려가고, 평가자(${item.evaluatorName})가 다시 고쳐 제출할 수 있게 됩니다.`}</p>
+      <p className="hr-modal-sub">{`${item.targetName}님의 확정이 취소되고, 평가자(${item.evaluatorName})가 다시 고쳐 제출할 수 있게 됩니다.`}</p>
       <Input.TextArea rows={3} maxLength={255} placeholder="사유 (필수) — 예: 성과 점수 재검토 요청" value={reason} onChange={(e) => setReason(e.target.value)} />
     </Modal>
-  );
-}
-
-/* ───── 조회만(EVAL_READ, 조직장은 자기 팀) — 확정된 결과만 ───── */
-function ReadResults() {
-  const results = useQuery({ queryKey: evalResultsKey({ all: true }), queryFn: () => fetchAllPages(getEvalResults, {}) });
-  const all = results.data ?? [];
-  const names = [...new Set(all.map((r) => r.cycleName))];
-  const [cycleName, setCycleName] = useState();
-  const shown = cycleName ?? names[0];
-  const rows = all.filter((r) => r.cycleName === shown);
-  const [pick, setPick] = useState(null);
-  const selected = rows.find((r) => r.evaluationId === pick) ?? rows[0];
-
-  if (results.isLoading) return <Spin />;
-  if (results.error) return <p className="hr-notice is-error">{errorMessage(results.error)}</p>;
-  if (!all.length) return <div className="ea-empty">확정된 평가 결과가 없습니다.</div>;
-  const asItem = (r) => ({ ...r, status: 'CONFIRMED' });
-  return (
-    <>
-      <div className="ea-bar">
-        <div className="hr-field">
-          <label>평가 기간</label>
-          <Select className="ea-select is-wide" value={shown} onChange={setCycleName} options={names.map((n) => ({ value: n, label: n }))} />
-        </div>
-        <span className="ea-muted ea-self-end">조회 전용 · 확정된 결과만 보입니다</span>
-      </div>
-      <div className="ea-split">
-        <section className="hr-table ea-card">
-          <div className="ea-card-head">
-            <strong>{`총 ${rows.length}명`}</strong>
-            <span>{shown}</span>
-          </div>
-          <div className="hr-tr is-head">
-            <span className="ea-c-no">사번</span>
-            <span className="ea-c-person">이름</span>
-            <span className="ea-c-org">부서 · 평가자</span>
-            <span className="ea-c-score">총점</span>
-            <span className="ea-c-level">수준</span>
-          </div>
-          {rows.map((r) => (
-            <div key={r.evaluationId} className={`hr-tr ea-row is-click${selected?.evaluationId === r.evaluationId ? ' is-selected' : ''}`} onClick={() => setPick(r.evaluationId)}>
-              <span className="ea-c-no">{r.employeeNo}</span>
-              <span className="ea-c-person hr-strong">{r.targetName}</span>
-              <span className="ea-c-org">{`${r.orgUnitName} · ${r.evaluatorName}`}</span>
-              <span className="ea-c-score ea-blue">{num(r.totalScore)}</span>
-              <span className="ea-c-level">{levelOf(avgOf(r.totalScore))}</span>
-            </div>
-          ))}
-        </section>
-        <div className="ea-side">{selected && <ResultPanel item={asItem(selected)} cycle={{ name: selected.cycleName }} detail={{ criteria: selected.criteria, overallComment: selected.overallComment, confirmedAt: selected.confirmedAt }} readOnly />}</div>
-      </div>
-    </>
   );
 }

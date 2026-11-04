@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Form, Input, Select } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAssignment, currentAssignmentsKey, getCurrentAssignments } from '../../../api/assignments';
+import { fetchAllPages } from '../../../api/employees';
 import { jobGradesApi, jobTitlesApi } from '../../../api/orgSettings';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
@@ -20,13 +21,13 @@ export default function AssignmentCreatePage() {
   const [form] = Form.useForm();
   const [pending, setPending] = useState(null);
   const org = useOrgOptions();
-  const people = useQuery({ queryKey: currentAssignmentsKey({ size: 100 }), queryFn: () => getCurrentAssignments({ size: 100 }) });
+  const people = useQuery({ queryKey: currentAssignmentsKey({ all: true }), queryFn: () => fetchAllPages(getCurrentAssignments, {}) });
   const grades = useQuery({ queryKey: jobGradesApi.key(true), queryFn: () => jobGradesApi.list(true) });
   const titles = useQuery({ queryKey: jobTitlesApi.key(true), queryFn: () => jobTitlesApi.list(true) });
 
   const employeeId = Form.useWatch('employeeId', form);
   const type = Form.useWatch('assignmentType', form) ?? 'TRANSFER';
-  const cur = (people.data?.content ?? []).find((p) => p.employeeId === employeeId);
+  const cur = (people.data ?? []).find((p) => p.employeeId === employeeId);
   const f = FIELD_OF[type];
 
   const save = useMutation({
@@ -59,11 +60,15 @@ export default function AssignmentCreatePage() {
     <div className="hr">
       <PageHead title="인사발령 등록" desc="대상 직원의 부서·직급·직책 변경을 발령으로 등록합니다." />
       <Form form={form} layout="vertical" requiredMark={false} onFinish={onFinish} className="hr-card hr-form hr-form-narrow"
-        initialValues={{ employeeId: sp.get('employeeId') ? Number(sp.get('employeeId')) : undefined, assignmentType: 'TRANSFER' }}>
+        initialValues={{
+          employeeId: sp.get('employeeId') ? Number(sp.get('employeeId')) : undefined,
+          assignmentType: sp.get('assignmentType') ?? 'TRANSFER',
+          toValue: sp.get('toValue') ? Number(sp.get('toValue')) : undefined,
+        }}>
         <Form.Item name="employeeId" label="대상 직원 *" rules={[{ required: true, message: '대상 직원을 선택하세요' }]}>
           <Select className="hr-select" style={{ minWidth: '12rem' }} popupMatchSelectWidth={false} showSearch optionFilterProp="label"
             placeholder="직원을 선택하세요" onChange={() => form.setFieldValue('toValue', undefined)}
-            options={(people.data?.content ?? []).map((p) => ({ value: p.employeeId, label: `${p.name} (${p.orgUnitName})` }))} />
+            options={(people.data ?? []).map((p) => ({ value: p.employeeId, label: `${p.name} (${p.orgUnitName})` }))} />
         </Form.Item>
         <div className="hr-readonly">
           <span className="hr-label">현재 소속 (읽기 전용)</span>

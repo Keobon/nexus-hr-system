@@ -1,8 +1,9 @@
 // 평가 기간 — Figma 72-7227(목록) · 473-11844(평가 기간 만들기)
 // 서버에는 기간 이름 · 시작일 · 종료일만 있다 → 연도 · 반기로 이름("2026 상반기 평가")을 만들고, 평가 유형은 대상 규칙의 템플릿으로 둔다.
 // Figma 의 "자기평가 제출 기간"은 서버에 자기평가가 없어 뺐다. 저장한 뒤 줄에서 대상 지정 → 평가 시작 → 마감
+// 승진 고과: 심사 기간은 회사 공통, 대상은 기간 시작일에 지금 직급에 N년 이상인 직원(서버 계산). 결과는 본인에게 공개하지 않는다
 import { useState } from 'react';
-import { App, DatePicker, Form, Modal, Segmented, Select, Spin } from 'antd';
+import { App, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Spin } from 'antd';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import {
@@ -26,11 +27,12 @@ import { ModalFoot } from '../parts';
 import { CycleBadge, HALF_MONTHS, cycleParts, dots, yearOptions } from './shared';
 
 /** 대상 규칙 → "리더 평가(조직장) · 일반 평가" */
-function typeText(rules) {
+function typeText(rules, cycle) {
   if (!rules) return '…';
   const used = rules.rules.filter((r) => r.evalTemplateId);
   if (!used.length) return '대상 지정 전';
-  return used.map((r) => `${r.evalTemplateName}${r.condIsOrgLead ? '(조직장)' : r.condJobGradeName ? `(${r.condJobGradeName})` : ''}`).join(' · ');
+  const suffix = cycle.kind === 'PROMOTION' ? ` · 직급 ${cycle.minYearsInGrade}년 이상` : '';
+  return used.map((r) => `${r.evalTemplateName}${r.condIsOrgLead ? '(조직장)' : r.condJobGradeName ? `(${r.condJobGradeName})` : ''}`).join(' · ') + suffix;
 }
 
 export default function CycleTab({ onResults }) {
@@ -50,7 +52,9 @@ export default function CycleTab({ onResults }) {
       title: kind === 'start' ? `${c.name}을(를) 시작할까요?` : `${c.name}을(를) 마감할까요?`,
       content:
         kind === 'start'
-          ? '대상 규칙대로 직원마다 평가가 만들어지고 평가자(조직장)에게 할 일로 보입니다. 시작한 뒤에는 대상을 바꿀 수 없습니다.'
+          ? c.kind === 'PROMOTION'
+            ? `${c.startDate} 기준 지금 직급에 ${c.minYearsInGrade}년 이상인 직원에게 평가가 만들어지고 평가자(조직장)에게 할 일로 보입니다. 결과는 본인에게 공개되지 않습니다. 시작한 뒤에는 대상을 바꿀 수 없습니다.`
+            : '대상 규칙대로 직원마다 평가가 만들어지고 평가자(조직장)에게 할 일로 보입니다. 시작한 뒤에는 대상을 바꿀 수 없습니다.'
           : '마감하면 더 이상 평가를 입력 · 제출할 수 없습니다(확정 취소로 다시 열 수는 있습니다).',
       okText: kind === 'start' ? '평가 시작' : '마감',
       cancelText: '취소',
@@ -101,7 +105,7 @@ export default function CycleTab({ onResults }) {
             <div key={c.id} className="hr-tr ea-row">
               <span className="ea-c-year hr-strong">{`${cycleParts(c).year}년`}</span>
               <span className="ea-c-name hr-strong">{half ? `${half} (${HALF_MONTHS[half]})` : c.name}</span>
-              <span className="ea-c-type">{typeText(rules[i]?.data)}</span>
+              <span className="ea-c-type">{typeText(rules[i]?.data, c)}</span>
               <span className="ea-c-date">{dots(c.startDate, c.endDate)}</span>
               <span className="ea-c-cnt">{c.status === 'SCHEDULED' ? '–' : `${c.evaluationCount}명`}</span>
               <span className="ea-c-st">
@@ -161,7 +165,10 @@ function CreateModal({ onClose, onCreated }) {
   };
   const save = useMutation({
     mutationFn: async (v) => {
-      const c = await createEvalCycle({ name: `${v.year} ${v.half} 평가`, startDate: v.startDate.format('YYYY-MM-DD'), endDate: v.endDate.format('YYYY-MM-DD') });
+      const dates = { startDate: v.startDate.format('YYYY-MM-DD'), endDate: v.endDate.format('YYYY-MM-DD') };
+      const c = await createEvalCycle(
+        v.kind === 'PROMOTION' ? { name: v.name.trim(), kind: 'PROMOTION', minYearsInGrade: v.minYearsInGrade, ...dates } : { name: `${v.year} ${v.half} 평가`, ...dates },
+      );
       if (v.templateId) await putEvalTargets(c.id, { rules: [{ priority: 1, evalTemplateId: v.templateId }] });
       return c;
     },
@@ -178,6 +185,15 @@ function CreateModal({ onClose, onCreated }) {
     },
   });
   const [s0, e0] = range(thisYear, dayjs().month() < 6 ? '상반기' : '하반기');
+  const kind = Form.useWatch('kind', form) ?? 'REGULAR';
+  // 승진 고과는 반기와 상관없다 — 오늘부터 2주를 먼저 채우고 이름에 '고과'가 든 템플릿을 고른다(직접 고칠 수 있다)
+  const changeKind = (k) => {
+    if (k === 'PROMOTION') {
+      form.setFieldsValue({ startDate: dayjs(), endDate: dayjs().add(14, 'day'), templateId: (templates.data ?? []).find((t) => t.name.includes('고과'))?.id });
+    } else {
+      fill(form.getFieldValue('year'), form.getFieldValue('half'));
+    }
+  };
   return (
     <Modal open title="평가 기간 만들기" footer={null} onCancel={onClose} width={560} className="hr-modal ea-modal" destroyOnHidden centered>
       <p className="hr-modal-sub">평가 연도, 평가 기간, 평가 유형 및 기간을 설정해 주세요.</p>
@@ -185,21 +201,43 @@ function CreateModal({ onClose, onCreated }) {
         form={form}
         layout="vertical"
         requiredMark={false}
-        initialValues={{ year: thisYear, half: dayjs().month() < 6 ? '상반기' : '하반기', startDate: s0, endDate: e0 }}
+        initialValues={{ kind: 'REGULAR', year: thisYear, half: dayjs().month() < 6 ? '상반기' : '하반기', name: `${thisYear} 승진 고과`, minYearsInGrade: 3, startDate: s0, endDate: e0 }}
         onFinish={(v) => save.mutate(v)}
       >
-        <Form.Item name="year" label="평가 연도">
-          <Select options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: y, label: `${y}년` }))} onChange={(y) => fill(y, form.getFieldValue('half'))} />
-        </Form.Item>
-        <Form.Item name="half" label="평가 기간">
+        <Form.Item name="kind" label="평가 종류">
           <Segmented
             options={[
-              { value: '상반기', label: '상반기 (01–06월)' },
-              { value: '하반기', label: '하반기 (07–12월)' },
+              { value: 'REGULAR', label: '정기 평가' },
+              { value: 'PROMOTION', label: '승진 고과' },
             ]}
-            onChange={(h) => fill(form.getFieldValue('year'), h)}
+            onChange={changeKind}
           />
         </Form.Item>
+        {kind === 'PROMOTION' ? (
+          <>
+            <Form.Item name="name" label="고과 이름" rules={[{ required: true, whitespace: true, message: '이름을 입력하세요' }]}>
+              <Input maxLength={50} />
+            </Form.Item>
+            <Form.Item name="minYearsInGrade" label="대상 기준 — 지금 직급 체류 연수" extra="기간 시작일에 지금 직급에 이만큼 있었던 직원만 대상입니다. 최고 직급은 제외합니다." rules={[{ required: true, message: '체류 연수를 입력하세요' }]}>
+              <InputNumber className="full-width" min={1} max={50} suffix="년 이상" />
+            </Form.Item>
+          </>
+        ) : (
+          <>
+            <Form.Item name="year" label="평가 연도">
+              <Select options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: y, label: `${y}년` }))} onChange={(y) => fill(y, form.getFieldValue('half'))} />
+            </Form.Item>
+            <Form.Item name="half" label="평가 기간">
+              <Segmented
+                options={[
+                  { value: '상반기', label: '상반기 (01–06월)' },
+                  { value: '하반기', label: '하반기 (07–12월)' },
+                ]}
+                onChange={(h) => fill(form.getFieldValue('year'), h)}
+              />
+            </Form.Item>
+          </>
+        )}
         <Form.Item name="templateId" label="평가 유형" extra="모든 대상자에게 이 템플릿을 씁니다. 조직장만 다르게 하려면 저장 뒤 대상 지정에서 바꾸세요." rules={[{ required: true, message: '평가 유형을 고르세요' }]}>
           <Select loading={templates.isLoading} placeholder="평가 템플릿" options={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))} />
         </Form.Item>
@@ -266,6 +304,7 @@ function TargetModal({ cycle, onClose }) {
   return (
     <Modal open title={`대상 지정 · ${cycle.name}`} footer={null} onCancel={onClose} width={560} className="hr-modal ea-modal" destroyOnHidden centered>
       <p className="hr-modal-sub">대상자마다 쓸 평가 유형을 정합니다. 평가자는 대상자의 조직장으로 자동 지정됩니다.</p>
+      {cycle.kind === 'PROMOTION' && <p className="ea-hint">{`${cycle.startDate} 기준 지금 직급에 ${cycle.minYearsInGrade}년 이상인 직원만 대상입니다. 최고 직급은 제외합니다.`}</p>}
       {current.isLoading ? (
         <Spin />
       ) : (
