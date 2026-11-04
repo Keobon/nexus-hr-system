@@ -10,6 +10,14 @@ export const currentAssignmentsKey = (params) => ['assignments', 'current', para
 export const getCurrentAssignments = (params) => api.get('/assignments/current', params);
 
 /**
+ * GET /promotions/candidates?minYears= — 승진 대상자(전사 범위만). 지금 직급에 N년 이상인 재직 직원, 최고 직급 제외. 페이징
+ * 행 { employeeId, employeeNo, name, orgUnitName, jobGradeId, jobGradeName, jobTitleName, gradeSince, yearsInGrade,
+ *      averageScore(최근 3년 정기 평가), evaluationCount, promotionScore(최근 승진 고과), promotionCycleName }
+ */
+export const promotionCandidatesKey = (minYears) => ['assignments', 'promotion-candidates', minYears];
+export const getPromotionCandidates = (params) => api.get('/promotions/candidates', params);
+
+/**
  * POST /assignments { employeeId, assignmentType, toOrgUnitId, toJobGradeId, toJobTitleId, reason }
  * 발효일은 서버가 오늘로. 변경 후 값 셋을 모두 보낸다(안 바뀌는 칸은 지금 값).
  */
