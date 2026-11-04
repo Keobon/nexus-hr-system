@@ -76,6 +76,7 @@ CREATE TYPE salary_type          AS ENUM ('MONTHLY','ANNUAL');
 CREATE TYPE payroll_status       AS ENUM ('CONFIRMED','PAID');
 CREATE TYPE assignment_type      AS ENUM ('TRANSFER','PROMOTION','TITLE_CHANGE');
 CREATE TYPE eval_cycle_status    AS ENUM ('SCHEDULED','IN_PROGRESS','CLOSED');
+CREATE TYPE eval_cycle_kind      AS ENUM ('REGULAR','PROMOTION');
 CREATE TYPE evaluation_status    AS ENUM ('NOT_STARTED','IN_PROGRESS','SUBMITTED','CONFIRMED','REOPENED');
 
 -- ---------------------------------------------------------------------
@@ -901,11 +902,15 @@ CREATE TABLE eval_cycle (
   start_date DATE NOT NULL,
   end_date   DATE NOT NULL,
   status     eval_cycle_status NOT NULL DEFAULT 'SCHEDULED',
+  kind       eval_cycle_kind NOT NULL DEFAULT 'REGULAR',            -- PROMOTION = 승진 고과(대상 · 공개 범위가 다르다)
+  min_years_in_grade SMALLINT,                                      -- 승진 고과 대상: 기간 시작일에 지금 직급에 N년 이상
   started_at TIMESTAMPTZ,
   closed_at  TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CHECK (start_date <= end_date)
+  CHECK (start_date <= end_date),
+  CHECK ((kind = 'PROMOTION') = (min_years_in_grade IS NOT NULL)),
+  CHECK (min_years_in_grade IS NULL OR min_years_in_grade >= 1)
 );
 
 CREATE TABLE eval_cycle_target (

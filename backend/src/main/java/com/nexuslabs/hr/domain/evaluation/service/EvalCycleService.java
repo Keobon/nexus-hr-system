@@ -5,6 +5,7 @@ import com.nexuslabs.hr.domain.evaluation.dto.EvalCycleRequest;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalTargetPreview;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalTargetRules;
 import com.nexuslabs.hr.domain.evaluation.entity.EvalCycle;
+import com.nexuslabs.hr.domain.evaluation.entity.EvalCycleKind;
 import com.nexuslabs.hr.domain.evaluation.entity.EvalCycleStatus;
 import com.nexuslabs.hr.domain.evaluation.entity.EvalCycleTarget;
 import com.nexuslabs.hr.domain.evaluation.repository.EvalCycleRepository;
@@ -79,8 +80,16 @@ public class EvalCycleService {
     @Transactional
     public EvalCycleItem create(LoginUser user, EvalCycleRequest request) {
         checkDates(request.startDate(), request.endDate());
+        EvalCycleKind kind = request.kind() != null ? request.kind() : EvalCycleKind.REGULAR;
+        Short minYears = null;
+        if (kind == EvalCycleKind.PROMOTION) {
+            if (request.minYearsInGrade() == null || request.minYearsInGrade() < 1 || request.minYearsInGrade() > 50) {
+                throw BusinessException.invalidFields(Map.of("minYearsInGrade", "체류 연수는 1년 이상 50년 이하로 입력하세요"));
+            }
+            minYears = request.minYearsInGrade().shortValue();
+        }
         EvalCycle cycle = cycleRepository.saveAndFlush(
-                new EvalCycle(request.name().strip(), request.startDate(), request.endDate()));
+                new EvalCycle(request.name().strip(), request.startDate(), request.endDate(), kind, minYears));
         return item(user.companyId(), cycle.getId(), overlapWarning(user.companyId(), cycle));
     }
 
@@ -231,14 +240,15 @@ public class EvalCycleService {
         }
     }
 
-    /** 다른 평가 기간과 하루라도 겹치면 경고만(F-EVAL-01). */
+    /** 같은 유형의 다른 평가 기간과 하루라도 겹치면 경고만(F-EVAL-01). 정기 평가와 승진 고과는 함께 돌 수 있다. */
     private String overlapWarning(long companyId, EvalCycle cycle) {
         Boolean overlaps = jdbc.queryForObject("""
                         SELECT EXISTS (SELECT 1 FROM eval_cycle
-                                       WHERE company_id = ? AND id <> ? AND start_date <= ? AND end_date >= ?)
+                                       WHERE company_id = ? AND id <> ? AND start_date <= ? AND end_date >= ?
+                                         AND kind = ?::eval_cycle_kind)
                         """,
                 Boolean.class, companyId, cycle.getId(), Date.valueOf(cycle.getEndDate()),
-                Date.valueOf(cycle.getStartDate()));
+                Date.valueOf(cycle.getStartDate()), cycle.getKind().name());
         return Boolean.TRUE.equals(overlaps) ? "PERIOD_OVERLAP" : null;
     }
 
@@ -270,13 +280,14 @@ public class EvalCycleService {
         OffsetDateTime closedAt = rs.getObject("closed_at", OffsetDateTime.class);
         return new EvalCycleItem(rs.getLong("id"), rs.getString("name"), rs.getObject("start_date", LocalDate.class),
                 rs.getObject("end_date", LocalDate.class), EvalCycleStatus.valueOf(rs.getString("status")),
+                EvalCycleKind.valueOf(rs.getString("kind")), rs.getObject("min_years_in_grade", Integer.class),
                 startedAt == null ? null : startedAt.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime(),
                 closedAt == null ? null : closedAt.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime(),
                 rs.getLong("evaluation_count"), warning);
     }
 
     private static final String SELECT = """
-            SELECT c.id, c.name, c.start_date, c.end_date, c.status::text AS status, c.started_at, c.closed_at,
+            SELECT c.id, c.name, c.start_date, c.end_date, c.status::text AS status, c.kind::text AS kind, c.min_years_in_grade, c.started_at, c.closed_at,
                    (SELECT count(*) FROM evaluation e WHERE e.company_id = c.company_id AND e.eval_cycle_id = c.id)
                        AS evaluation_count
             FROM eval_cycle c

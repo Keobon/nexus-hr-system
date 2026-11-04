@@ -773,7 +773,18 @@ INSERT INTO approval_step (id, company_id, work_type, target_id, approval_line_i
 -- 평가 기간 — 2026 상반기(마감)
 INSERT INTO eval_cycle (id, company_id, name, start_date, end_date, status, started_at, closed_at, created_at, updated_at) VALUES
  (2, 1, '2026 상반기 평가', '2026-07-01', '2026-07-15', 'CLOSED', '2026-07-01 09:00:00+09', '2026-07-16 18:00:00+09', '2026-06-24 10:00:00+09', '2026-07-16 18:00:00+09');
+-- 승진 고과 — 시연 때 [평가 시작]을 누른다. 대상은 기간 시작일에 지금 직급에 3년 이상 있는 직원(최고 직급 제외)
+INSERT INTO eval_template (id, company_id, name) VALUES (3, 1, '승진 고과');
+INSERT INTO eval_criteria (id, company_id, eval_template_id, category, name, weight, sort_order) VALUES
+ (7, 1, 3, '성과', '성과 실적', 40, 1), (8, 1, 3, '역량', '직무 전문성', 30, 2), (9, 1, 3, '역량', '리더십 · 협업', 30, 3);
+INSERT INTO eval_question (id, company_id, eval_criteria_id, content, sort_order) VALUES
+ (101,1,7,'현 직급 기간 동안 맡은 목표를 꾸준히 달성했는가',1),(102,1,7,'조직 성과에 눈에 띄게 기여했는가',2),
+ (103,1,8,'상위 직급의 업무를 맡을 전문성을 갖췄는가',1),
+ (104,1,9,'동료를 이끌고 다른 팀과 원활히 협업하는가',1);
+INSERT INTO eval_cycle (id, company_id, name, start_date, end_date, kind, min_years_in_grade, created_at, updated_at) VALUES
+ (3, 1, '2026 승진 고과', '2026-11-02', '2026-11-20', 'PROMOTION', 3, '2026-10-20 10:00:00+09', '2026-10-20 10:00:00+09');
 -- 평가 대상 규칙
+INSERT INTO eval_cycle_target (id, company_id, eval_cycle_id, priority, eval_template_id) VALUES (6, 1, 3, 1, 3);
 INSERT INTO eval_cycle_target (id, company_id, eval_cycle_id, priority, cond_is_org_lead, cond_job_title_id, cond_job_grade_id, cond_employment_type_id, eval_template_id) VALUES
  (4, 1, 2, 1, true, NULL, NULL, NULL, 2),
  (5, 1, 2, 2, NULL, NULL, NULL, NULL, 1);
