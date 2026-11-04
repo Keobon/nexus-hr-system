@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.assignment.service;
 
 import com.nexuslabs.hr.domain.assignment.dto.PromotionCandidate;
+import com.nexuslabs.hr.domain.evaluation.dto.EvalScore;
 import com.nexuslabs.hr.domain.evaluation.service.EvalScoreCalculator;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
@@ -21,11 +22,13 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * 승진 대상자(10/15 시연 피드백) — 지금 직급에 minYears 년 이상 있은 재직 직원. 승진 확정은 기존 승진 발령(POST /assignments)으로 한다.
+ * 승진 대상자(10/15 시연 피드백) — 지금 직급에 minYears 년 이상 있은 재직 직원(최고 직급 제외). 승진 고과 대상 계산도 같은 기준을 쓴다. 승진 확정은 기존 승진 발령(POST /assignments)으로 한다.
  * 직급 시작일 = 직급이 바뀐 마지막 발령의 발효일(정정된 원본은 빼고 정정본으로 본다), 없으면 입사일.
  * JDBC 라 모든 쿼리에 company_id 조건을 직접 넣는다.
  */
@@ -56,6 +59,26 @@ public class PromotionCandidateService {
         this.clock = clock;
     }
 
+    /** 그날 지금 직급에 minYears 년 이상 있은 재직 직원 ID — 승진 고과 대상. */
+    @Transactional(readOnly = true)
+    public Set<Long> eligibleIds(long companyId, int minYears, LocalDate date) {
+        return new HashSet<>(jdbc.queryForList("SELECT e.id" + eligibleFrom(), Long.class, companyId,
+                Date.valueOf(date.minusYears(minYears))));
+    }
+
+    /** 파라미터: company_id, 이 날짜 이전부터 지금 직급. 최고 직급(sort_order 최대)은 더 오를 데가 없어 뺀다. */
+    private static String eligibleFrom() {
+        return """
+                 FROM (SELECT e.*, %s AS grade_since FROM employee e
+                       WHERE e.company_id = ? AND e.status = 'ACTIVE' AND e.job_grade_id IS NOT NULL) e
+                      JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id
+                      JOIN job_grade g ON g.id = e.job_grade_id AND g.company_id = e.company_id
+                      LEFT JOIN job_title t ON t.id = e.job_title_id AND t.company_id = e.company_id
+                 WHERE e.grade_since <= ?
+                   AND g.sort_order < (SELECT max(g2.sort_order) FROM job_grade g2 WHERE g2.company_id = e.company_id)
+                """.formatted(GRADE_SINCE);
+    }
+
     /** 전사 발령 조회 권한만(팀 범위면 FORBIDDEN). 직급 시작일이 이른 순 → 사원번호 순. */
     @Transactional(readOnly = true)
     public PageImpl<PromotionCandidate> candidates(LoginUser user, int minYears, Pageable pageable) {
@@ -66,14 +89,7 @@ public class PromotionCandidateService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "체류 연수는 1년 이상으로 입력하세요");
         }
         LocalDate today = LocalDate.now(clock);
-        String from = """
-                 FROM (SELECT e.*, %s AS grade_since FROM employee e
-                       WHERE e.company_id = ? AND e.status = 'ACTIVE' AND e.job_grade_id IS NOT NULL) e
-                      JOIN org_unit o ON o.id = e.org_unit_id AND o.company_id = e.company_id
-                      JOIN job_grade g ON g.id = e.job_grade_id AND g.company_id = e.company_id
-                      LEFT JOIN job_title t ON t.id = e.job_title_id AND t.company_id = e.company_id
-                 WHERE e.grade_since <= ?
-                """.formatted(GRADE_SINCE);
+        String from = eligibleFrom();
         Object[] args = {user.companyId(), Date.valueOf(today.minusYears(minYears))};
         long total = jdbc.queryForObject("SELECT count(*)" + from, Long.class, args);
 
@@ -88,13 +104,16 @@ public class PromotionCandidateService {
                     LocalDate since = rs.getObject("grade_since", LocalDate.class);
                     return new PromotionCandidate(rs.getLong("id"), rs.getString("employee_no"), rs.getString("name"),
                             rs.getString("org_unit_name"), rs.getLong("job_grade_id"), rs.getString("job_grade_name"),
-                            rs.getString("job_title_name"), since, Period.between(since, today).getYears(), null, 0);
+                            rs.getString("job_title_name"), since, Period.between(since, today).getYears(), null, 0, null, null);
                 },
                 pageArgs.toArray());
         return new PageImpl<>(withScores(user.companyId(), rows, today), pageable, total);
     }
 
-    /** 최근 3년 확정 평가의 총점 평균 · 건수. 총점이 없는(답하지 않은 질문이 있는) 평가는 세지 않는다. */
+    /**
+     * 최근 3년 확정 정기 평가의 총점 평균 · 건수, 가장 최근 확정 승진 고과의 총점 · 기간 이름.
+     * 총점이 없는(답하지 않은 질문이 있는) 평가는 세지 않는다.
+     */
     private List<PromotionCandidate> withScores(long companyId, List<PromotionCandidate> rows, LocalDate today) {
         if (rows.isEmpty()) {
             return rows;
@@ -104,7 +123,7 @@ public class PromotionCandidateService {
                         SELECT ev.id, ev.target_employee_id FROM evaluation ev
                         JOIN eval_cycle c ON c.id = ev.eval_cycle_id AND c.company_id = ev.company_id
                         WHERE ev.company_id = ? AND ev.status = 'CONFIRMED' AND ev.target_employee_id = ANY(?)
-                          AND c.end_date >= ?""",
+                          AND c.kind = 'REGULAR' AND c.end_date >= ?""",
                 rs -> {
                     targetOf.put(rs.getLong("id"), rs.getLong("target_employee_id"));
                 },
@@ -117,12 +136,33 @@ public class PromotionCandidateService {
                 totals.computeIfAbsent(targetOf.get(evaluationId), k -> new ArrayList<>()).add(total);
             }
         });
+        record Review(long id, String cycleName) {
+        }
+        // 직원마다 가장 최근 고과 한 건 — 기간 시작일 · ID 최신순
+        Map<Long, Review> reviews = new HashMap<>();
+        jdbc.query("""
+                        SELECT DISTINCT ON (ev.target_employee_id) ev.id, ev.target_employee_id, c.name
+                        FROM evaluation ev
+                        JOIN eval_cycle c ON c.id = ev.eval_cycle_id AND c.company_id = ev.company_id
+                        WHERE ev.company_id = ? AND ev.status = 'CONFIRMED' AND ev.target_employee_id = ANY(?)
+                          AND c.kind = 'PROMOTION'
+                        ORDER BY ev.target_employee_id, c.start_date DESC, c.id DESC
+                        """,
+                rs -> {
+                    reviews.put(rs.getLong("target_employee_id"), new Review(rs.getLong("id"), rs.getString("name")));
+                },
+                companyId, rows.stream().map(PromotionCandidate::employeeId).toArray(Long[]::new));
+        Map<Long, List<EvalScore>> reviewScores = scoreCalculator.scores(companyId,
+                reviews.values().stream().map(Review::id).toList());
         return rows.stream().map(r -> {
             List<BigDecimal> list = totals.getOrDefault(r.employeeId(), List.of());
+            Review review = reviews.get(r.employeeId());
             BigDecimal average = list.isEmpty() ? null : list.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
                     .divide(BigDecimal.valueOf(list.size()), 1, RoundingMode.HALF_UP);
             return new PromotionCandidate(r.employeeId(), r.employeeNo(), r.name(), r.orgUnitName(), r.jobGradeId(),
-                    r.jobGradeName(), r.jobTitleName(), r.gradeSince(), r.yearsInGrade(), average, list.size());
+                    r.jobGradeName(), r.jobTitleName(), r.gradeSince(), r.yearsInGrade(), average, list.size(),
+                    review == null ? null : EvalScoreCalculator.total(reviewScores.get(review.id())),
+                    review == null ? null : review.cycleName());
         }).toList();
     }
 }

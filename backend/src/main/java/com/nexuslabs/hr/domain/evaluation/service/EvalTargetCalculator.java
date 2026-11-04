@@ -1,9 +1,11 @@
 package com.nexuslabs.hr.domain.evaluation.service;
 
+import com.nexuslabs.hr.domain.assignment.service.PromotionCandidateService;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalTargetPreview;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,13 +21,15 @@ import java.util.Set;
 public class EvalTargetCalculator {
 
     private final JdbcTemplate jdbc;
+    private final PromotionCandidateService promotionCandidates;
 
-    public EvalTargetCalculator(JdbcTemplate jdbc) {
+    public EvalTargetCalculator(JdbcTemplate jdbc, PromotionCandidateService promotionCandidates) {
         this.jdbc = jdbc;
+        this.promotionCandidates = promotionCandidates;
     }
 
     /**
-     * 재직 · 휴직 직원마다: 휴직이면 ON_LEAVE → 위에서부터 처음 맞는 규칙(없으면 NO_RULE, 템플릿 없는 규칙이면 RULE_EXCLUDED)
+     * 재직 · 휴직 직원마다: 휴직이면 ON_LEAVE → 승진 고과면 체류 연수 미달은 NOT_ELIGIBLE → 위에서부터 처음 맞는 규칙(없으면 NO_RULE, 템플릿 없는 규칙이면 RULE_EXCLUDED)
      * → 평가자(없으면 NO_EVALUATOR). 사원번호 순.
      */
     public EvalTargetPreview calculate(long companyId, long cycleId) {
@@ -65,6 +69,7 @@ public class EvalTargetCalculator {
                         rs.getString("template_name")),
                 companyId, cycleId);
 
+        Set<Long> eligible = promotionEligible(companyId, cycleId);
         List<EvalTargetPreview.Target> targets = new ArrayList<>();
         List<EvalTargetPreview.Excluded> excluded = new ArrayList<>();
         jdbc.query("""
@@ -81,6 +86,10 @@ public class EvalTargetCalculator {
                     String orgName = rs.getString("org_unit_name");
                     if ("ON_LEAVE".equals(rs.getString("status"))) {
                         excluded.add(new EvalTargetPreview.Excluded(id, no, name, orgName, EvalTargetPreview.Reason.ON_LEAVE));
+                        return;
+                    }
+                    if (eligible != null && !eligible.contains(id)) {
+                        excluded.add(new EvalTargetPreview.Excluded(id, no, name, orgName, EvalTargetPreview.Reason.NOT_ELIGIBLE));
                         return;
                     }
                     Long titleId = rs.getObject("job_title_id", Long.class);
@@ -104,6 +113,22 @@ public class EvalTargetCalculator {
                 },
                 companyId);
         return new EvalTargetPreview(targets, excluded);
+    }
+
+    /** 승진 고과면 기간 시작일 기준 자격이 있는 직원, 정기 평가면 null(자격을 따지지 않는다). */
+    private Set<Long> promotionEligible(long companyId, long cycleId) {
+        return jdbc.query("""
+                        SELECT kind::text AS kind, min_years_in_grade, start_date FROM eval_cycle
+                        WHERE company_id = ? AND id = ?
+                        """,
+                rs -> {
+                    if (!rs.next() || !"PROMOTION".equals(rs.getString("kind"))) {
+                        return null;
+                    }
+                    return promotionCandidates.eligibleIds(companyId, rs.getInt("min_years_in_grade"),
+                            rs.getObject("start_date", LocalDate.class));
+                },
+                companyId, cycleId);
     }
 
     /**

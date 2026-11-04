@@ -36,13 +36,22 @@ public class EvalCycle extends BaseTimeEntity {
     @Column(columnDefinition = "eval_cycle_status")
     private EvalCycleStatus status = EvalCycleStatus.SCHEDULED;
 
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "eval_cycle_kind")
+    private EvalCycleKind kind = EvalCycleKind.REGULAR;
+
+    private Short minYearsInGrade;
+
     private OffsetDateTime startedAt;
     private OffsetDateTime closedAt;
 
-    public EvalCycle(String name, LocalDate startDate, LocalDate endDate) {
+    public EvalCycle(String name, LocalDate startDate, LocalDate endDate, EvalCycleKind kind, Short minYearsInGrade) {
         this.name = name;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.kind = kind;
+        this.minYearsInGrade = minYearsInGrade;
     }
 
     /** 예정이면 셋 다, 진행 중이면 종료일만 바뀐다 — 상태 검사는 EvalCycleService. */
