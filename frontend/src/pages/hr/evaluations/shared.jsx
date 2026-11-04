@@ -1,10 +1,10 @@
 // 평가 관리 탭들이 같이 쓰는 것 — 기간 이름 · 상태 배지 · 척도 수준
 import dayjs from 'dayjs';
 
-/** 평가 기간 이름에서 연도 · 반기 — "2026 상반기 평가" → { year: '2026', half: '상반기' } (이름에 없으면 시작일로) */
+/** 평가 기간 이름에서 연도 · 반기 — "2026 상반기 평가" → { year: '2026', half: '상반기' } (이름에 없으면 시작일로). 승진 고과는 반기가 없다 */
 export function cycleParts(c) {
   const year = c.name.match(/(\d{4})/)?.[1] ?? c.startDate.slice(0, 4);
-  const half = c.name.includes('하반기') ? '하반기' : c.name.includes('상반기') ? '상반기' : null;
+  const half = c.kind === 'PROMOTION' ? null : c.name.includes('하반기') ? '하반기' : c.name.includes('상반기') ? '상반기' : null;
   return { year, half };
 }
 export const HALF_MONTHS = { 상반기: '01–06월', 하반기: '07–12월' };

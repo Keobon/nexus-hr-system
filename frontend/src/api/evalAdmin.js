@@ -1,10 +1,10 @@
 // 인사 · 평가 관리(API 설계서 12.1 · 12.2) — 평가 기간 · 대상 규칙 · 시작 · 마감 · 진행 현황 · 확정 · 재오픈. 기간 · 진행은 EVAL_MANAGE, 결과는 EVAL_READ
 import { api } from './client';
 
-/** GET /eval-cycles → [{ id, name, startDate, endDate, status SCHEDULED|IN_PROGRESS|CLOSED, startedAt, closedAt, evaluationCount }] */
+/** GET /eval-cycles → [{ id, name, startDate, endDate, status SCHEDULED|IN_PROGRESS|CLOSED, kind REGULAR|PROMOTION, minYearsInGrade, startedAt, closedAt, evaluationCount }] */
 export const evalCyclesKey = ['eval-cycles'];
 export const getEvalCycles = () => api.get('/eval-cycles');
-/** POST /eval-cycles { name, startDate, endDate } → 다른 기간과 겹치면 warning PERIOD_OVERLAP(저장은 됨) */
+/** POST /eval-cycles { name, startDate, endDate, kind?, minYearsInGrade? } — 승진 고과는 체류 연수 필수. 같은 유형의 다른 기간과 겹치면 warning PERIOD_OVERLAP(저장은 됨) */
 export const createEvalCycle = (body) => api.post('/eval-cycles', body);
 /** PATCH /eval-cycles/{id} — 예정일 때 이름 · 날짜 */
 export const updateEvalCycle = (id, patch) => api.patch(`/eval-cycles/${id}`, patch);

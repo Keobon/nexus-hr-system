@@ -168,7 +168,7 @@ function ResultPanel({ item, cycle, detail, readOnly }) {
   const confirm = () =>
     modal.confirm({
       title: `${item.targetName}님의 평가를 확정할까요?`,
-      content: '확정하면 본인에게 결과가 공개됩니다. 고칠 일이 생기면 확정 취소(재오픈)로 평가자에게 다시 열 수 있습니다.',
+      content: `${cycle?.kind === 'PROMOTION' ? '승진 고과 결과는 본인에게 공개되지 않습니다.' : '확정하면 본인에게 결과가 공개됩니다.'} 고칠 일이 생기면 확정 취소(재오픈)로 평가자에게 다시 열 수 있습니다.`,
       okText: '확정',
       cancelText: '취소',
       onOk: async () => {
@@ -280,7 +280,7 @@ function ReopenModal({ item, onDone, onClose }) {
       className="hr-modal"
       centered
     >
-      <p className="hr-modal-sub">{`${item.targetName}님에게 공개된 결과가 내려가고, 평가자(${item.evaluatorName})가 다시 고쳐 제출할 수 있게 됩니다.`}</p>
+      <p className="hr-modal-sub">{`${item.targetName}님의 확정이 취소되고, 평가자(${item.evaluatorName})가 다시 고쳐 제출할 수 있게 됩니다.`}</p>
       <Input.TextArea rows={3} maxLength={255} placeholder="사유 (필수) — 예: 성과 점수 재검토 요청" value={reason} onChange={(e) => setReason(e.target.value)} />
     </Modal>
   );
