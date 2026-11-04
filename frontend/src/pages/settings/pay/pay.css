@@ -214,6 +214,10 @@
   flex: 14 0 12rem;
 }
 
+.pay-c-grow {
+  flex: 40 0 24rem;
+}
+
 .pay-c-val {
   flex: 9 0 8rem;
 }
