@@ -218,7 +218,7 @@ function DraftRun({ month, options, setMonth, onUnregistered }) {
             <div className="pr-card-head">
               <div>
                 <strong>수동 입력</strong>
-                <span>매월 직접 입력 항목만 표시됩니다.</span>
+                <span>성과급 · 소급 조정처럼 지급하는 달에만 넣는 항목입니다. 비워 두면 이번 달에는 지급하지 않습니다.</span>
               </div>
               <span className="pr-muted">{`대상 인원 ${registered.length}명`}</span>
             </div>
@@ -238,7 +238,7 @@ function DraftRun({ month, options, setMonth, onUnregistered }) {
               </div>
             )}
             {!salaries.isLoading && registered.length === 0 && <div className="hr-tr is-empty">급여가 등록된 직원이 없습니다</div>}
-            {manual.length === 0 && !items.isLoading && <div className="hr-tr is-empty">매월 직접 입력 항목이 없습니다 — 회사 설정 › 급여 항목·변수에서 추가할 수 있어요</div>}
+            {manual.length === 0 && !items.isLoading && <div className="hr-tr is-empty">직접 입력 항목이 없습니다 — 회사 설정 › 급여 항목·변수에서 추가할 수 있어요</div>}
             {registered.map((s) => (
               <div key={s.employeeId} className="hr-tr pr-row">
                 <span className="pr-c-no">{s.employeeNo}</span>

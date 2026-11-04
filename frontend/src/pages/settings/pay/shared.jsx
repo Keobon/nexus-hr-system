@@ -7,7 +7,7 @@ import iconLock from '../../../assets/figma/icon-lock.svg';
 export const CALC_LABEL = {
   FIXED: '고정액',
   BASE_RATE: '기본급 대비 %',
-  MANUAL: '매월 직접 입력',
+  MANUAL: '직접 입력(지급하는 달만)',
   ATTENDANCE: '근태 연동',
   TRIP_EXPENSE: '출장 경비 연동',
   TAXABLE_RATE: '4대보험',

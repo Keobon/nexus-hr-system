@@ -99,7 +99,7 @@ export default function PayslipsTab({ month, setMonth, onRun }) {
           )}
         </section>
       )}
-      <p className="pr-note">확정된 명세서는 고칠 수 없습니다. 잘못된 금액은 다음 달 정산의 "소급 조정"(매월 직접 입력)으로 정정하세요.</p>
+      <p className="pr-note">확정된 명세서는 고칠 수 없습니다. 잘못된 금액은 다음 달 정산의 "소급 조정"(직접 입력)으로 정정하세요.</p>
       <PayslipModal id={slip?.id} name={slip?.name} onClose={() => setSlip(null)} />
     </>
   );
