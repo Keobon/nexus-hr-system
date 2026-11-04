@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.evaluation.dto.EvalProgress;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalResultItem;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalScore;
 import com.nexuslabs.hr.domain.evaluation.dto.MyEvaluation;
+import com.nexuslabs.hr.domain.evaluation.entity.EvalCycleKind;
 import com.nexuslabs.hr.domain.evaluation.entity.EvaluationStatus;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.config.ClockConfig;
@@ -44,11 +45,11 @@ public class EvalResultService {
         this.scoreCalculator = scoreCalculator;
     }
 
-    /** 내 확정 결과 — 항목별 환산 점수 · 총점 · 종합의견(질문별 점수 없음). 최근 기간부터. */
+    /** 내 확정 결과 — 항목별 환산 점수 · 총점 · 종합의견(질문별 점수 없음). 최근 기간부터. 승진 고과는 본인에게 공개하지 않는다. */
     @Transactional(readOnly = true)
     public List<MyEvaluation> mine(LoginUser user) {
         List<Base> rows = jdbc.query(BASE_SELECT + """
-                         WHERE ev.company_id = ? AND ev.target_employee_id = ? AND ev.status = 'CONFIRMED'
+                         WHERE ev.company_id = ? AND ev.target_employee_id = ? AND ev.status = 'CONFIRMED' AND c.kind = 'REGULAR'
                          ORDER BY c.start_date DESC, c.id DESC
                         """,
                 (rs, i) -> base(rs), user.companyId(), user.employeeId());
@@ -60,9 +61,13 @@ public class EvalResultService {
         }).toList();
     }
 
-    /** 범위 안 직원의 확정 결과. 팀 범위면 내 팀 직원만, orgUnitId 는 지금 소속 기준 하위 조직 포함. 최근 기간 → 사원번호 순. */
+    /**
+     * 범위 안 직원의 확정 결과. 팀 범위면 내 팀 직원의 정기 평가만(승진 고과는 전사 범위만 본다), orgUnitId 는 지금 소속 기준
+     * 하위 조직 포함. kind 를 주면 그 유형만. 최근 기간 → 사원번호 순.
+     */
     @Transactional(readOnly = true)
-    public PageImpl<EvalResultItem> results(LoginUser user, Long cycleId, Long orgUnitId, Pageable pageable) {
+    public PageImpl<EvalResultItem> results(LoginUser user, Long cycleId, Long orgUnitId, EvalCycleKind kind,
+                                            Pageable pageable) {
         Scope scope = scopeResolver.scopeOf(user, PermissionCode.EVAL_READ);
         if (!scope.all() && scope.employeeIds().isEmpty()) {
             return new PageImpl<>(List.of(), pageable, 0);
@@ -70,8 +75,12 @@ public class EvalResultService {
         StringBuilder where = new StringBuilder(" WHERE ev.company_id = ? AND ev.status = 'CONFIRMED'");
         List<Object> args = new ArrayList<>(List.of(user.companyId()));
         if (!scope.all()) {
-            where.append(" AND ev.target_employee_id = ANY(?)");
+            where.append(" AND ev.target_employee_id = ANY(?) AND c.kind = 'REGULAR'");
             args.add(scope.employeeIds().toArray(Long[]::new));
+        }
+        if (kind != null) {
+            where.append(" AND c.kind = ?::eval_cycle_kind");
+            args.add(kind.name());
         }
         if (cycleId != null) {
             where.append(" AND ev.eval_cycle_id = ?");
@@ -97,7 +106,7 @@ public class EvalResultService {
         Map<Long, List<EvalScore>> scores = scoreCalculator.scores(user.companyId(), rows.stream().map(Base::id).toList());
         List<EvalResultItem> items = rows.stream().map(r -> {
             List<EvalScore> s = scores.getOrDefault(r.id(), List.of());
-            return new EvalResultItem(r.id(), r.cycleId(), r.cycleName(), r.targetId(), r.employeeNo(), r.targetName(),
+            return new EvalResultItem(r.id(), r.cycleId(), r.cycleName(), r.cycleKind(), r.targetId(), r.employeeNo(), r.targetName(),
                     r.orgUnitName(), r.templateName(), r.evaluatorName(), s, EvalScoreCalculator.total(s),
                     r.overallComment(), r.confirmedAt());
         }).toList();
@@ -137,7 +146,8 @@ public class EvalResultService {
 
     private static Base base(ResultSet rs) throws SQLException {
         OffsetDateTime confirmedAt = rs.getObject("confirmed_at", OffsetDateTime.class);
-        return new Base(rs.getLong("id"), rs.getLong("cycle_id"), rs.getString("cycle_name"), rs.getLong("target_id"),
+        return new Base(rs.getLong("id"), rs.getLong("cycle_id"), rs.getString("cycle_name"),
+                EvalCycleKind.valueOf(rs.getString("cycle_kind")), rs.getLong("target_id"),
                 rs.getString("employee_no"), rs.getString("target_name"), rs.getString("org_unit_name"),
                 rs.getString("evaluator_name"), rs.getString("template_name"),
                 EvaluationStatus.valueOf(rs.getString("status")), rs.getString("overall_comment"),
@@ -145,7 +155,7 @@ public class EvalResultService {
                 rs.getBoolean("evaluator_active"));
     }
 
-    private record Base(long id, long cycleId, String cycleName, long targetId, String employeeNo, String targetName,
+    private record Base(long id, long cycleId, String cycleName, EvalCycleKind cycleKind, long targetId, String employeeNo, String targetName,
                         String orgUnitName, String evaluatorName, String templateName, EvaluationStatus status,
                         String overallComment, OffsetDateTime confirmedAt, boolean evaluatorActive) {
     }
@@ -160,7 +170,7 @@ public class EvalResultService {
             """;
 
     private static final String BASE_SELECT = """
-            SELECT ev.id, c.id AS cycle_id, c.name AS cycle_name, e.id AS target_id, e.employee_no, e.name AS target_name,
+            SELECT ev.id, c.id AS cycle_id, c.name AS cycle_name, c.kind::text AS cycle_kind, e.id AS target_id, e.employee_no, e.name AS target_name,
                    o.name AS org_unit_name, ve.name AS evaluator_name, t.name AS template_name, ev.status::text AS status,
                    ev.overall_comment, ev.confirmed_at,
                    ve.status = 'ACTIVE' AND EXISTS (SELECT 1 FROM account a WHERE a.employee_id = ve.id

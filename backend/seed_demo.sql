@@ -249,11 +249,20 @@ INSERT INTO approval_line_step (company_id, approval_line_id, step_order, approv
 -- ---------------------------------------------------------------------
 -- 급여 항목 · 계산 변수 · 세율 구간
 -- ---------------------------------------------------------------------
-INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, apply_to, employee_rate, company_rate, sort_order)
-SELECT c.id * 20 - 19 + i.o - 1, c.id, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', i.er, i.cr, 100 + i.o
-FROM company c CROSS JOIN (VALUES
- ('국민연금',4.5,4.5,1),('건강보험',3.545,3.545,2),('장기요양보험',0.4591,0.4591,3),('고용보험',0.9,1.15,4)) AS i(n, er, cr, o);
+INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, apply_to, sort_order)
+SELECT c.id * 20 - 19 + i.o - 1, c.id, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', 100 + i.o
+FROM company c CROSS JOIN (VALUES ('국민연금',1),('건강보험',2),('장기요양보험',3),('고용보험',4)) AS i(n, o);
 -- id: NEXUS 1–4, 한빛 21–24
+
+-- 요율 이력. 2026-08 · 09 명세서가 옛 요율로 저장돼 있어 옛 값을 남기고, 2026년 값은 시연용으로 2026-10-01 부터 넣는다
+-- (실제 시행일: 요율 2026-01-01, 국민연금 상한 · 하한 2026-07-01 — 보건복지부 고시 제2026-31호)
+INSERT INTO pay_item_rate (company_id, pay_item_id, employee_rate, company_rate, base_upper_limit, base_lower_limit, effective_from)
+SELECT c.id, c.id * 20 - 19 + i.o - 1, i.er, i.cr, i.up, i.lo, i.d::date
+FROM company c CROSS JOIN (VALUES
+ (1,4.5,4.5,NULL::bigint,NULL::bigint,'2026-01-01'),(2,3.545,3.545,NULL,NULL,'2026-01-01'),
+ (3,0.4591,0.4591,NULL,NULL,'2026-01-01'),(4,0.9,1.15,NULL,NULL,'2026-01-01'),
+ (1,4.75,4.75,6590000,410000,'2026-10-01'),(2,3.595,3.595,NULL,NULL,'2026-10-01'),
+ (3,0.4724,0.4724,NULL,NULL,'2026-10-01')) AS i(o, er, cr, up, lo, d);
 
 INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, attendance_basis, multiplier, sort_order)
 SELECT c.id * 20 - 15 + i.o - 1, c.id, i.n, i.k::pay_item_kind, TRUE, 'ATTENDANCE', i.b::attendance_basis, i.m, 50 + i.o
@@ -764,7 +773,18 @@ INSERT INTO approval_step (id, company_id, work_type, target_id, approval_line_i
 -- 평가 기간 — 2026 상반기(마감)
 INSERT INTO eval_cycle (id, company_id, name, start_date, end_date, status, started_at, closed_at, created_at, updated_at) VALUES
  (2, 1, '2026 상반기 평가', '2026-07-01', '2026-07-15', 'CLOSED', '2026-07-01 09:00:00+09', '2026-07-16 18:00:00+09', '2026-06-24 10:00:00+09', '2026-07-16 18:00:00+09');
+-- 승진 고과 — 시연 때 [평가 시작]을 누른다. 대상은 기간 시작일에 지금 직급에 3년 이상 있는 직원(최고 직급 제외)
+INSERT INTO eval_template (id, company_id, name) VALUES (3, 1, '승진 고과');
+INSERT INTO eval_criteria (id, company_id, eval_template_id, category, name, weight, sort_order) VALUES
+ (7, 1, 3, '성과', '성과 실적', 40, 1), (8, 1, 3, '역량', '직무 전문성', 30, 2), (9, 1, 3, '역량', '리더십 · 협업', 30, 3);
+INSERT INTO eval_question (id, company_id, eval_criteria_id, content, sort_order) VALUES
+ (101,1,7,'현 직급 기간 동안 맡은 목표를 꾸준히 달성했는가',1),(102,1,7,'조직 성과에 눈에 띄게 기여했는가',2),
+ (103,1,8,'상위 직급의 업무를 맡을 전문성을 갖췄는가',1),
+ (104,1,9,'동료를 이끌고 다른 팀과 원활히 협업하는가',1);
+INSERT INTO eval_cycle (id, company_id, name, start_date, end_date, kind, min_years_in_grade, created_at, updated_at) VALUES
+ (3, 1, '2026 승진 고과', '2026-11-02', '2026-11-20', 'PROMOTION', 3, '2026-10-20 10:00:00+09', '2026-10-20 10:00:00+09');
 -- 평가 대상 규칙
+INSERT INTO eval_cycle_target (id, company_id, eval_cycle_id, priority, eval_template_id) VALUES (6, 1, 3, 1, 3);
 INSERT INTO eval_cycle_target (id, company_id, eval_cycle_id, priority, cond_is_org_lead, cond_job_title_id, cond_job_grade_id, cond_employment_type_id, eval_template_id) VALUES
  (4, 1, 2, 1, true, NULL, NULL, NULL, 2),
  (5, 1, 2, 2, NULL, NULL, NULL, NULL, 1);

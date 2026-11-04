@@ -5,6 +5,7 @@ import { useMe } from '../../../auth/useMe';
 import { PageHead } from '../parts';
 import CycleTab from './CycleTab';
 import ResultTab from './ResultTab';
+import EvalReadView from './EvalReadView';
 import './ev-admin.css';
 
 export default function EvaluationAdminPage() {
@@ -14,10 +15,12 @@ export default function EvaluationAdminPage() {
   const tabs = [...(manage ? [['cycles', '평가 기간']] : []), ['results', '평가 결과']];
   const tab = tabs.some(([k]) => k === sp.get('tab')) ? sp.get('tab') : tabs[0][0];
   const go = (k, extra = {}) => setSp({ tab: k, ...extra });
+  // 조회만 하는 사람(경영진 · 조직장) — Figma 72-7789 평가 결과 조회 전용
+  if (!manage) return <EvalReadView />;
 
   return (
     <div className="hr ea">
-      <PageHead title="평가 관리" desc={manage ? '평가 기간을 관리하고 결과를 확정합니다.' : '조회 범위 안의 확정된 평가 결과를 확인합니다.'} />
+      <PageHead title="평가 관리" desc="평가 기간을 관리하고 결과를 확정합니다." />
       <nav className="ea-tabs" role="tablist" aria-label="평가 관리 탭">
         {tabs.map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'is-on' : undefined} onClick={() => go(k)}>

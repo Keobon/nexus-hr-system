@@ -8,6 +8,7 @@ import com.nexuslabs.hr.domain.evaluation.dto.EvalResultItem;
 import com.nexuslabs.hr.domain.evaluation.dto.EvalTodoItem;
 import com.nexuslabs.hr.domain.evaluation.dto.EvaluationDetail;
 import com.nexuslabs.hr.domain.evaluation.dto.MyEvaluation;
+import com.nexuslabs.hr.domain.evaluation.entity.EvalCycleKind;
 import com.nexuslabs.hr.domain.evaluation.service.EvalResultService;
 import com.nexuslabs.hr.domain.evaluation.service.EvaluationService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -99,8 +100,9 @@ public class EvaluationController {
     public ApiResponse<PageResponse<EvalResultItem>> results(@CurrentUser LoginUser user,
                                                              @RequestParam(required = false) Long cycleId,
                                                              @RequestParam(required = false) Long orgUnitId,
+                                                             @RequestParam(required = false) EvalCycleKind kind,
                                                              @PageableDefault(size = 20) Pageable pageable) {
-        return ApiResponse.ok(PageResponse.of(resultService.results(user, cycleId, orgUnitId, pageable)));
+        return ApiResponse.ok(PageResponse.of(resultService.results(user, cycleId, orgUnitId, kind, pageable)));
     }
 
     @GetMapping("/api/eval-cycles/{id}/progress")
