@@ -8,6 +8,7 @@ import { employeeAttendancesKey, getAttendanceMonth, getEmployeeAttendances } fr
 import { getExpensePage, getOvertimePage, getTodayPage, getTripPage } from '../../api/attendanceAdmin';
 import { fetchAllPages } from '../../api/employees';
 import { getLeaveBalancePage, getLeaveRequestPage } from '../../api/leaves';
+import { getPayrollRuns, payrollRunsKey } from '../../api/payrollAdmin';
 import { labelOf } from '../../constants/labels';
 import './exec.css';
 
@@ -17,6 +18,7 @@ const pct = (n) => (Number.isFinite(n) ? Math.round(n * 1000) / 10 : 0);
 const ASSIGN_TONE = { PROMOTION: 'is-green', TRANSFER: 'is-blue', TITLE_CHANGE: 'is-purple' };
 
 export default function ExecutiveHome({ company }) {
+  const navigate = useNavigate();
   const today = dayjs().format('YYYY-MM-DD');
   const year = dayjs().year();
 
@@ -34,6 +36,12 @@ export default function ExecutiveHome({ company }) {
       ['expense', () => getExpensePage({ status: 'PENDING', size: 1 })],
     ].map(([k, fn]) => ({ queryKey: ['exec', 'pending', k], queryFn: fn })),
   });
+
+  // 인건비 — 가장 최근 정산한 달의 총지급 + 회사 부담, 그 앞 정산과 비교
+  const payrollRuns = useQuery({ queryKey: payrollRunsKey, queryFn: getPayrollRuns });
+  const [lastRun, prevRun] = [...(payrollRuns.data ?? [])].sort((a, b) => b.payMonth.localeCompare(a.payMonth));
+  const laborOf = (run) => run.totals.grossPay + run.totals.companyBurdenTotal;
+  const laborDiff = lastRun && prevRun ? Math.round((laborOf(lastRun) / laborOf(prevRun) - 1) * 1000) / 10 : null;
 
   const t = todayRows.data ?? [];
   const checkedIn = t.filter((r) => r.checkInAt).length;
@@ -54,6 +62,16 @@ export default function ExecutiveHome({ company }) {
       sub: `휴가 ${pendingCounts[0] + pendingCounts[1]} · 연장 ${pendingCounts[2]} · 출장 ${pendingCounts[3]} · 경비 ${pendingCounts[4]}`,
       tone: 'is-orange',
     },
+    {
+      label: '최근 정산 인건비',
+      value: lastRun ? laborOf(lastRun).toLocaleString('ko-KR') : '–',
+      unit: '원',
+      sub: !lastRun
+        ? '정산 내역 없음'
+        : `${lastRun.payMonth.replace('-', '년 ')}월 · ${laborDiff == null ? '이전 정산 없음' : `직전 정산 대비 ${laborDiff > 0 ? '▲' : laborDiff < 0 ? '▼' : ''} ${Math.abs(laborDiff)}%`}`,
+      tone: 'is-blue',
+      to: '/payroll',
+    },
   ];
 
   return (
@@ -63,7 +81,7 @@ export default function ExecutiveHome({ company }) {
       <h2 className="ex-sec">전사 실시간 도메인 집계 현황</h2>
       <div className="ex-tiles">
         {tiles.map((x) => (
-          <div key={x.label} className="ex-tile">
+          <div key={x.label} className={`ex-tile${x.to ? ' is-click' : ''}`} onClick={x.to ? () => navigate(x.to) : undefined}>
             <span>{x.label}</span>
             <strong>
               {x.value}
