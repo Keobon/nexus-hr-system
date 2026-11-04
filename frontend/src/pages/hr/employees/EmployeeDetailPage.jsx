@@ -24,6 +24,7 @@ import { errorMessage } from '../../../constants/errors';
 import { labelOf, optionsOf } from '../../../constants/labels';
 import { formatMoney } from '../../../utils/format';
 import { ConfirmModal, EmpStatusBadge, ModalFoot, PageHead, useOrgOptions } from '../parts';
+import EmployeeFamilyCard from './EmployeeFamilyCard';
 import EmployeeFieldsCard from './EmployeeFieldsCard';
 
 const KV = ({ k, children }) => (
@@ -136,7 +137,7 @@ export default function EmployeeDetailPage() {
           )}
           {has(e.dependentsCount) && (
             <KV k="부양가족수">
-              {`${e.dependentsCount}명`} <em className="hr-hint-inline">가족 정보에 등록하면 자동으로 셉니다</em>
+              {`${e.dependentsCount}명`} <em className="hr-hint-inline">아래 가족 정보에 등록하면 자동으로 셉니다</em>
             </KV>
           )}
         </div>
@@ -154,6 +155,9 @@ export default function EmployeeDetailPage() {
       </div>
 
       {has(e.fieldValues) && <EmployeeFieldsCard employee={e} canEdit={manage && !resigned} />}
+
+      {/* 가족 API 는 EMPLOYEE_MANAGE 만 — 조회 권한만 있으면 카드를 숨긴다 */}
+      {manage && <EmployeeFamilyCard employee={e} canEdit={!resigned} />}
 
       {salaries.data && <SalaryCard s={salaries.data} />}
 
