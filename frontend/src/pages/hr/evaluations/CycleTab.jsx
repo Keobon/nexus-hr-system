@@ -1,6 +1,7 @@
-// 평가 기간 — Figma 72-7227(목록) · 473-11844(평가 기간 만들기)
-// 서버에는 기간 이름 · 시작일 · 종료일만 있다 → 연도 · 반기로 이름("2026 상반기 평가")을 만들고, 평가 유형은 대상 규칙의 템플릿으로 둔다.
-// Figma 의 "자기평가 제출 기간"은 서버에 자기평가가 없어 뺐다. 저장한 뒤 줄에서 대상 지정 → 평가 시작 → 마감
+// 평가 기간 — Figma 72-7227(목록) · 473-11844(평가 만들기)
+// 평가지는 "평가 만들기" 한 곳에서만 고른다(정기: 직원 · 조직장, 고과: 고과 평가지 하나) — 저장하면 대상 규칙까지 넣는다.
+// 목록에서는 대상 확인(읽기 전용 미리보기) · 수정(같은 창, 예정만) · 평가 시작 · 삭제(예정만) → 진행 현황 · 마감 → 결과 보기
+// Figma 의 "자기평가 제출 기간"은 서버에 자기평가가 없어 뺐다
 // 승진 고과: 심사 기간은 회사 공통, 대상은 기간 시작일에 지금 직급에 N년 이상인 직원(서버 계산). 결과는 본인에게 공개하지 않는다
 import { useState } from 'react';
 import { App, DatePicker, Form, Input, InputNumber, Modal, Segmented, Select, Spin } from 'antd';
@@ -9,6 +10,7 @@ import dayjs from 'dayjs';
 import {
   closeEvalCycle,
   createEvalCycle,
+  deleteEvalCycle,
   evalCyclesKey,
   evalTargetsKey,
   evalTargetsPreviewKey,
@@ -19,6 +21,7 @@ import {
   getEvalTemplates,
   putEvalTargets,
   startEvalCycle,
+  updateEvalCycle,
 } from '../../../api/evalAdmin';
 import { applyFieldErrors } from '../../../components/common/formErrors';
 import { useNotify } from '../../../components/common/useNotify';
@@ -42,8 +45,9 @@ export default function CycleTab({ onResults }) {
   const cycles = useQuery({ queryKey: evalCyclesKey, queryFn: getEvalCycles });
   const list = cycles.data ?? [];
   const [year, setYear] = useState(dayjs().format('YYYY'));
-  const [creating, setCreating] = useState(false);
-  const [targeting, setTargeting] = useState(null);
+  const [editing, setEditing] = useState(null); // null · 'new' · 평가 기간(수정)
+  const [checking, setChecking] = useState(null); // 대상 확인 창
+
   const rows = list.filter((c) => cycleParts(c).year === year).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const rules = useQueries({ queries: rows.map((c) => ({ queryKey: evalTargetsKey(c.id), queryFn: () => getEvalTargets(c.id) })) });
 
@@ -69,18 +73,36 @@ export default function CycleTab({ onResults }) {
       },
     });
 
+  const remove = (c) =>
+    modal.confirm({
+      title: `${c.name}을(를) 삭제할까요?`,
+      content: '예정 상태라 아직 만들어진 평가가 없습니다. 평가와 대상 규칙이 함께 지워지고 되돌릴 수 없습니다.',
+      okText: '삭제',
+      okButtonProps: { danger: true },
+      cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteEvalCycle(c.id);
+          queryClient.invalidateQueries({ queryKey: evalCyclesKey });
+          notify.success(`${c.name}을(를) 삭제했습니다`);
+        } catch (err) {
+          notify.error(err);
+        }
+      },
+    });
+
   return (
     <>
       <div className="ea-bar is-plain">
         <Select className="ea-select" value={year} onChange={setYear} options={yearOptions(list)} />
-        <button type="button" className="hr-btn" onClick={() => setCreating(true)}>
-          평가 기간 만들기
+        <button type="button" className="hr-btn" onClick={() => setEditing('new')}>
+          평가 만들기
         </button>
       </div>
 
       <section className="hr-table ea-card">
         <div className="ea-card-head">
-          <strong>{`총 ${rows.length}개 평가 기간`}</strong>
+          <strong>{`총 ${rows.length}개 평가`}</strong>
           <span>상태는 현재 상태 기준으로 표시됩니다.</span>
         </div>
         <div className="hr-tr is-head">
@@ -114,11 +136,17 @@ export default function CycleTab({ onResults }) {
               <span className="ea-c-act">
                 {c.status === 'SCHEDULED' && (
                   <>
-                    <button type="button" className="hr-link" onClick={() => setTargeting(c)}>
-                      대상 지정
+                    <button type="button" className="hr-link" onClick={() => setChecking(c)}>
+                      대상 확인
+                    </button>
+                    <button type="button" className="hr-link" onClick={() => setEditing(c)}>
+                      수정
                     </button>
                     <button type="button" className="hr-link" onClick={() => act(c, 'start')}>
                       평가 시작
+                    </button>
+                    <button type="button" className="hr-link is-red" onClick={() => remove(c)}>
+                      삭제
                     </button>
                   </>
                 )}
@@ -143,19 +171,48 @@ export default function CycleTab({ onResults }) {
         })}
       </section>
 
-      {creating && <CreateModal onClose={() => setCreating(false)} onCreated={(c) => setTargeting(c)} />}
-      {targeting && (targeting.kind === 'PROMOTION' ? <PromotionTargetModal cycle={targeting} onClose={() => setTargeting(null)} /> : <TargetModal cycle={targeting} onClose={() => setTargeting(null)} />)}
+      {editing && (
+        <EvalFormModal key={editing === 'new' ? 'new' : editing.id} cycle={editing === 'new' ? null : editing} onClose={() => setEditing(null)} onSaved={(c) => setChecking(c)} />
+      )}
+      {checking && (
+        <TargetCheckModal
+          cycle={checking}
+          onClose={() => setChecking(null)}
+          onEdit={() => {
+            setEditing(checking);
+            setChecking(null);
+          }}
+        />
+      )}
     </>
   );
 }
 
-/* ───── 평가 기간 만들기(473-11844) — 저장하면 대상 규칙(전원 → 고른 평가 유형)까지 넣는다 ───── */
-function CreateModal({ onClose, onCreated }) {
+/* ───── 평가 만들기 · 수정(473-11844) — 평가지는 여기서만 고른다. 저장하면 대상 규칙까지 넣는다 ───── */
+const leadRuleOf = (rules) => rules.find((r) => r.condIsOrgLead === true);
+const restRuleOf = (rules) => rules.find((r) => r.condIsOrgLead == null && !r.condJobGradeId && !r.condJobTitleId && !r.condEmploymentTypeId);
+// 직급 · 직책 · 고용형태 조건 규칙(예: 인턴 제외)은 이 창에서 만들지 않고 그대로 둔다
+const customRulesOf = (rules) => rules.filter((r) => r.condJobGradeId || r.condJobTitleId || r.condEmploymentTypeId);
+
+/** 정기: 조직장(직원과 다르면) → 조건 규칙 → 나머지 직원. 고과: 고과 평가지 하나 */
+function buildRules(kind, v, custom) {
+  if (kind === 'PROMOTION') return [{ priority: 1, evalTemplateId: v.promotionTemplateId }];
+  const next = [];
+  if (v.leadTemplateId !== 'SAME' && v.leadTemplateId !== v.staffTemplateId) {
+    next.push({ priority: 1, condIsOrgLead: true, evalTemplateId: v.leadTemplateId === 'NONE' ? null : v.leadTemplateId });
+  }
+  custom.forEach((r) => next.push({ ...r, priority: next.length + 1 }));
+  next.push({ priority: next.length + 1, evalTemplateId: v.staffTemplateId });
+  return next;
+}
+
+function EvalFormModal({ cycle, onClose, onSaved }) {
   const notify = useNotify();
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const templates = useQuery({ queryKey: evalTemplatesKey, queryFn: getEvalTemplates });
+  const current = useQuery({ queryKey: evalTargetsKey(cycle?.id), queryFn: () => getEvalTargets(cycle.id), enabled: !!cycle });
   const thisYear = Number(dayjs().format('YYYY'));
   const range = (y, half) => (half === '상반기' ? [dayjs(`${y}-01-01`), dayjs(`${y}-06-30`)] : [dayjs(`${y}-07-01`), dayjs(`${y}-12-31`)]);
   // 연도 · 반기를 바꾸면 날짜를 그 반기로 채운다(직접 고칠 수 있다)
@@ -163,49 +220,92 @@ function CreateModal({ onClose, onCreated }) {
     const [s, e] = range(y, half);
     form.setFieldsValue({ startDate: s, endDate: e });
   };
+  const list = templates.data ?? [];
+  const byName = (word) => list.find((t) => t.name.includes(word))?.id;
+  const rules = current.data?.rules ?? [];
+  const custom = customRulesOf(rules);
+
   const save = useMutation({
     mutationFn: async (v) => {
+      const kind = cycle?.kind ?? v.kind;
       const dates = { startDate: v.startDate.format('YYYY-MM-DD'), endDate: v.endDate.format('YYYY-MM-DD') };
-      const c = await createEvalCycle(
-        v.kind === 'PROMOTION' ? { name: v.name.trim(), kind: 'PROMOTION', minYearsInGrade: v.minYearsInGrade, ...dates } : { name: `${v.year} ${v.half} 평가`, ...dates },
-      );
-      if (v.templateId) await putEvalTargets(c.id, { rules: [{ priority: 1, evalTemplateId: v.templateId }] });
+      const name = kind === 'PROMOTION' ? v.name.trim() : `${v.year} ${v.half} 평가`;
+      let c;
+      if (cycle) {
+        const patch = Object.fromEntries(Object.entries({ name, ...dates }).filter(([k, val]) => cycle[k] !== val));
+        c = Object.keys(patch).length ? await updateEvalCycle(cycle.id, patch) : cycle;
+      } else {
+        c = await createEvalCycle(kind === 'PROMOTION' ? { name, kind, minYearsInGrade: v.minYearsInGrade, ...dates } : { name, ...dates });
+      }
+      await putEvalTargets(c.id, { rules: buildRules(kind, v, custom) });
       return c;
     },
     onSuccess: (c) => {
       queryClient.invalidateQueries({ queryKey: evalCyclesKey });
-      // 날짜가 겹쳐도 저장은 되고 warning PERIOD_OVERLAP 만 온다 — 공통 경고 문구(휴가·출장)가 아닌 평가 기간 문구로
-      notify.success(`${c.name}을(를) 만들었습니다`);
-      if (c.warning === 'PERIOD_OVERLAP') message.warning('다른 평가 기간과 날짜가 겹칩니다. 날짜를 확인해 주세요', 5);
+      queryClient.invalidateQueries({ queryKey: ['eval-cycles', c.id] });
+      // 날짜가 겹쳐도 저장은 되고 warning PERIOD_OVERLAP 만 온다 — 공통 경고 문구(휴가·출장)가 아닌 평가 문구로
+      notify.success(cycle ? `${c.name}을(를) 저장했습니다` : `${c.name}을(를) 만들었습니다`);
+      if (c.warning === 'PERIOD_OVERLAP') message.warning('같은 종류의 다른 평가와 날짜가 겹칩니다. 날짜를 확인해 주세요', 5);
       onClose();
-      onCreated?.(c);
+      onSaved?.(c);
     },
     onError: (err) => {
       if (!applyFieldErrors(form, err)) notify.error(err);
     },
   });
+
   const [s0, e0] = range(thisYear, dayjs().month() < 6 ? '상반기' : '하반기');
-  const kind = Form.useWatch('kind', form) ?? 'REGULAR';
-  // 승진 고과는 반기와 상관없다 — 오늘부터 2주를 먼저 채우고 이름에 '고과'가 든 템플릿을 고른다(직접 고칠 수 있다)
+  const watchedKind = Form.useWatch('kind', form);
+  const kind = cycle?.kind ?? watchedKind ?? 'REGULAR';
+  // 승진 고과는 반기와 상관없다 — 오늘부터 2주를 먼저 채운다(직접 고칠 수 있다)
   const changeKind = (k) => {
-    if (k === 'PROMOTION') {
-      form.setFieldsValue({ startDate: dayjs(), endDate: dayjs().add(14, 'day'), templateId: (templates.data ?? []).find((t) => t.name.includes('고과'))?.id });
-    } else {
-      fill(form.getFieldValue('year'), form.getFieldValue('half'));
-    }
+    if (k === 'PROMOTION') form.setFieldsValue({ startDate: dayjs(), endDate: dayjs().add(14, 'day') });
+    else fill(form.getFieldValue('year'), form.getFieldValue('half'));
   };
+  if (templates.isLoading || (cycle && current.isLoading)) {
+    return (
+      <Modal open title={cycle ? '평가 수정' : '평가 만들기'} footer={null} onCancel={onClose} className="hr-modal ea-modal" centered>
+        <Spin />
+      </Modal>
+    );
+  }
+  const lead = leadRuleOf(rules);
+  const rest = restRuleOf(rules);
+  const parts = cycle ? cycleParts(cycle) : null;
+  const initial = cycle
+    ? {
+        kind: cycle.kind,
+        name: cycle.name,
+        minYearsInGrade: cycle.minYearsInGrade,
+        year: Number(parts.year),
+        half: parts.half ?? '상반기',
+        startDate: dayjs(cycle.startDate),
+        endDate: dayjs(cycle.endDate),
+        staffTemplateId: rest?.evalTemplateId ?? byName('일반'),
+        leadTemplateId: lead ? (lead.evalTemplateId ?? 'NONE') : 'SAME',
+        promotionTemplateId: rules.find((r) => r.evalTemplateId)?.evalTemplateId ?? byName('고과'),
+      }
+    : {
+        kind: 'REGULAR',
+        year: thisYear,
+        half: dayjs().month() < 6 ? '상반기' : '하반기',
+        name: `${thisYear} 승진 고과`,
+        minYearsInGrade: 3,
+        startDate: s0,
+        endDate: e0,
+        staffTemplateId: byName('일반'),
+        leadTemplateId: byName('리더') ?? 'SAME',
+        promotionTemplateId: byName('고과'),
+      };
+  const opts = list.map((t) => ({ value: t.id, label: t.name }));
+
   return (
-    <Modal open title="평가 기간 만들기" footer={null} onCancel={onClose} width={560} className="hr-modal ea-modal" destroyOnHidden centered>
-      <p className="hr-modal-sub">평가 연도, 평가 기간, 평가 유형 및 기간을 설정해 주세요.</p>
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        initialValues={{ kind: 'REGULAR', year: thisYear, half: dayjs().month() < 6 ? '상반기' : '하반기', name: `${thisYear} 승진 고과`, minYearsInGrade: 3, startDate: s0, endDate: e0 }}
-        onFinish={(v) => save.mutate(v)}
-      >
-        <Form.Item name="kind" label="평가 종류">
+    <Modal open title={cycle ? `평가 수정 · ${cycle.name}` : '평가 만들기'} footer={null} onCancel={onClose} width={560} className="hr-modal ea-modal" destroyOnHidden centered>
+      <p className="hr-modal-sub">평가 종류 · 기간 · 평가지를 정합니다. 대상자는 저장 뒤 [대상 확인]에서 확인하세요.</p>
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={initial} onFinish={(v) => save.mutate(v)}>
+        <Form.Item name="kind" label="평가 종류" extra={cycle ? '평가 종류는 만든 뒤 바꿀 수 없습니다.' : undefined}>
           <Segmented
+            disabled={!!cycle}
             options={[
               { value: 'REGULAR', label: '정기 평가' },
               { value: 'PROMOTION', label: '승진 고과' },
@@ -218,36 +318,54 @@ function CreateModal({ onClose, onCreated }) {
             <Form.Item name="name" label="고과 이름" rules={[{ required: true, whitespace: true, message: '이름을 입력하세요' }]}>
               <Input maxLength={50} />
             </Form.Item>
-            <Form.Item name="minYearsInGrade" label="대상 기준 — 지금 직급 체류 연수" extra="기간 시작일에 지금 직급에 이만큼 있었던 직원만 대상입니다. 최고 직급은 제외합니다." rules={[{ required: true, message: '체류 연수를 입력하세요' }]}>
-              <InputNumber className="full-width" min={1} max={50} suffix="년 이상" />
+            <Form.Item
+              name="minYearsInGrade"
+              label="대상 기준 — 지금 직급 체류 연수"
+              extra={cycle ? '체류 연수는 만든 뒤 바꿀 수 없습니다.' : '기간 시작일에 지금 직급에 이만큼 있었던 직원만 대상입니다. 최고 직급은 제외합니다.'}
+              rules={[{ required: true, message: '체류 연수를 입력하세요' }]}
+            >
+              <InputNumber className="full-width" min={1} max={50} suffix="년 이상" disabled={!!cycle} />
+            </Form.Item>
+            <Form.Item name="promotionTemplateId" label="고과 평가지" extra="대상자 모두 이 평가지로 평가합니다." rules={[{ required: true, message: '고과 평가지를 고르세요' }]}>
+              <Select placeholder="평가 템플릿" options={opts} />
             </Form.Item>
           </>
         ) : (
           <>
-            <Form.Item name="year" label="평가 연도">
-              <Select options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: y, label: `${y}년` }))} onChange={(y) => fill(y, form.getFieldValue('half'))} />
-            </Form.Item>
-            <Form.Item name="half" label="평가 기간">
-              <Segmented
-                options={[
-                  { value: '상반기', label: '상반기 (01–06월)' },
-                  { value: '하반기', label: '하반기 (07–12월)' },
-                ]}
-                onChange={(h) => fill(form.getFieldValue('year'), h)}
-              />
-            </Form.Item>
+            <div className="hr-form-row">
+              <Form.Item name="year" label="평가 연도">
+                <Select options={[thisYear - 1, thisYear, thisYear + 1].map((y) => ({ value: y, label: `${y}년` }))} onChange={(y) => fill(y, form.getFieldValue('half'))} />
+              </Form.Item>
+              <Form.Item name="half" label="평가 기간">
+                <Segmented
+                  options={[
+                    { value: '상반기', label: '상반기 (01–06월)' },
+                    { value: '하반기', label: '하반기 (07–12월)' },
+                  ]}
+                  onChange={(h) => fill(form.getFieldValue('year'), h)}
+                />
+              </Form.Item>
+            </div>
+            <div className="hr-form-row">
+              <Form.Item name="staffTemplateId" label="직원 평가지" rules={[{ required: true, message: '직원 평가지를 고르세요' }]}>
+                <Select placeholder="평가 템플릿" options={opts} />
+              </Form.Item>
+              <Form.Item name="leadTemplateId" label="조직장 평가지" extra="팀장 · 본부장처럼 조직장으로 지정된 직원">
+                <Select options={[{ value: 'SAME', label: '직원과 같게' }, ...opts, { value: 'NONE', label: '평가 제외' }]} />
+              </Form.Item>
+            </div>
+            {custom.length > 0 && (
+              <p className="ea-hint">{`조건 규칙은 그대로 둡니다 — ${custom.map((r) => `${r.condEmploymentTypeName ?? r.condJobGradeName ?? r.condJobTitleName} → ${r.evalTemplateName ?? '평가 제외'}`).join(' · ')}`}</p>
+            )}
           </>
         )}
-        <Form.Item name="templateId" label="평가 유형" extra="모든 대상자에게 이 템플릿을 씁니다. 조직장만 다르게 하려면 저장 뒤 대상 지정에서 바꾸세요." rules={[{ required: true, message: '평가 유형을 고르세요' }]}>
-          <Select loading={templates.isLoading} placeholder="평가 템플릿" options={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))} />
-        </Form.Item>
         <div className="hr-form-row">
-          <Form.Item name="startDate" label="평가 기간 시작일" rules={[{ required: true, message: '시작일을 고르세요' }]}>
+          <Form.Item name="startDate" label="평가 시작일" rules={[{ required: true, message: '시작일을 고르세요' }]}>
             <DatePicker className="full-width" format="YYYY.MM.DD" />
           </Form.Item>
           <Form.Item
             name="endDate"
-            label="평가 기간 종료일"
+            label="평가 종료일"
             dependencies={['startDate']}
             rules={[
               { required: true, message: '종료일을 고르세요' },
@@ -257,151 +375,69 @@ function CreateModal({ onClose, onCreated }) {
             <DatePicker className="full-width" format="YYYY.MM.DD" />
           </Form.Item>
         </div>
-        <p className="ea-hint">평가 기간을 저장하면 대상 지정과 평가 시작을 진행할 수 있습니다.</p>
-        <ModalFoot onCancel={onClose} busy={save.isPending} okText="만들기" />
+        <ModalFoot onCancel={onClose} busy={save.isPending} okText={cycle ? '저장' : '만들기'} />
       </Form>
     </Modal>
   );
 }
 
-/* ───── 대상 지정 — 조직장 · 나머지 직원에게 쓸 평가 유형(제외 가능). 미리보기로 몇 명인지 ───── */
-function TargetModal({ cycle, onClose }) {
-  const notify = useNotify();
-  const queryClient = useQueryClient();
-  const templates = useQuery({ queryKey: evalTemplatesKey, queryFn: getEvalTemplates });
-  const current = useQuery({ queryKey: evalTargetsKey(cycle.id), queryFn: () => getEvalTargets(cycle.id) });
-  const preview = useQuery({ queryKey: evalTargetsPreviewKey(cycle.id), queryFn: () => getEvalTargetsPreview(cycle.id) });
-  const rules = current.data?.rules ?? [];
-  const leadRule = rules.find((r) => r.condIsOrgLead === true);
-  const restRule = rules.find((r) => r.condIsOrgLead == null && !r.condJobGradeId && !r.condJobTitleId && !r.condEmploymentTypeId);
-  // 직급 · 직책 · 고용형태 조건 규칙(예: 인턴 제외)은 손대지 않고 조직장 줄과 나머지 줄 사이에 그대로 둔다
-  const custom = rules.filter((r) => r.condJobGradeId || r.condJobTitleId || r.condEmploymentTypeId);
-  const [lead, setLead] = useState();
-  const [rest, setRest] = useState();
-  const leadVal = lead ?? (leadRule ? (leadRule.evalTemplateId ?? 'NONE') : 'SAME');
-  const restVal = rest ?? (restRule ? (restRule.evalTemplateId ?? 'NONE') : 'NONE');
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    const next = [];
-    if (leadVal !== 'SAME') next.push({ priority: 1, condIsOrgLead: true, evalTemplateId: leadVal === 'NONE' ? null : leadVal });
-    custom.forEach((r) => next.push({ ...r, priority: next.length + 1 }));
-    next.push({ priority: next.length + 1, evalTemplateId: restVal === 'NONE' ? null : restVal });
-    setBusy(true);
-    try {
-      await putEvalTargets(cycle.id, { rules: next });
-      queryClient.invalidateQueries({ queryKey: ['eval-cycles', cycle.id] });
-      notify.success('대상 규칙을 저장했습니다');
-      onClose();
-    } catch (err) {
-      notify.error(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const opts = (templates.data ?? []).map((t) => ({ value: t.id, label: t.name }));
-
-  return (
-    <Modal open title={`대상 지정 · ${cycle.name}`} footer={null} onCancel={onClose} width={560} className="hr-modal ea-modal" destroyOnHidden centered>
-      <p className="hr-modal-sub">대상자마다 쓸 평가 유형을 정합니다. 평가자는 대상자의 조직장으로 자동 지정됩니다.</p>
-      {cycle.kind === 'PROMOTION' && <p className="ea-hint">{`${cycle.startDate} 기준 지금 직급에 ${cycle.minYearsInGrade}년 이상인 직원만 대상입니다. 최고 직급은 제외합니다.`}</p>}
-      {current.isLoading ? (
-        <Spin />
-      ) : (
-        <>
-          {custom.length > 0 && (
-            <p className="ea-hint">{`조건 규칙은 그대로 둡니다 — ${custom.map((r) => `${r.condEmploymentTypeName ?? r.condJobGradeName ?? r.condJobTitleName} → ${r.evalTemplateName ?? '평가 제외'}`).join(' · ')}`}</p>
-          )}
-          <div className="ea-field">
-            <label>조직장</label>
-            <Select value={leadVal} onChange={setLead} options={[{ value: 'SAME', label: '나머지 직원과 같게' }, ...opts, { value: 'NONE', label: '평가 제외' }]} />
-          </div>
-          <div className="ea-field">
-            <label>나머지 직원</label>
-            <Select value={restVal} onChange={setRest} options={[...opts, { value: 'NONE', label: '평가 제외' }]} />
-          </div>
-          <div className="ea-preview">
-            <strong>지금 저장된 규칙 기준 미리보기</strong>
-            {preview.isLoading && <Spin size="small" />}
-            {preview.data && (
-              <span>{`대상 ${preview.data.targets.length}명 · 제외 ${preview.data.excluded.length}명${preview.data.targets.length ? ` — ${preview.data.targets.slice(0, 5).map((t) => `${t.name}(${t.evalTemplateName})`).join(', ')}${preview.data.targets.length > 5 ? ' 외' : ''}` : ''}`}</span>
-            )}
-          </div>
-        </>
-      )}
-      <ModalFoot onCancel={onClose} busy={busy} okType="button" onOk={save} />
-    </Modal>
-  );
-}
-
-/* ───── 승진 고과 대상 지정 — 대상은 서버가 체류 연수로 정한다. 여기서는 고과 평가지 하나만 고르고 대상 · 제외를 확인한다 ───── */
+/* ───── 대상 확인 — 읽기 전용. 정해진 평가지와 지금 시작하면 만들어질 평가 · 빠지는 사람 ───── */
 const EXCLUDE_REASON = {
   ON_LEAVE: '휴직',
   NO_EVALUATOR: '평가자 없음(최상위 조직장)',
   NO_RULE: '평가지 미지정',
-  RULE_EXCLUDED: '평가 제외',
+  RULE_EXCLUDED: '평가 제외 규칙',
 };
 
-function PromotionTargetModal({ cycle, onClose }) {
-  const notify = useNotify();
-  const queryClient = useQueryClient();
-  const templates = useQuery({ queryKey: evalTemplatesKey, queryFn: getEvalTemplates });
+function TargetCheckModal({ cycle, onClose, onEdit }) {
   const current = useQuery({ queryKey: evalTargetsKey(cycle.id), queryFn: () => getEvalTargets(cycle.id) });
   const preview = useQuery({ queryKey: evalTargetsPreviewKey(cycle.id), queryFn: () => getEvalTargetsPreview(cycle.id) });
-  // 고과는 전원 같은 평가지 — 저장된 규칙의 평가지, 없으면 이름에 '고과'가 든 템플릿
-  const saved = (current.data?.rules ?? []).find((r) => r.evalTemplateId)?.evalTemplateId;
-  const fallback = (templates.data ?? []).find((t) => t.name.includes('고과'))?.id;
-  const [picked, setPicked] = useState();
-  const templateId = picked ?? saved ?? fallback;
-  const [busy, setBusy] = useState(false);
-
-  const save = async () => {
-    if (!templateId) return notify.error('고과 평가지를 고르세요');
-    setBusy(true);
-    try {
-      await putEvalTargets(cycle.id, { rules: [{ priority: 1, evalTemplateId: templateId }] });
-      queryClient.invalidateQueries({ queryKey: ['eval-cycles', cycle.id] });
-      notify.success('고과 평가지를 저장했습니다');
-      onClose();
-    } catch (err) {
-      notify.error(err);
-    } finally {
-      setBusy(false);
-    }
-  };
   const targets = preview.data?.targets ?? [];
   const excluded = preview.data?.excluded ?? [];
+  const reason = (x) => (x.reason === 'NOT_ELIGIBLE' ? `지금 직급 ${cycle.minYearsInGrade}년 미만 또는 최고 직급` : (EXCLUDE_REASON[x.reason] ?? x.reason));
 
   return (
     <Modal open title={`대상 확인 · ${cycle.name}`} footer={null} onCancel={onClose} width={620} className="hr-modal ea-modal" destroyOnHidden centered>
-      <p className="hr-modal-sub">{`${cycle.startDate} 기준 지금 직급에 ${cycle.minYearsInGrade}년 이상인 재직 직원이 대상입니다(최고 직급 제외). 평가자는 대상자의 조직장으로 자동 지정됩니다.`}</p>
-      {current.isLoading ? (
+      <p className="hr-modal-sub">
+        {cycle.kind === 'PROMOTION'
+          ? `${cycle.startDate} 기준 지금 직급에 ${cycle.minYearsInGrade}년 이상인 재직 직원이 대상입니다(최고 직급 제외). 평가자는 대상자의 조직장으로 자동 지정됩니다.`
+          : '재직 직원이 대상이고, 평가자는 대상자의 조직장으로 자동 지정됩니다.'}
+      </p>
+      {current.isLoading || preview.isLoading ? (
         <Spin />
       ) : (
         <>
           <div className="ea-field">
-            <label>고과 평가지</label>
-            <Select value={templateId} onChange={setPicked} loading={templates.isLoading} placeholder="평가 템플릿" options={(templates.data ?? []).map((t) => ({ value: t.id, label: t.name }))} />
+            <label>평가지</label>
+            <span>{typeText(current.data, cycle)}</span>
           </div>
           <div className="ea-preview">
             <strong>{`대상 ${targets.length}명`}</strong>
-            {preview.isLoading && <Spin size="small" />}
             {targets.map((t) => (
-              <span key={t.employeeId}>{`${t.name} · ${t.orgUnitName} — 평가자 ${t.evaluatorName}`}</span>
+              <span key={t.employeeId}>{`${t.name} · ${t.orgUnitName} — ${t.evalTemplateName} · 평가자 ${t.evaluatorName}`}</span>
             ))}
           </div>
           {excluded.length > 0 && (
             <div className="ea-preview">
               <strong>{`제외 ${excluded.length}명`}</strong>
               {excluded.map((x) => (
-                <span key={x.employeeId}>{`${x.name} · ${x.orgUnitName} — ${x.reason === 'NOT_ELIGIBLE' ? `지금 직급 ${cycle.minYearsInGrade}년 미만 또는 최고 직급` : (EXCLUDE_REASON[x.reason] ?? x.reason)}`}</span>
+                <span key={x.employeeId}>{`${x.name} · ${x.orgUnitName} — ${reason(x)}`}</span>
               ))}
             </div>
           )}
-          {!saved && <p className="ea-hint">아직 저장된 평가지가 없습니다. [저장]을 눌러야 평가를 시작할 수 있습니다.</p>}
+          {!targets.length && <p className="ea-hint">대상자가 없으면 평가를 시작할 수 없습니다. [수정]에서 평가지를 확인하세요.</p>}
         </>
       )}
-      <ModalFoot onCancel={onClose} busy={busy} okType="button" onOk={save} />
+      <div className="hr-modal-foot">
+        <button type="button" className="hr-btn is-secondary" onClick={onClose}>
+          닫기
+        </button>
+        {cycle.status === 'SCHEDULED' && (
+          <button type="button" className="hr-btn" onClick={onEdit}>
+            수정
+          </button>
+        )}
+      </div>
     </Modal>
   );
 }

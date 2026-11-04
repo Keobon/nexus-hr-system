@@ -6,8 +6,10 @@ export const evalCyclesKey = ['eval-cycles'];
 export const getEvalCycles = () => api.get('/eval-cycles');
 /** POST /eval-cycles { name, startDate, endDate, kind?, minYearsInGrade? } — 승진 고과는 체류 연수 필수. 같은 유형의 다른 기간과 겹치면 warning PERIOD_OVERLAP(저장은 됨) */
 export const createEvalCycle = (body) => api.post('/eval-cycles', body);
-/** PATCH /eval-cycles/{id} — 예정일 때 이름 · 날짜 */
+/** PATCH /eval-cycles/{id} — 예정일 때 이름 · 날짜(종류 · 체류 연수는 못 바꾼다) */
 export const updateEvalCycle = (id, patch) => api.patch(`/eval-cycles/${id}`, patch);
+/** DELETE /eval-cycles/{id} — 예정 상태만(대상 규칙 함께). 시작한 기간은 INVALID_STATE */
+export const deleteEvalCycle = (id) => api.delete(`/eval-cycles/${id}`);
 
 /** GET · PUT /eval-cycles/{id}/targets { rules: [{ priority, condIsOrgLead, condJobTitleId, condJobGradeId, condEmploymentTypeId, evalTemplateId(null=제외) }] } — 위에서부터 처음 맞는 규칙 */
 export const evalTargetsKey = (id) => ['eval-cycles', id, 'targets'];
