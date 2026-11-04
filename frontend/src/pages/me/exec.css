@@ -24,7 +24,7 @@
 /* 집계 카드 4칸 */
 .ex-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: 1.5rem;
 }
 
