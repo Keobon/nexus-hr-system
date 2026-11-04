@@ -24,7 +24,7 @@
 /* 집계 카드 4칸 */
 .ex-tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: 1.5rem;
 }
 
@@ -41,6 +41,10 @@
 .ex-tile > span {
   color: #64748b;
   font-size: 0.8125rem;
+}
+
+.ex-tile.is-click {
+  cursor: pointer;
 }
 
 .ex-tile strong {
