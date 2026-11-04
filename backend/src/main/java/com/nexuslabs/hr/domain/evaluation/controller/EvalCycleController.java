@@ -10,8 +10,10 @@ import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.permission.RequirePermission;
 import com.nexuslabs.hr.global.response.ApiResponse;
+import com.nexuslabs.hr.global.response.DeleteResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -77,6 +79,12 @@ public class EvalCycleController {
     @PostMapping("/{id}/start")
     public ApiResponse<EvalCycleItem> start(@CurrentUser LoginUser user, @PathVariable long id) {
         return ApiResponse.ok(cycleService.start(user, id));
+    }
+
+    /** 예정 상태만 — 대상 규칙도 함께 지운다. 시작한 기간은 INVALID_STATE(평가 기록이 있다). */
+    @DeleteMapping("/{id}")
+    public ApiResponse<DeleteResult> delete(@CurrentUser LoginUser user, @PathVariable long id) {
+        return ApiResponse.ok(cycleService.delete(user, id));
     }
 
     @PostMapping("/{id}/close")

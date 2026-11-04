@@ -18,6 +18,7 @@ import com.nexuslabs.hr.global.config.ClockConfig;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
 import com.nexuslabs.hr.global.request.PatchRequest;
+import com.nexuslabs.hr.global.response.DeleteResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -205,6 +206,18 @@ public class EvalCycleService {
         cycle.start(OffsetDateTime.now(clock));
         cycleRepository.flush();
         return item(cid, cycleId, null);
+    }
+
+    /** 예정 → 삭제(잘못 만든 기간). 대상 규칙은 ON DELETE CASCADE. 시작한 기간은 평가 기록이 있어 INVALID_STATE. */
+    @Transactional
+    public DeleteResult delete(LoginUser user, long cycleId) {
+        EvalCycle cycle = lock(user.companyId(), cycleId);
+        if (cycle.getStatus() != EvalCycleStatus.SCHEDULED) {
+            throw new BusinessException(ErrorCode.INVALID_STATE, "시작한 평가는 지울 수 없습니다. 마감으로 끝내세요");
+        }
+        cycleRepository.delete(cycle);
+        cycleRepository.flush();
+        return DeleteResult.deleted();
     }
 
     /** 진행 → 종료. 미제출 건은 그 상태로 남는다(재오픈된 건만 종료 뒤에도 입력할 수 있다). */
