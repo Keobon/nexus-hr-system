@@ -28,7 +28,8 @@ export default function LaborCostTab({ month, setMonth }) {
   // 조직 트리에 명세서를 더한다 — 이름으로 잇고(정산 당시 소속), 상위 조직은 하위까지 합친다
   const tree = useMemo(() => {
     const flat = org.flat.filter((o) => o.depth > 0);
-    const byName = Object.fromEntries(flat.map((o) => [o.name, o]));
+    const roots = org.flat.filter((o) => o.depth === 0);
+    const byName = Object.fromEntries([...roots, ...flat].map((o) => [o.name, o]));
     const own = {};
     (slips.data ?? []).forEach((s) => {
       const o = byName[s.orgUnitName];
@@ -40,11 +41,13 @@ export default function LaborCostTab({ month, setMonth }) {
     });
     const budget = Object.fromEntries((cost.data?.rows ?? []).map((r) => [r.orgUnitId, r]));
     const under = (o) => flat.filter((x) => x.path.length > o.path.length && x.path.slice(0, o.path.length).join('›') === o.path.join('›'));
-    return flat.map((o) => {
+    // 최상위 조직(회사) 직속 인원(대표 등)은 하위를 더하지 않은 한 줄 — 없으면 줄 합과 합계가 어긋난다
+    const direct = roots.map((o) => ({ ...o, name: `${o.name} 직속`, depth: 1, headcount: 0, gross: 0, burden: 0, ...own[o.id], hasKids: false }));
+    return [...direct, ...flat.map((o) => {
       const ids = [o, ...under(o)].map((x) => x.id);
       const sum = ids.reduce((a, id) => ({ headcount: a.headcount + (own[id]?.headcount ?? 0), gross: a.gross + (own[id]?.gross ?? 0), burden: a.burden + (own[id]?.burden ?? 0) }), { headcount: 0, gross: 0, burden: 0 });
       return { ...o, ...sum, hasKids: under(o).length > 0, budget: budget[o.id]?.monthlyBudget, rate: budget[o.id]?.executionRate };
-    });
+    })];
   }, [org.flat, slips.data, cost.data]);
   const focus = orgUnitId ? org.byId(orgUnitId) : null;
   const rows = tree.filter((o) => (o.headcount > 0 || o.budget) && (!focus || o.path.slice(0, focus.path.length).join('›') === focus.path.join('›')));

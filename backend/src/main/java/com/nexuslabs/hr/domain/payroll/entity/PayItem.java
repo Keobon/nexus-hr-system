@@ -50,10 +50,6 @@ public class PayItem extends BaseTimeEntity {
 
     private Long defaultAmount;
     private BigDecimal baseRate;
-    private BigDecimal employeeRate;
-    private BigDecimal companyRate;
-    private Long baseUpperLimit;
-    private Long baseLowerLimit;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -76,8 +72,7 @@ public class PayItem extends BaseTimeEntity {
 
     /** 등록 · 수정 — 계산 방식별로 맞춘 값(PayItemService)을 통째로 넣는다. 수정은 다음 정산부터 쓰인다. */
     public void apply(String name, PayItemKind itemKind, boolean taxable, Long nonTaxableLimit, PayCalcMethod calcMethod,
-                      PayApplyTo applyTo, Long defaultAmount, BigDecimal baseRate, BigDecimal employeeRate,
-                      BigDecimal companyRate, Long baseUpperLimit, Long baseLowerLimit, AttendanceBasis attendanceBasis,
+                      PayApplyTo applyTo, Long defaultAmount, BigDecimal baseRate, AttendanceBasis attendanceBasis,
                       BigDecimal multiplier, boolean inOrdinaryWage, int sortOrder, boolean active) {
         this.name = name;
         this.itemKind = itemKind;
@@ -87,10 +82,6 @@ public class PayItem extends BaseTimeEntity {
         this.applyTo = applyTo;
         this.defaultAmount = defaultAmount;
         this.baseRate = baseRate;
-        this.employeeRate = employeeRate;
-        this.companyRate = companyRate;
-        this.baseUpperLimit = baseUpperLimit;
-        this.baseLowerLimit = baseLowerLimit;
         this.attendanceBasis = attendanceBasis;
         this.multiplier = multiplier;
         this.inOrdinaryWage = inOrdinaryWage;

@@ -36,6 +36,7 @@ import java.util.Set;
 /**
  * 급여 항목 관리(F-PAY-01, BR-PAY-006). 계산 방식마다 받는 값은 API 설계서 10.1 "계산 방식별 입력" 표를 따르고,
  * 해당 없는 값은 무시하고 null 로 저장한다(역할 분담 v2 2.3 F 35–38). 수정은 다음 정산부터 쓰인다 — 명세서는 저장된 값이다.
+ * 과세액 대비 요율 항목의 요율 · 상한 · 하한은 적용 시작일과 함께 쌓는다({@link PayItemRateService}) — 처음 값만 여기서 받는다.
  * 등록 · 수정 · 삭제는 감사 로그를 남긴다(BR-AUDIT-001).
  */
 @Service
@@ -49,18 +50,22 @@ public class PayItemService {
     private static final Set<String> FIELDS = Set.of("name", "itemKind", "isTaxable", "nonTaxableLimit", "calcMethod",
             "applyTo", "defaultAmount", "baseRate", "employeeRate", "companyRate", "baseUpperLimit", "baseLowerLimit",
             "attendanceBasis", "multiplier", "inOrdinaryWage", "sortOrder", "isActive");
+    /** 과세액 대비 요율 항목에서 PATCH 로 못 바꾸는 필드 — 적용 시작일과 함께 추가한다. */
+    private static final Set<String> DATED_FIELDS = Set.of("employeeRate", "companyRate", "baseUpperLimit", "baseLowerLimit");
     private static final Set<String> NOT_NULL = Set.of("name", "itemKind", "isTaxable", "calcMethod", "applyTo",
             "inOrdinaryWage", "sortOrder", "isActive");
 
     private final PayItemRepository repository;
+    private final PayItemRateService rateService;
     private final JdbcTemplate jdbc;
     private final AuditLogger auditLogger;
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    public PayItemService(PayItemRepository repository, JdbcTemplate jdbc, AuditLogger auditLogger,
-                          ObjectMapper objectMapper, Validator validator) {
+    public PayItemService(PayItemRepository repository, PayItemRateService rateService, JdbcTemplate jdbc,
+                          AuditLogger auditLogger, ObjectMapper objectMapper, Validator validator) {
         this.repository = repository;
+        this.rateService = rateService;
         this.jdbc = jdbc;
         this.auditLogger = auditLogger;
         this.objectMapper = objectMapper;
@@ -71,10 +76,11 @@ public class PayItemService {
     @Transactional(readOnly = true)
     public List<PayItemResponse> list(long companyId, boolean activeOnly) {
         Set<Long> used = usedIds(companyId);
+        Map<Long, PayItemRateService.Rate> rates = rateService.ratesToday(companyId);
         return repository.findAll().stream()
                 .filter(item -> !activeOnly || item.isActive())
                 .sorted(Comparator.comparingInt(PayItem::getSortOrder).thenComparing(PayItem::getId))
-                .map(item -> PayItemResponse.from(item, used.contains(item.getId())))
+                .map(item -> PayItemResponse.from(item, used.contains(item.getId()), rates.get(item.getId())))
                 .toList();
     }
 
@@ -90,7 +96,9 @@ public class PayItemService {
                 Integer.class, user.companyId());
         PayItem item = new PayItem(v.name(), v.itemKind(), v.calcMethod(), sortOrder);
         apply(item, v, sortOrder);
-        PayItemResponse created = PayItemResponse.from(repository.save(item), false);
+        repository.saveAndFlush(item);
+        PayItemRateService.Rate rate = firstRate(user, item, v);
+        PayItemResponse created = PayItemResponse.from(item, false, rate);
         auditLogger.log(user, AuditAction.CREATE, AUDIT_TARGET, created.id(), null, created);
         return created;
     }
@@ -103,7 +111,16 @@ public class PayItemService {
     public PayItemResponse update(LoginUser user, long id, Map<String, Object> patch) {
         PayItem item = get(id);
         boolean inUse = inUse(user.companyId(), id);
-        PayItemResponse before = PayItemResponse.from(item, inUse);
+        PayItemRateService.Rate rate = rateService.ratesToday(user.companyId()).get(id);
+        if (item.getCalcMethod() == PayCalcMethod.TAXABLE_RATE) {
+            Map<String, String> dated = new LinkedHashMap<>();
+            DATED_FIELDS.stream().filter(patch::containsKey)
+                    .forEach(field -> dated.put(field, "적용 시작일과 함께 변경하세요"));
+            if (!dated.isEmpty()) {
+                throw BusinessException.invalidFields(dated);
+            }
+        }
+        PayItemResponse before = PayItemResponse.from(item, inUse, rate);
         Values v = normalize(merge(before, patch), false);
         if (repository.existsByNameAndIdNot(v.name(), id)) {
             throw new BusinessException(ErrorCode.DUPLICATE_NAME);
@@ -113,8 +130,13 @@ public class PayItemService {
             throw new BusinessException(ErrorCode.ITEM_IN_USE, "쓰인 항목은 구분 · 계산 방식 · 적용 대상을 바꿀 수 없습니다");
         }
         checkSingleActive(v, id);
+        boolean nowRated = item.getCalcMethod() != PayCalcMethod.TAXABLE_RATE && v.calcMethod() == PayCalcMethod.TAXABLE_RATE;
         apply(item, v, v.sortOrder());
-        PayItemResponse after = PayItemResponse.from(item, inUse);
+        if (nowRated) {
+            repository.flush();
+            rate = firstRate(user, item, v);
+        }
+        PayItemResponse after = PayItemResponse.from(item, inUse, v.calcMethod() == PayCalcMethod.TAXABLE_RATE ? rate : null);
         auditLogger.log(user, AuditAction.UPDATE, AUDIT_TARGET, id, before, after);
         return after;
     }
@@ -124,10 +146,11 @@ public class PayItemService {
     public DeleteResult delete(LoginUser user, long id) {
         PayItem item = get(id);
         boolean inUse = inUse(user.companyId(), id);
-        PayItemResponse before = PayItemResponse.from(item, inUse);
+        PayItemRateService.Rate rate = rateService.ratesToday(user.companyId()).get(id);
+        PayItemResponse before = PayItemResponse.from(item, inUse, rate);
         if (inUse) {
             item.deactivate();
-            auditLogger.log(user, AuditAction.UPDATE, AUDIT_TARGET, id, before, PayItemResponse.from(item, true));
+            auditLogger.log(user, AuditAction.UPDATE, AUDIT_TARGET, id, before, PayItemResponse.from(item, true, rate));
             return DeleteResult.deactivated();
         }
         repository.delete(item);
@@ -136,6 +159,15 @@ public class PayItemService {
     }
 
     // ------------------------------------------------------------------
+
+    /** 과세액 대비 요율 항목이면 처음 값을 오늘부터 유효한 행으로 남긴다. */
+    private PayItemRateService.Rate firstRate(LoginUser user, PayItem item, Values v) {
+        if (v.calcMethod() != PayCalcMethod.TAXABLE_RATE) {
+            return null;
+        }
+        return rateService.addFirst(user, item, new PayItemRateService.Rate(v.employeeRate(), v.companyRate(),
+                v.baseUpperLimit(), v.baseLowerLimit()));
+    }
 
     private PayItem get(long id) {
         return repository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
@@ -180,8 +212,7 @@ public class PayItemService {
 
     private static void apply(PayItem item, Values v, int sortOrder) {
         item.apply(v.name(), v.itemKind(), v.taxable(), v.nonTaxableLimit(), v.calcMethod(), v.applyTo(),
-                v.defaultAmount(), v.baseRate(), v.employeeRate(), v.companyRate(), v.baseUpperLimit(),
-                v.baseLowerLimit(), v.attendanceBasis(), v.multiplier(), v.inOrdinaryWage(), sortOrder, v.active());
+                v.defaultAmount(), v.baseRate(), v.attendanceBasis(), v.multiplier(), v.inOrdinaryWage(), sortOrder, v.active());
     }
 
     private PayItemRequest merge(PayItemResponse current, Map<String, Object> patch) {
@@ -255,19 +286,11 @@ public class PayItemService {
         Long upper = null;
         Long lower = null;
         if (method == PayCalcMethod.TAXABLE_RATE) {
-            employeeRate = rate("employeeRate", r.employeeRate(), errors);
-            companyRate = rate("companyRate", r.companyRate(), errors);
+            employeeRate = r.employeeRate();
+            companyRate = r.companyRate();
             upper = r.baseUpperLimit();
             lower = r.baseLowerLimit();
-            if (upper != null && upper < 0) {
-                errors.put("baseUpperLimit", "0 이상이어야 합니다");
-            }
-            if (lower != null && lower < 0) {
-                errors.put("baseLowerLimit", "0 이상이어야 합니다");
-            }
-            if (upper != null && lower != null && lower > upper) {
-                errors.put("baseLowerLimit", "하한액은 상한액 이하여야 합니다");
-            }
+            PayItemRateService.validate("", employeeRate, companyRate, upper, lower, errors);
         }
         AttendanceBasis basis = null;
         BigDecimal multiplier = null;
@@ -305,13 +328,6 @@ public class PayItemService {
         if (actual != expected) {
             errors.put("itemKind", message);
         }
-    }
-
-    private static BigDecimal rate(String field, BigDecimal value, Map<String, String> errors) {
-        if (value == null || value.signum() < 0 || value.compareTo(HUNDRED) > 0 || value.scale() > 4) {
-            errors.put(field, "요율은 0 이상 100 이하(소수 넷째 자리까지)여야 합니다");
-        }
-        return value;
     }
 
     private record Values(String name, PayItemKind itemKind, boolean taxable, Long nonTaxableLimit,

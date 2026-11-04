@@ -249,11 +249,20 @@ INSERT INTO approval_line_step (company_id, approval_line_id, step_order, approv
 -- ---------------------------------------------------------------------
 -- 급여 항목 · 계산 변수 · 세율 구간
 -- ---------------------------------------------------------------------
-INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, apply_to, employee_rate, company_rate, sort_order)
-SELECT c.id * 20 - 19 + i.o - 1, c.id, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', i.er, i.cr, 100 + i.o
-FROM company c CROSS JOIN (VALUES
- ('국민연금',4.5,4.5,1),('건강보험',3.545,3.545,2),('장기요양보험',0.4591,0.4591,3),('고용보험',0.9,1.15,4)) AS i(n, er, cr, o);
+INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, apply_to, sort_order)
+SELECT c.id * 20 - 19 + i.o - 1, c.id, i.n, 'DEDUCTION', TRUE, 'TAXABLE_RATE', 'ALL', 100 + i.o
+FROM company c CROSS JOIN (VALUES ('국민연금',1),('건강보험',2),('장기요양보험',3),('고용보험',4)) AS i(n, o);
 -- id: NEXUS 1–4, 한빛 21–24
+
+-- 요율 이력. 2026-08 · 09 명세서가 옛 요율로 저장돼 있어 옛 값을 남기고, 2026년 값은 시연용으로 2026-10-01 부터 넣는다
+-- (실제 시행일: 요율 2026-01-01, 국민연금 상한 · 하한 2026-07-01 — 보건복지부 고시 제2026-31호)
+INSERT INTO pay_item_rate (company_id, pay_item_id, employee_rate, company_rate, base_upper_limit, base_lower_limit, effective_from)
+SELECT c.id, c.id * 20 - 19 + i.o - 1, i.er, i.cr, i.up, i.lo, i.d::date
+FROM company c CROSS JOIN (VALUES
+ (1,4.5,4.5,NULL::bigint,NULL::bigint,'2026-01-01'),(2,3.545,3.545,NULL,NULL,'2026-01-01'),
+ (3,0.4591,0.4591,NULL,NULL,'2026-01-01'),(4,0.9,1.15,NULL,NULL,'2026-01-01'),
+ (1,4.75,4.75,6590000,410000,'2026-10-01'),(2,3.595,3.595,NULL,NULL,'2026-10-01'),
+ (3,0.4724,0.4724,NULL,NULL,'2026-10-01')) AS i(o, er, cr, up, lo, d);
 
 INSERT INTO pay_item (id, company_id, name, item_kind, is_taxable, calc_method, attendance_basis, multiplier, sort_order)
 SELECT c.id * 20 - 15 + i.o - 1, c.id, i.n, i.k::pay_item_kind, TRUE, 'ATTENDANCE', i.b::attendance_basis, i.m, 50 + i.o
