@@ -93,7 +93,7 @@ class PaySettingTest {
                 .andExpect(jsonPath("$.data[5].name").value("출장비 정산"))
                 .andExpect(jsonPath("$.data[5].isTaxable").value(false))
                 .andExpect(jsonPath("$.data[6].name").value("국민연금"))
-                .andExpect(jsonPath("$.data[6].employeeRate").value(4.5))
+                .andExpect(jsonPath("$.data[6].employeeRate").value(4.75))
                 .andExpect(jsonPath("$.data[6].defaultAmount").value(nullValue()))
                 .andExpect(jsonPath("$.data[6].inUse").value(false))
                 .andExpect(jsonPath("$.data[9].companyRate").value(1.15));

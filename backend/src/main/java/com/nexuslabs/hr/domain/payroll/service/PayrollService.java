@@ -66,6 +66,7 @@ public class PayrollService {
     private final PayItemRepository payItemRepository;
     private final PayrollRunRepository runRepository;
     private final PayVariableService payVariableService;
+    private final PayItemRateService payItemRateService;
     private final TaxBracketService taxBracketService;
     private final AttendanceCalculator attendanceCalculator;
     private final WorkCalendar workCalendar;
@@ -75,12 +76,14 @@ public class PayrollService {
     private final Clock clock;
 
     public PayrollService(PayItemRepository payItemRepository, PayrollRunRepository runRepository,
-                          PayVariableService payVariableService, TaxBracketService taxBracketService,
+                          PayVariableService payVariableService, PayItemRateService payItemRateService,
+                          TaxBracketService taxBracketService,
                           AttendanceCalculator attendanceCalculator, WorkCalendar workCalendar, JdbcTemplate jdbc,
                           EntityManager em, AuditLogger auditLogger, Clock clock) {
         this.payItemRepository = payItemRepository;
         this.runRepository = runRepository;
         this.payVariableService = payVariableService;
+        this.payItemRateService = payItemRateService;
         this.taxBracketService = taxBracketService;
         this.attendanceCalculator = attendanceCalculator;
         this.workCalendar = workCalendar;
@@ -272,8 +275,9 @@ public class PayrollService {
         Map<Long, int[]> family = familyCounts(companyId, ids);
 
         TaxBrackets brackets = taxBracketService.get(companyId);
+        Map<Long, PayItemRateService.Rate> rates = payItemRateService.ratesOn(companyId, last);
         PayrollCalculator.Settings settings = new PayrollCalculator.Settings(
-                active.stream().map(PayrollService::item).toList(),
+                active.stream().map(i -> item(i, rates.get(i.getId()))).toList(),
                 payVariableService.valueOn(companyId, PayVarCode.MONTHLY_STANDARD_HOURS, last),
                 payVariableService.valueOn(companyId, PayVarCode.DEPENDENT_DEDUCTION, last).longValue(),
                 payVariableService.valueOn(companyId, PayVarCode.MULTI_CHILD_DEDUCTION, last).longValue(),
@@ -492,10 +496,16 @@ public class PayrollService {
                 l.formulaNote());
     }
 
-    private static PayrollCalculator.Item item(PayItem i) {
+    /** rate = 귀속 월 말일에 유효한 요율 행. 과세액 대비 요율 항목이 아니면 null. */
+    private static PayrollCalculator.Item item(PayItem i, PayItemRateService.Rate rate) {
+        if (i.getCalcMethod() == PayCalcMethod.TAXABLE_RATE && rate == null) {
+            throw new IllegalStateException("요율 행이 없다: " + i.getName());
+        }
         return new PayrollCalculator.Item(i.getId(), i.getName(), i.getItemKind(), i.getCalcMethod(), i.getApplyTo(),
-                i.isTaxable(), i.getNonTaxableLimit(), i.getDefaultAmount(), i.getBaseRate(), i.getEmployeeRate(),
-                i.getCompanyRate(), i.getBaseUpperLimit(), i.getBaseLowerLimit(), i.getAttendanceBasis(),
+                i.isTaxable(), i.getNonTaxableLimit(), i.getDefaultAmount(), i.getBaseRate(),
+                rate == null ? null : rate.employeeRate(), rate == null ? null : rate.companyRate(),
+                rate == null ? null : rate.baseUpperLimit(), rate == null ? null : rate.baseLowerLimit(),
+                i.getAttendanceBasis(),
                 i.getMultiplier(), i.isInOrdinaryWage(), i.getSortOrder());
     }
 

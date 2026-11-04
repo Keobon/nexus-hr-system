@@ -1,11 +1,14 @@
 package com.nexuslabs.hr.domain.payroll.controller;
 
+import com.nexuslabs.hr.domain.payroll.dto.InsuranceRateRequest;
+import com.nexuslabs.hr.domain.payroll.dto.InsuranceRateView;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemResponse;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableView;
 import com.nexuslabs.hr.domain.payroll.dto.TaxBrackets;
 import com.nexuslabs.hr.domain.payroll.service.PayItemService;
+import com.nexuslabs.hr.domain.payroll.service.PayItemRateService;
 import com.nexuslabs.hr.domain.payroll.service.PayVariableService;
 import com.nexuslabs.hr.domain.payroll.service.TaxBracketService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -35,12 +38,15 @@ import java.util.Map;
 public class PaySettingController {
 
     private final PayItemService payItemService;
+    private final PayItemRateService payItemRateService;
     private final PayVariableService payVariableService;
     private final TaxBracketService taxBracketService;
 
-    public PaySettingController(PayItemService payItemService, PayVariableService payVariableService,
+    public PaySettingController(PayItemService payItemService, PayItemRateService payItemRateService,
+                                PayVariableService payVariableService,
                                 TaxBracketService taxBracketService) {
         this.payItemService = payItemService;
+        this.payItemRateService = payItemRateService;
         this.payVariableService = payVariableService;
         this.taxBracketService = taxBracketService;
     }
@@ -73,6 +79,22 @@ public class PaySettingController {
     @RequirePermission(PermissionCode.PAYROLL_MANAGE)
     public ApiResponse<DeleteResult> deleteItem(@CurrentUser LoginUser user, @PathVariable long id) {
         return ApiResponse.ok(payItemService.delete(user, id));
+    }
+
+    /** 보험 항목별 요율 · 상한 · 하한의 현재 · 예정 · 이력. */
+    @GetMapping("/api/pay-items/insurance-rates")
+    @RequirePermission(PermissionCode.PAYROLL_MANAGE)
+    public ApiResponse<List<InsuranceRateView>> insuranceRates(@CurrentUser LoginUser user) {
+        return ApiResponse.ok(payItemRateService.list(user.companyId()));
+    }
+
+    /** 새 값을 적용 시작일과 함께 한 번에 추가한다. 하나라도 틀리면 아무것도 저장하지 않는다. */
+    @PostMapping("/api/pay-items/insurance-rates")
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission(PermissionCode.PAYROLL_MANAGE)
+    public ApiResponse<List<InsuranceRateView>> saveInsuranceRates(@CurrentUser LoginUser user,
+                                                                   @Valid @RequestBody InsuranceRateRequest request) {
+        return ApiResponse.ok(payItemRateService.save(user, request));
     }
 
     @GetMapping("/api/pay-variables")
