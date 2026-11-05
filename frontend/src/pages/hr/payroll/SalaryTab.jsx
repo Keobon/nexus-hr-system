@@ -1,7 +1,7 @@
 // 직원 급여 — Figma 458-17828(목록) · 458-18062(옆 창) · 458-18377(급여 변경) · 458-18729(수당·공제 추가) · 458-19078(미등록) · 458-19327(조회 전용)
 // 원천징수 비율(80 · 100 · 120%)은 서버에 없어 뺐다(모두 100%로 계산)
 import { useState } from 'react';
-import { DatePicker, Drawer, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Spin, Switch } from 'antd';
+import { Checkbox, DatePicker, Drawer, Form, Input, InputNumber, Modal, Pagination, Segmented, Select, Spin, Switch } from 'antd';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { employeeSalariesKey, getEmployeeSalaries } from '../../../api/payroll';
@@ -197,20 +197,19 @@ function SalaryPanel({ row, manage, onClose }) {
               <div className="pr-mini-tr is-head">
                 <span>항목</span>
                 <span className="is-num">금액</span>
-                <span>적용 시작일</span>
+                <span>근거</span>
                 <span />
               </div>
               {items.length === 0 && <p className="pr-muted">적용되는 수당·공제가 없습니다.</p>}
               {items.map((it) => {
-                const last = it.history?.[0];
-                const own = it.applyTo === 'SELECTED';
+                const fixed = it.calcMethod === 'FIXED';
                 return (
                   <div key={it.payItemId} className="pr-mini-tr">
-                    <span>{it.name}</span>
+                    <span>{`${it.name}${it.itemKind === 'DEDUCTION' ? ' (공제)' : ''}`}</span>
                     <span className="is-num hr-strong">{it.currentAmount != null ? won(it.currentAmount) : '–'}</span>
-                    <span>{own ? (last?.effectiveFrom ?? '–') : '전체 적용'}</span>
+                    <span className="pr-muted">{sourceText(it)}</span>
                     <span>
-                      {manage && own && (
+                      {manage && fixed && (
                         <button type="button" className="hr-btn is-sm" onClick={() => setItemOpen({ payItemId: it.payItemId })}>
                           변경
                         </button>
@@ -248,7 +247,15 @@ function SalaryPanel({ row, manage, onClose }) {
   );
 }
 
-/** 급여 이력 + 지정 직원 항목 이력을 한 줄로 — 이전 → 변경 */
+/** 금액의 근거 — 개별 금액 · 과장 이상 규칙 · 개발본부 규칙 · 기본 금액 · 기본급 대비 % */
+function sourceText(it) {
+  if (it.calcMethod === 'BASE_RATE') return '기본급 대비 %';
+  const s = it.source;
+  if (!s) return it.history?.length ? '적용 안 함' : '–';
+  return { EMPLOYEE: '개별 금액', JOB_GRADE: `${s.name} 규칙`, ORG_UNIT: `${s.name} 규칙`, DEFAULT: '기본 금액' }[s.type] ?? '–';
+}
+
+/** 급여 이력 + 직원 개별 금액 이력을 한 줄로 — 이전 → 변경(null = 개별 해제) */
 function buildHistory(s) {
   const out = [];
   const sal = [...(s.salaries ?? [])].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom) || a.createdAt.localeCompare(b.createdAt));
@@ -260,7 +267,8 @@ function buildHistory(s) {
   (s.payItems ?? []).forEach((it) => {
     const hist = [...(it.history ?? [])].sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom) || a.createdAt.localeCompare(b.createdAt));
     hist.forEach((h, i) => {
-      out.push({ key: `i${h.id}`, title: it.name, change: `${i ? won(hist[i - 1].amount) : '미등록'} → ${h.amount ? won(h.amount) : '적용 끝'}`, effectiveFrom: h.effectiveFrom, reason: h.reason, by: h.createdByName, at: h.createdAt });
+      const show = (a) => (a == null ? '개별 해제' : a === 0 ? '받지 않음' : won(a));
+      out.push({ key: `i${h.id}`, title: it.name, change: `${i ? show(hist[i - 1].amount) : '미등록'} → ${show(h.amount)}`, effectiveFrom: h.effectiveFrom, reason: h.reason, by: h.createdByName, at: h.createdAt });
     });
   });
   return out.sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom) || b.at.localeCompare(a.at));
@@ -351,15 +359,16 @@ function SalaryModal({ employee, current, employees, onClose }) {
   );
 }
 
-/* ───── 수당·공제 추가 · 변경(458-18729) — "선택 직원" 고정액 항목만, 금액 0 이면 적용 끝 ───── */
+/* ───── 수당·공제 개별 금액(458-18729) — 고정액 항목(전원 · 선택 직원). 0원 = 받지 않음, 해제 = 부서 · 직급 규칙 · 기본 금액으로 ───── */
 function ItemModal({ employee, presetId, onClose }) {
   const notify = useNotify();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const items = useQuery({ queryKey: payItemsKey, queryFn: getPayItems });
-  const choices = (items.data ?? []).filter((i) => i.applyTo === 'SELECTED' && i.calcMethod === 'FIXED' && i.isActive);
+  const choices = (items.data ?? []).filter((i) => i.calcMethod === 'FIXED' && i.isActive);
+  const release = Form.useWatch('release', form);
   const save = useMutation({
-    mutationFn: (v) => assignPayItem(employee.employeeId, { payItemId: v.payItemId, amount: v.amount, effectiveFrom: v.effectiveFrom.format('YYYY-MM-DD'), reason: v.reason.trim() }),
+    mutationFn: (v) => assignPayItem(employee.employeeId, { payItemId: v.payItemId, amount: v.release ? null : v.amount, effectiveFrom: v.effectiveFrom.format('YYYY-MM-DD'), reason: v.reason.trim() }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['salaries'] });
       notify.success('수당·공제를 저장했습니다', data);
@@ -373,12 +382,17 @@ function ItemModal({ employee, presetId, onClose }) {
     <Modal open title={presetId ? '수당·공제 변경' : '수당·공제 추가'} footer={null} onCancel={onClose} width={480} className="hr-modal pr-modal" destroyOnHidden centered>
       <p className="hr-modal-sub">{`${employee.name} · ${employee.orgUnitName}`}</p>
       <Form form={form} layout="vertical" requiredMark={false} initialValues={{ payItemId: presetId, effectiveFrom: dayjs() }} onFinish={(v) => save.mutate(v)}>
-        <Form.Item name="payItemId" label="항목" extra="선택 직원 항목만 표시" rules={[{ required: true, message: '항목을 고르세요' }]}>
+        <Form.Item name="payItemId" label="항목" extra="고정액 수당 · 공제" rules={[{ required: true, message: '항목을 고르세요' }]}>
           <Select disabled={!!presetId} loading={items.isLoading} options={choices.map((i) => ({ value: i.id, label: i.name }))} placeholder={choices.length ? '항목을 고르세요' : '선택 직원 고정액 항목이 없습니다'} />
         </Form.Item>
-        <Form.Item name="amount" label="금액" extra="0원으로 저장하면 이 날짜부터 적용을 끝냅니다" rules={[{ required: true, message: '금액을 입력하세요' }]}>
-          <InputNumber className="full-width" min={0} step={10000} suffix="원" {...money} />
+        <Form.Item name="release" valuePropName="checked">
+          <Checkbox>개별 금액 해제(부서 · 직급 규칙이나 기본 금액을 따름)</Checkbox>
         </Form.Item>
+        {!release && (
+          <Form.Item name="amount" label="이 직원의 금액" extra="부서 · 직급 규칙보다 먼저 씁니다. 0원이면 이 직원은 받지 않습니다" rules={[{ required: true, message: '금액을 입력하세요' }]}>
+            <InputNumber className="full-width" min={0} step={10000} suffix="원" {...money} />
+          </Form.Item>
+        )}
         <Form.Item name="effectiveFrom" label="적용 시작일" rules={[{ required: true, message: '적용 시작일을 고르세요' }]}>
           <DatePicker className="full-width" format="YYYY-MM-DD" />
         </Form.Item>

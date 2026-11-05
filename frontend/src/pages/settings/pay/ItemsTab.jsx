@@ -1,7 +1,7 @@
 // 수당·공제 항목 탭(Figma 451:8943) + 항목 추가 / 수정 창(453:9063 고정액 · 453:9360 근태 연동 · 453:9651 직접 입력 · 453:10360 기본급 대비 %)
-// Figma 의 "적용 시작일"은 서버에 없어 뺐다 — 바꾸면 다음 급여 정산부터 반영된다
+// Figma 의 "적용 시작일"은 서버에 없어 뺐다 — 바꾸면 다음 급여 정산부터 반영된다. 고정액 항목은 수정 창 › 적용 대상에서 부서 · 직급 규칙(적용 시작일 있음)
 import { useState } from 'react';
-import { App, Checkbox, Form, Input, InputNumber, Modal, Select, Spin, Switch } from 'antd';
+import { App, Checkbox, Form, Input, InputNumber, Modal, Segmented, Select, Spin, Switch } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createPayItem, deletePayItem, getPayItems, payItemsKey, updatePayItem } from '../../../api/paySettings';
 import { applyFieldErrors } from '../../../components/common/formErrors';
@@ -9,6 +9,7 @@ import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
 import { optionsOf } from '../../../constants/labels';
 import { ModalFoot } from '../../hr/parts';
+import ItemRulesPanel from './ItemRulesPanel';
 import { CALC_BY_KIND, CALC_LABEL, KindBadge, Lock, amountText, won } from './shared';
 
 const KIND_FILTER = [
@@ -140,6 +141,9 @@ function ItemModal({ mode, item, items, onClose }) {
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const editing = mode === 'edit';
+  // 고정액 항목은 "적용 대상"(부서 · 직급 규칙) 탭이 있다
+  const [section, setSection] = useState('info');
+  const ruleTab = editing && item.calcMethod === 'FIXED';
   const locked = editing && item.inUse; // 쓰인 항목 — 구분 · 계산 방식 · 적용 대상은 못 바꾼다
   const kind = Form.useWatch('itemKind', form) ?? (editing ? item.itemKind : EMPTY.itemKind);
   const calc = Form.useWatch('calcMethod', form) ?? (editing ? item.calcMethod : EMPTY.calcMethod);
@@ -197,8 +201,21 @@ function ItemModal({ mode, item, items, onClose }) {
 
   const req = (message) => [{ required: true, message }];
   return (
-    <Modal open title="항목 추가 / 수정" footer={null} onCancel={onClose} width={560} className="hr-modal pay-modal" destroyOnHidden centered>
-      <Form form={form} layout="vertical" requiredMark={false} initialValues={editing ? toForm(item) : EMPTY} onFinish={onFinish}>
+    <Modal open title={editing ? `${item.name} 수정` : '항목 추가 / 수정'} footer={null} onCancel={onClose} width={ruleTab ? 680 : 560} className="hr-modal pay-modal" destroyOnHidden centered>
+      {ruleTab && (
+        <Segmented
+          className="pay-section-tabs"
+          value={section}
+          onChange={setSection}
+          options={[
+            { value: 'info', label: '기본 정보' },
+            { value: 'rules', label: '적용 대상(부서 · 직급)' },
+          ]}
+        />
+      )}
+      {section === 'rules' && ruleTab && <ItemRulesPanel item={item} />}
+      <Form
+        style={section === 'rules' && ruleTab ? { display: 'none' } : undefined} form={form} layout="vertical" requiredMark={false} initialValues={editing ? toForm(item) : EMPTY} onFinish={onFinish}>
         {mode === 'copy' && (
           <Form.Item label="복사할 항목">
             <Select
@@ -276,7 +293,13 @@ function ItemModal({ mode, item, items, onClose }) {
             ]}
           />
         </Form.Item>
-        {applyTo === 'SELECTED' && <p className="pay-warn">직원별 금액 · 대상은 급여 › 직원 급여에서 설정합니다.</p>}
+        {calc === 'FIXED' && (
+          <p className="pay-warn">
+            {applyTo === 'SELECTED'
+              ? '받을 직원은 적용 대상(부서 · 직급 규칙)이나 급여 › 직원 급여(개별 금액)로 정합니다.'
+              : '부서 · 직급마다 다른 금액은 적용 대상 탭, 직원 한 명의 금액은 급여 › 직원 급여에서 정합니다.'}
+          </p>
+        )}
         <div className="pay-checks">
           {earning && (
             <Form.Item name="inOrdinaryWage" valuePropName="checked">

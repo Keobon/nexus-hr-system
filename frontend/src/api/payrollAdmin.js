@@ -37,7 +37,7 @@ export const salariesKey = (params) => ['salaries', 'admin', params];
 export const getSalaries = (params) => api.get('/salaries', params);
 /** POST /employees/{id}/salaries { salaryType, annualSalary | monthlyBase, effectiveFrom, reason } → warning PAY_MONTH_SETTLED 가능 */
 export const registerSalary = (employeeId, body) => api.post(`/employees/${employeeId}/salaries`, body);
-/** POST /employees/{id}/pay-items { payItemId, amount(0이면 적용 끝), effectiveFrom, reason } — "지정 직원" 고정액 항목의 직원별 금액 */
+/** POST /employees/{id}/pay-items { payItemId, amount, effectiveFrom, reason } — 고정액 항목의 직원 개별 금액(0 = 받지 않음, null = 개별 해제 → 규칙 · 기본 금액) */
 export const assignPayItem = (employeeId, body) => api.post(`/employees/${employeeId}/pay-items`, body);
 
 /** GET /statistics/labor-cost?payMonth → { payMonth, settled, rows: [{ orgUnitId, orgUnitName, monthlyBudget, laborCost, executionRate }] } 예산 있는 조직만 */
