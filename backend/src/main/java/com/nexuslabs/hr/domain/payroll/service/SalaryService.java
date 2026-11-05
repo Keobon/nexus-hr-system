@@ -248,7 +248,7 @@ public class SalaryService {
     /** 적용 시작일의 귀속 월이나 그 뒤의 월이 이미 정산됐으면 경고 — 그 명세서는 바뀌지 않는다(BR-PAY-005). */
     private String settledWarning(long companyId, LocalDate effectiveFrom) {
         Boolean settled = jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month >= ?)",
+                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month >= ? AND status <> 'CANCELLED')",
                 Boolean.class, companyId, YearMonth.from(effectiveFrom).toString());
         return Boolean.TRUE.equals(settled) ? SETTLED_WARNING : null;
     }

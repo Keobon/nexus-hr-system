@@ -42,6 +42,7 @@ import { errorMessage } from '../../../constants/errors';
 import { LABELS } from '../../../constants/labels';
 import { formatMinutes, formatMoney } from '../../../utils/format';
 import { WEEK_OT_LIMIT, sumMinutes, weekDates } from '../attendance/logic';
+import { AllowanceBox, allowanceLines, nightOverlap, useWorkCalendar } from './allowance';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import './work.css';
 
@@ -162,6 +163,7 @@ function DetailCard({ item, onOpen }) {
   const { modal } = App.useApp();
   const kind = item?.kind;
   const id = item?.id;
+  const calendar = useWorkCalendar(item?.row?.workDate);
   const q = useQuery({
     queryKey: kind === 'overtime' ? overtimeKey(id) : kind === 'expense' ? expenseKey(id) : tripKey(id),
     queryFn: () => (kind === 'overtime' ? getOvertime(id) : kind === 'expense' ? getExpense(id) : getTrip(id)),
@@ -220,6 +222,34 @@ function DetailCard({ item, onOpen }) {
     );
   }
 
+  // 연장근무 → 붙는 수당. 승인 뒤 출퇴근 기록이 있으면 근태로 인정된 시간, 아니면 신청(승인) 시간 기준 예상
+  let allowance = null;
+  if (kind === 'overtime') {
+    const day = item.day;
+    const recorded = row.status === 'APPROVED' && day?.workMinutes != null;
+    const lines = recorded
+      ? [
+          { key: 'OVERTIME', name: '연장근로수당', minutes: day.overtimeMinutes ?? 0 },
+          { key: 'HOLIDAY', name: '휴일근로수당', minutes: day.holidayMinutes ?? 0 },
+          { key: 'HOLIDAY_OVERTIME', name: '휴일연장근로수당', minutes: day.holidayOvertimeMinutes ?? 0 },
+          { key: 'NIGHT', name: '야간근로수당(가산)', minutes: day.nightMinutes ?? 0 },
+        ].filter((l) => l.minutes > 0)
+      : allowanceLines({
+          holiday: row.holiday,
+          minutes: row.approvedMinutes ?? row.requestedMinutes,
+          nightMinutes: row.nightMinutes ?? 0,
+          standardMinutes: calendar.schedule?.dailyStandardMinutes,
+        });
+    allowance = (
+      <AllowanceBox
+        title={recorded ? '인정된 수당 (출퇴근 기록 기준)' : row.status === 'APPROVED' ? '붙는 수당 (승인 시간 기준)' : '예상 수당'}
+        holidayName={row.holiday ? calendar.isHoliday(row.workDate).holidayName : null}
+        lines={lines}
+        note={row.status === 'REJECTED' || row.status === 'CANCELLED' ? '반려 · 취소된 신청은 수당이 붙지 않습니다.' : undefined}
+      />
+    );
+  }
+
   const isPending = item.status === 'PENDING';
   const trip = kind === 'trip' || kind === 'report' ? row : null;
   // 결재 대기 신청서 수정 = 철회하고 같은 내용으로 새 신청서를 연다(노션 수정사항 97 — 휴가 93과 같은 방식)
@@ -275,6 +305,7 @@ function DetailCard({ item, onOpen }) {
             <p className={text ? 'is-text' : undefined}>{value || '-'}</p>
           </div>
         ))}
+        {allowance && <div className="wr-item">{allowance}</div>}
         {kind !== 'report' && (
           <div className="wr-item">
             <span>결재 진행</span>
@@ -333,6 +364,8 @@ function OvertimeForm({ onClose, initial }) {
   const [form] = Form.useForm();
   const start = Form.useWatch('plannedStart', form);
   const end = Form.useWatch('plannedEnd', form);
+  const workDate = Form.useWatch('workDate', form);
+  const calendar = useWorkCalendar(workDate);
   const submit = useSubmit(
     form,
     (v) =>
@@ -353,6 +386,22 @@ function OvertimeForm({ onClose, initial }) {
     const nextDay = e <= s;
     if (nextDay) e += 24 * 60;
     hint = `${nextDay ? `다음 날 ${end.format('HH:mm')}까지 · ` : ''}요청 시간 ${formatMinutes(e - s)}`;
+  }
+  // 날짜 · 시간을 다 고르면 붙는 수당을 미리 보여 준다(휴일 · 야간은 자동)
+  let preview = null;
+  if (start && end && workDate && calendar.ready) {
+    const s = start.hour() * 60 + start.minute();
+    let e = end.hour() * 60 + end.minute();
+    if (e <= s) e += 24 * 60;
+    const { holiday, holidayName } = calendar.isHoliday(workDate);
+    const sc = calendar.schedule;
+    preview = (
+      <AllowanceBox
+        title="예상 수당"
+        holidayName={holiday ? holidayName : null}
+        lines={allowanceLines({ holiday, minutes: e - s, nightMinutes: nightOverlap(s, e, sc.nightStart, sc.nightEnd), standardMinutes: sc.dailyStandardMinutes })}
+      />
+    );
   }
   return (
     <Form
@@ -376,6 +425,7 @@ function OvertimeForm({ onClose, initial }) {
         </Form.Item>
       </div>
       <p className="wr-hint">{hint}</p>
+      {preview}
       <Form.Item name="reason" label="업무 사유" rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
         <Input.TextArea rows={3} maxLength={255} showCount placeholder="예: 프로젝트 마감 대비 야간 작업" />
       </Form.Item>

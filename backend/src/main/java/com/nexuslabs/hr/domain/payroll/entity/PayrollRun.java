@@ -17,7 +17,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
-/** 월 급여 정산(BR-PAY-005). 귀속 월마다 1행이고 삭제하지 않는다. 확정 뒤에는 상태·지급 정보만 바뀐다. */
+/**
+ * 월 급여 정산(BR-PAY-005). 귀속 월마다 살아 있는 정산은 1행이고 삭제하지 않는다. 확정 뒤에는 상태 · 지급 · 취소 정보만 바뀐다.
+ * 확정 → 지급완료, 또는 지급 전이면 확정 → 취소(2026-11-05). 취소된 정산은 기록으로 남고 같은 달을 다시 확정한다.
+ */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,6 +49,9 @@ public class PayrollRun extends TenantEntity {
     private OffsetDateTime confirmedAt;
     private Long paidBy;
     private OffsetDateTime paidAt;
+    private Long cancelledBy;
+    private OffsetDateTime cancelledAt;
+    private String cancelReason;
 
     public PayrollRun(String payMonth, LocalDate payDate, String companyNameSnap, String ceoNameSnap,
                       String businessRegNoSnap, String companyAddressSnap, long confirmedBy,
@@ -68,5 +74,16 @@ public class PayrollRun extends TenantEntity {
         this.status = PayrollStatus.PAID;
         this.paidBy = paidBy;
         this.paidAt = paidAt;
+    }
+
+    /** 확정 → 취소(지급완료 전만). 명세서는 그대로 남는다(append-only) — 조회 · 판단에서 빠진다. */
+    public void cancel(long cancelledBy, OffsetDateTime cancelledAt, String reason) {
+        if (status != PayrollStatus.CONFIRMED) {
+            throw new IllegalStateException("확정 상태가 아닌 정산: " + id);
+        }
+        this.status = PayrollStatus.CANCELLED;
+        this.cancelledBy = cancelledBy;
+        this.cancelledAt = cancelledAt;
+        this.cancelReason = reason;
     }
 }
