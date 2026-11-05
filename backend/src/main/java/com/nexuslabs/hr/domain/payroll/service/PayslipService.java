@@ -45,7 +45,7 @@ public class PayslipService {
         return jdbc.query("""
                         SELECT p.id, r.pay_month, r.pay_date, r.status::text AS status, p.net_pay
                         FROM paystub p JOIN payroll_run r ON r.id = p.payroll_run_id AND r.company_id = p.company_id
-                        WHERE p.company_id = ? AND p.employee_id = ? ORDER BY r.pay_month DESC
+                        WHERE p.company_id = ? AND p.employee_id = ? AND r.status <> 'CANCELLED' ORDER BY r.pay_month DESC
                         """,
                 (rs, i) -> new MyPayslipRow(rs.getLong("id"), rs.getString("pay_month"),
                         rs.getObject("pay_date", LocalDate.class), PayrollStatus.valueOf(rs.getString("status")),
@@ -53,11 +53,11 @@ public class PayslipService {
                 user.companyId(), user.employeeId());
     }
 
-    /** 내 명세서 — 남의 명세서는 404. 회사부담 필드가 없다. */
+    /** 내 명세서 — 남의 명세서 · 취소된 정산의 명세서는 404. 회사부담 필드가 없다. */
     @Transactional(readOnly = true)
     public PayslipView myPayslip(LoginUser user, long id) {
         PayslipView view = view(user.companyId(), id);
-        if (view.employeeId() != user.employeeId()) {
+        if (view.employeeId() != user.employeeId() || view.status() == PayrollStatus.CANCELLED) {
             throw new BusinessException(ErrorCode.NOT_FOUND);
         }
         return view.forEmployee();
@@ -72,7 +72,7 @@ public class PayslipService {
     /** 명세서 목록(PAYROLL_READ) — payMonth · orgUnitId(정산 당시 소속, 하위 조직 포함). 최근 귀속 월 · 사원번호 순. */
     @Transactional(readOnly = true)
     public PageImpl<PayslipRow> list(long companyId, YearMonth payMonth, Long orgUnitId, Pageable pageable) {
-        StringBuilder where = new StringBuilder(" WHERE p.company_id = ?");
+        StringBuilder where = new StringBuilder(" WHERE p.company_id = ? AND r.status <> 'CANCELLED'");
         List<Object> args = new ArrayList<>(List.of(companyId));
         if (payMonth != null) {
             where.append(" AND r.pay_month = ?");
@@ -110,7 +110,8 @@ public class PayslipService {
         return jdbc.query("""
                         SELECT p.id, r.pay_month, p.net_pay
                         FROM paystub p JOIN payroll_run r ON r.id = p.payroll_run_id AND r.company_id = p.company_id
-                        WHERE p.company_id = ? AND p.employee_id = ? ORDER BY r.pay_month DESC LIMIT 1
+                        WHERE p.company_id = ? AND p.employee_id = ? AND r.status <> 'CANCELLED'
+                        ORDER BY r.pay_month DESC LIMIT 1
                         """,
                 (rs, i) -> new LatestPayslip(rs.getLong("id"), rs.getString("pay_month"), rs.getLong("net_pay")),
                 companyId, employeeId).stream().findFirst();
@@ -122,7 +123,7 @@ public class PayslipService {
      */
     @Transactional(readOnly = true)
     public LaborCost laborCost(long companyId, YearMonth payMonth) {
-        Long runId = jdbc.queryForList("SELECT id FROM payroll_run WHERE company_id = ? AND pay_month = ?",
+        Long runId = jdbc.queryForList("SELECT id FROM payroll_run WHERE company_id = ? AND pay_month = ? AND status <> 'CANCELLED'",
                 Long.class, companyId, payMonth.toString()).stream().findFirst().orElse(null);
         List<LaborCost.Row> rows = jdbc.query("""
                         WITH RECURSIVE tree AS (

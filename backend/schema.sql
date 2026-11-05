@@ -73,7 +73,7 @@ CREATE TYPE pay_apply_to         AS ENUM ('ALL','SELECTED');
 CREATE TYPE attendance_basis     AS ENUM ('OVERTIME','NIGHT','HOLIDAY','HOLIDAY_OVERTIME','ABSENCE');
 CREATE TYPE pay_var_code         AS ENUM ('DEPENDENT_DEDUCTION','MULTI_CHILD_DEDUCTION','LOCAL_TAX_RATE','ANNUAL_SPLIT_MONTHS','MONTHLY_STANDARD_HOURS');
 CREATE TYPE salary_type          AS ENUM ('MONTHLY','ANNUAL');
-CREATE TYPE payroll_status       AS ENUM ('CONFIRMED','PAID');
+CREATE TYPE payroll_status       AS ENUM ('CONFIRMED','PAID','CANCELLED');
 CREATE TYPE assignment_type      AS ENUM ('TRANSFER','PROMOTION','TITLE_CHANGE');
 CREATE TYPE eval_cycle_status    AS ENUM ('SCHEDULED','IN_PROGRESS','CLOSED');
 CREATE TYPE eval_cycle_kind      AS ENUM ('REGULAR','PROMOTION');
@@ -783,10 +783,16 @@ CREATE TABLE payroll_run (
   confirmed_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
   paid_by              BIGINT REFERENCES employee(id),
   paid_at              TIMESTAMPTZ,
-  UNIQUE (company_id, pay_month),
+  cancelled_by         BIGINT REFERENCES employee(id),           -- 확정 취소(지급완료 전, 2026-11-05)
+  cancelled_at         TIMESTAMPTZ,
+  cancel_reason        VARCHAR(255),
   CHECK ((status = 'PAID') = (paid_at IS NOT NULL)),
-  CHECK ((paid_at IS NULL) = (paid_by IS NULL))
+  CHECK ((paid_at IS NULL) = (paid_by IS NULL)),
+  CHECK ((status = 'CANCELLED') = (cancelled_at IS NOT NULL)),
+  CHECK ((cancelled_at IS NULL) = (cancelled_by IS NULL) AND (cancelled_at IS NULL) = (cancel_reason IS NULL))
 );
+-- 귀속 월마다 살아 있는 정산 1건 — 취소된 정산은 기록으로 남고 같은 달을 다시 확정할 수 있다
+CREATE UNIQUE INDEX ux_payroll_run_month ON payroll_run (company_id, pay_month) WHERE status <> 'CANCELLED';
 
 CREATE TABLE paystub (
   id                       BIGSERIAL PRIMARY KEY,

@@ -179,7 +179,8 @@ public class PayrollService {
                 runId, user.companyId());
         PayrollRun run = runRepository.findById(runId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
         if (run.getStatus() != PayrollStatus.CONFIRMED) {
-            throw new BusinessException(ErrorCode.INVALID_STATE, "이미 지급완료 처리된 정산입니다");
+            throw new BusinessException(ErrorCode.INVALID_STATE, run.getStatus() == PayrollStatus.CANCELLED
+                    ? "취소된 정산입니다" : "이미 지급완료 처리된 정산입니다");
         }
         run.markPaid(user.employeeId(), OffsetDateTime.now(clock));
         runRepository.flush();
@@ -188,16 +189,43 @@ public class PayrollService {
         return view(user.companyId(), runId);
     }
 
-    /** 정산 월 목록 — 최근 귀속 월부터, 합계는 명세서를 더한 값. */
+    /**
+     * 확정 → 취소(지급완료 전만, 2026-11-05). 사유 필수. 그 달이 미정산으로 돌아가 다시 확정할 수 있다 — 명세서는 남기고
+     * 반영됐던 출장 경비의 연결을 풀어 다음 확정에 다시 붙게 한다. 지급완료 · 이미 취소 → INVALID_STATE. 감사 로그.
+     */
+    @Transactional
+    public PayrollRunView cancel(LoginUser user, long runId, String reason) {
+        jdbc.query("SELECT id FROM payroll_run WHERE id = ? AND company_id = ? FOR UPDATE", (rs, i) -> rs.getLong(1),
+                runId, user.companyId());
+        PayrollRun run = runRepository.findById(runId).orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        if (run.getStatus() != PayrollStatus.CONFIRMED) {
+            throw new BusinessException(ErrorCode.INVALID_STATE, run.getStatus() == PayrollStatus.PAID
+                    ? "지급완료된 급여는 취소할 수 없습니다. 다음 달 소급 조정으로 정정하세요" : "이미 취소된 정산입니다");
+        }
+        run.cancel(user.employeeId(), OffsetDateTime.now(clock), reason.strip());
+        runRepository.flush();
+        jdbc.update("""
+                        UPDATE expense_claim SET paystub_id = NULL, updated_at = now()
+                        WHERE company_id = ? AND paystub_id IN (SELECT id FROM paystub WHERE company_id = ? AND payroll_run_id = ?)
+                        """,
+                user.companyId(), user.companyId(), runId);
+        auditLogger.log(user, AuditAction.UPDATE, "PAYROLL_RUN", runId, Map.of("status", "CONFIRMED"),
+                Map.of("status", "CANCELLED", "reason", reason.strip()));
+        return view(user.companyId(), runId);
+    }
+
+    /** 정산 월 목록 — 최근 귀속 월부터, 합계는 명세서를 더한 값. 취소된 정산은 includeCancelled 일 때만. */
     @Transactional(readOnly = true)
-    public List<PayrollRunRow> list(long companyId) {
-        return jdbc.query(RUN_VIEW_SELECT
-                        + " WHERE r.company_id = ? GROUP BY r.id, cb.name, pb.name ORDER BY r.pay_month DESC",
+    public List<PayrollRunRow> list(long companyId, boolean includeCancelled) {
+        return jdbc.query(RUN_VIEW_SELECT + " WHERE r.company_id = ?"
+                        + (includeCancelled ? "" : " AND r.status <> 'CANCELLED'")
+                        + " GROUP BY r.id, cb.name, pb.name, xb.name ORDER BY r.pay_month DESC, r.id DESC",
                 (rs, i) -> new PayrollRunRow(rs.getLong("id"), rs.getString("pay_month"),
                         rs.getObject("pay_date", LocalDate.class), PayrollStatus.valueOf(rs.getString("status")),
                         seoul(rs.getObject("confirmed_at", OffsetDateTime.class)), rs.getString("confirmed_by_name"),
                         seoul(rs.getObject("paid_at", OffsetDateTime.class)), rs.getString("paid_by_name"),
-                        totalsOf(rs)),
+                        seoul(rs.getObject("cancelled_at", OffsetDateTime.class)), rs.getString("cancelled_by_name"),
+                        rs.getString("cancel_reason"), totalsOf(rs)),
                 companyId);
     }
 
@@ -213,12 +241,13 @@ public class PayrollService {
                         rs.getString("org_name_snap"), rs.getLong("gross_pay"), rs.getLong("total_deduction"),
                         rs.getLong("net_pay"), rs.getLong("company_burden_total")),
                 companyId, runId);
-        return jdbc.query(RUN_VIEW_SELECT + " WHERE r.company_id = ? AND r.id = ? GROUP BY r.id, cb.name, pb.name",
+        return jdbc.query(RUN_VIEW_SELECT + " WHERE r.company_id = ? AND r.id = ? GROUP BY r.id, cb.name, pb.name, xb.name",
                         (rs, i) -> new PayrollRunView(rs.getLong("id"), rs.getString("pay_month"),
                                 rs.getObject("pay_date", LocalDate.class), PayrollStatus.valueOf(rs.getString("status")),
                                 seoul(rs.getObject("confirmed_at", OffsetDateTime.class)),
                                 rs.getString("confirmed_by_name"), seoul(rs.getObject("paid_at", OffsetDateTime.class)),
-                                rs.getString("paid_by_name"), totalsOf(rs), stubs),
+                                rs.getString("paid_by_name"), seoul(rs.getObject("cancelled_at", OffsetDateTime.class)),
+                                rs.getString("cancelled_by_name"), rs.getString("cancel_reason"), totalsOf(rs), stubs),
                         companyId, runId)
                 .stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
@@ -453,7 +482,7 @@ public class PayrollService {
 
     private void requireNotSettled(long companyId, YearMonth month) {
         Boolean settled = jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ?)",
+                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ? AND status <> 'CANCELLED')",
                 Boolean.class, companyId, month.toString());
         if (Boolean.TRUE.equals(settled)) {
             throw new BusinessException(ErrorCode.PAY_MONTH_SETTLED);
@@ -519,12 +548,14 @@ public class PayrollService {
 
     private static final String RUN_VIEW_SELECT = """
             SELECT r.id, r.pay_month, r.pay_date, r.status::text AS status, r.confirmed_at, r.paid_at,
-                   cb.name AS confirmed_by_name, pb.name AS paid_by_name, count(p.id) AS headcount,
+                   r.cancelled_at, r.cancel_reason, cb.name AS confirmed_by_name, pb.name AS paid_by_name,
+                   xb.name AS cancelled_by_name, count(p.id) AS headcount,
                    COALESCE(sum(p.gross_pay), 0) AS gross_pay, COALESCE(sum(p.total_deduction), 0) AS total_deduction,
                    COALESCE(sum(p.net_pay), 0) AS net_pay, COALESCE(sum(p.company_burden_total), 0) AS company_burden_total
             FROM payroll_run r
             LEFT JOIN paystub p ON p.payroll_run_id = r.id AND p.company_id = r.company_id
             LEFT JOIN employee cb ON cb.id = r.confirmed_by AND cb.company_id = r.company_id
             LEFT JOIN employee pb ON pb.id = r.paid_by AND pb.company_id = r.company_id
+            LEFT JOIN employee xb ON xb.id = r.cancelled_by AND xb.company_id = r.company_id
             """;
 }

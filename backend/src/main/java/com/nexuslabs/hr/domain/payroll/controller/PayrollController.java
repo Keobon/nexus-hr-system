@@ -2,6 +2,7 @@ package com.nexuslabs.hr.domain.payroll.controller;
 
 import com.nexuslabs.hr.domain.payroll.dto.LaborCost;
 import com.nexuslabs.hr.domain.payroll.dto.MyPayslipRow;
+import com.nexuslabs.hr.domain.payroll.dto.PayrollCancelRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayrollPreview;
 import com.nexuslabs.hr.domain.payroll.dto.PayrollRunRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayrollRunRow;
@@ -62,14 +63,23 @@ public class PayrollController {
 
     @GetMapping("/api/payroll-runs")
     @RequirePermission(PermissionCode.PAYROLL_READ)
-    public ApiResponse<List<PayrollRunRow>> runs(@CurrentUser LoginUser user) {
-        return ApiResponse.ok(payrollService.list(user.companyId()));
+    public ApiResponse<List<PayrollRunRow>> runs(@CurrentUser LoginUser user,
+                                                 @RequestParam(defaultValue = "false") boolean includeCancelled) {
+        return ApiResponse.ok(payrollService.list(user.companyId(), includeCancelled));
     }
 
     @GetMapping("/api/payroll-runs/{id}")
     @RequirePermission(PermissionCode.PAYROLL_READ)
     public ApiResponse<PayrollRunView> run(@CurrentUser LoginUser user, @PathVariable long id) {
         return ApiResponse.ok(payrollService.view(user.companyId(), id));
+    }
+
+    /** 확정 취소(지급완료 전만) — 그 달을 다시 정산한다. */
+    @PostMapping("/api/payroll-runs/{id}/cancel")
+    @RequirePermission(PermissionCode.PAYROLL_MANAGE)
+    public ApiResponse<PayrollRunView> cancel(@CurrentUser LoginUser user, @PathVariable long id,
+                                              @Valid @RequestBody PayrollCancelRequest request) {
+        return ApiResponse.ok(payrollService.cancel(user, id, request.reason()));
     }
 
     @PostMapping("/api/payroll-runs/{id}/paid")
