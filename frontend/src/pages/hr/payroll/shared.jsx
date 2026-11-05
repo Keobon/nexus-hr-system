@@ -15,7 +15,7 @@ export function monthOptions(runs = []) {
   return [...set].sort().reverse().map((m) => ({ value: m, label: ym(m) }));
 }
 
-const STATUS = { NONE: ['미정산', 'is-gray'], CONFIRMED: ['확정', 'is-info'], PAID: ['지급완료', 'is-ok'] };
+const STATUS = { NONE: ['미정산', 'is-gray'], CONFIRMED: ['확정', 'is-info'], PAID: ['지급완료', 'is-ok'], CANCELLED: ['취소됨', 'is-gray'] };
 export function RunBadge({ status }) {
   const [label, tone] = STATUS[status ?? 'NONE'] ?? STATUS.NONE;
   return <span className={`hr-badge ${tone}`}>{label}</span>;

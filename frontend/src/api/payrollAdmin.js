@@ -16,6 +16,11 @@ export const previewPayroll = (body) => api.post('/payroll-runs/preview', body);
 export const confirmPayroll = (body) => api.post('/payroll-runs', body);
 /** POST /payroll-runs/{id}/paid — 지급완료 */
 export const markPayrollPaid = (id) => api.post(`/payroll-runs/${id}/paid`);
+/** POST /payroll-runs/{id}/cancel { reason } — 확정(지급완료 전)만. 그 달이 미정산으로 돌아가 다시 정산한다 */
+export const cancelPayroll = (id, reason) => api.post(`/payroll-runs/${id}/cancel`, { reason });
+/** GET /payroll-runs?includeCancelled=true — 취소된 정산까지(행에 cancelledAt · cancelledByName · cancelReason) */
+export const payrollRunHistoryKey = ['payroll-runs', 'with-cancelled'];
+export const getPayrollRunHistory = () => api.get('/payroll-runs', { includeCancelled: true });
 
 /** GET /payslips?payMonth&orgUnitId&page&size → 페이지 [{ id, payMonth, payDate, employeeId, employeeNo, name, orgUnitName(정산 당시), grossPay, totalDeduction, netPay, companyBurdenTotal }] */
 export const payslipsKey = (params) => ['payslips', 'admin', params];
