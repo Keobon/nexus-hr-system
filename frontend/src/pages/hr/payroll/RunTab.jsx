@@ -1,18 +1,21 @@
 // 월 급여 정산 — Figma 456-15895(① 수동 입력) · 456-16092(② 미리보기) · 456-16382(확정 창) · 456-16681(③ 확정) · 456-17050(조회 전용)
 // 정산 전: 수동 입력 → 미리보기(POST preview, 저장 안 함) → 확정(같은 입력으로 POST, 귀속 월이 끝난 뒤에만)
-// 정산 후: 확정 → 지급완료. 확정된 급여는 고칠 수 없고 정정은 다음 달 소급 조정으로(서버 규칙)
+// 정산 후: 확정 → 지급완료. 지급 전이면 [확정 취소](사유)로 그 달을 다시 정산하고, 지급완료 뒤 정정은 다음 달 소급 조정으로(서버 규칙)
 import { useState } from 'react';
-import { App, DatePicker, InputNumber, Select, Spin } from 'antd';
+import { App, DatePicker, Input, InputNumber, Modal, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchAllPages } from '../../../api/employees';
 import { getPayItems, payItemsKey } from '../../../api/paySettings';
 import {
+  cancelPayroll,
   confirmPayroll,
   getPayrollRun,
   getPayrollRuns,
+  getPayrollRunHistory,
   getPayslip,
   getSalaries,
   markPayrollPaid,
+  payrollRunHistoryKey,
   payrollRunKey,
   payrollRunsKey,
   payslipKey,
@@ -210,6 +213,7 @@ function DraftRun({ month, options, setMonth, onUnregistered }) {
     <>
       <RunBar month={month} options={options} setMonth={setMonth} payDate={step === 2 ? preview.payDate : payDate} onPayDate={step === 1 ? setPayDate : undefined} status="NONE" ledger={ledger} />
       <Steps step={step} />
+      <CancelledNote month={month} />
       <Unregistered list={step === 2 ? preview.unregistered : unregistered} onClick={onUnregistered} />
 
       {step === 1 && (
@@ -338,6 +342,7 @@ function SettledRun({ run, options, setMonth, manage }) {
   const detail = useQuery({ queryKey: payrollRunKey(run.id), queryFn: () => getPayrollRun(run.id) });
   const [open, setOpen] = useState(null);
   const [slip, setSlip] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
   const stubs = detail.data?.paystubs ?? [];
   const paid = run.status === 'PAID';
 
@@ -409,16 +414,71 @@ function SettledRun({ run, options, setMonth, manage }) {
           <span className="pr-c-x" />
         </div>
       </section>
-      <p className="pr-note">확정된 급여는 수정할 수 없습니다. 정정은 다음 달 소급 조정 항목으로 입력하세요.</p>
+      <p className="pr-note">
+        {paid ? '지급완료된 급여는 수정할 수 없습니다. 정정은 다음 달 소급 조정 항목으로 입력하세요.' : '지급 전이면 [확정 취소]로 이 달을 다시 정산할 수 있습니다. 지급완료 뒤 정정은 다음 달 소급 조정으로 합니다.'}
+      </p>
       {manage && !paid && (
         <div className="pr-foot">
+          <button type="button" className="hr-btn is-secondary" onClick={() => setCancelling(true)}>
+            확정 취소
+          </button>
           <button type="button" className="hr-btn" onClick={markPaid}>
             지급완료
           </button>
         </div>
       )}
+      {cancelling && <CancelModal run={run} onClose={() => setCancelling(false)} />}
       <PayslipModal id={slip?.paystubId} name={slip?.name} onClose={() => setSlip(null)} />
     </>
+  );
+}
+
+/* ───── 확정 취소 — 사유 필수. 취소된 정산 · 명세서는 기록으로 남고 화면 · 직원에게서는 숨는다 ───── */
+function CancelModal({ run, onClose }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState('');
+  const save = useMutation({
+    mutationFn: () => cancelPayroll(run.id, reason.trim()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
+      queryClient.invalidateQueries({ queryKey: ['payslips'] });
+      notify.success(`${ym(run.payMonth)} 급여 확정을 취소했습니다. 다시 정산하세요`);
+      onClose();
+    },
+    onError: (err) => notify.error(err),
+  });
+  return (
+    <Modal
+      open
+      title={`${ym(run.payMonth)} 급여 확정을 취소할까요?`}
+      okText="확정 취소"
+      okButtonProps={{ danger: true, disabled: !reason.trim(), loading: save.isPending }}
+      cancelText="닫기"
+      onOk={() => save.mutate()}
+      onCancel={onClose}
+      className="hr-modal"
+      centered
+    >
+      <p className="hr-modal-sub">지급 전에만 취소할 수 있습니다. 취소하면 명세서가 직원 화면에서 숨겨지고 이 달을 다시 정산합니다. 반영됐던 출장 경비는 다음 확정에 다시 붙습니다.</p>
+      <Input.TextArea rows={3} maxLength={255} placeholder="사유 (필수) — 예: 성과급 입력 누락" value={reason} onChange={(e) => setReason(e.target.value)} />
+    </Modal>
+  );
+}
+
+/** 이 달에 취소된 정산이 있으면 한 줄씩 — 언제 · 누가 · 왜 */
+function CancelledNote({ month }) {
+  const history = useQuery({ queryKey: payrollRunHistoryKey, queryFn: getPayrollRunHistory });
+  const cancelled = (history.data ?? []).filter((r) => r.payMonth === month && r.status === 'CANCELLED');
+  if (!cancelled.length) return null;
+  return (
+    <div className="pr-alert">
+      <div>
+        {cancelled.map((r) => (
+          <span key={r.id}>{`${r.cancelledAt?.slice(0, 10) ?? ''} ${r.cancelledByName ?? ''} 확정 취소 — ${r.cancelReason ?? ''}`}</span>
+        ))}
+      </div>
+    </div>
   );
 }
 
