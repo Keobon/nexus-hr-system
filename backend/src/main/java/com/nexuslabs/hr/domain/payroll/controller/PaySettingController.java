@@ -4,11 +4,14 @@ import com.nexuslabs.hr.domain.payroll.dto.InsuranceRateRequest;
 import com.nexuslabs.hr.domain.payroll.dto.InsuranceRateView;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemResponse;
+import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleRequest;
+import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleView;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableView;
 import com.nexuslabs.hr.domain.payroll.dto.TaxBrackets;
 import com.nexuslabs.hr.domain.payroll.service.PayItemService;
 import com.nexuslabs.hr.domain.payroll.service.PayItemRateService;
+import com.nexuslabs.hr.domain.payroll.service.PayItemRuleService;
 import com.nexuslabs.hr.domain.payroll.service.PayVariableService;
 import com.nexuslabs.hr.domain.payroll.service.TaxBracketService;
 import com.nexuslabs.hr.global.auth.CurrentUser;
@@ -39,14 +42,17 @@ public class PaySettingController {
 
     private final PayItemService payItemService;
     private final PayItemRateService payItemRateService;
+    private final PayItemRuleService payItemRuleService;
     private final PayVariableService payVariableService;
     private final TaxBracketService taxBracketService;
 
     public PaySettingController(PayItemService payItemService, PayItemRateService payItemRateService,
+                                PayItemRuleService payItemRuleService,
                                 PayVariableService payVariableService,
                                 TaxBracketService taxBracketService) {
         this.payItemService = payItemService;
         this.payItemRateService = payItemRateService;
+        this.payItemRuleService = payItemRuleService;
         this.payVariableService = payVariableService;
         this.taxBracketService = taxBracketService;
     }
@@ -79,6 +85,22 @@ public class PaySettingController {
     @RequirePermission(PermissionCode.PAYROLL_MANAGE)
     public ApiResponse<DeleteResult> deleteItem(@CurrentUser LoginUser user, @PathVariable long id) {
         return ApiResponse.ok(payItemService.delete(user, id));
+    }
+
+    /** 고정액 항목의 부서 · 직급 규칙 — 규칙마다 현재 · 예정 · 이력. */
+    @GetMapping("/api/pay-items/{id}/rules")
+    @RequirePermission(PermissionCode.PAYROLL_MANAGE)
+    public ApiResponse<List<PayItemRuleView>> rules(@CurrentUser LoginUser user, @PathVariable long id) {
+        return ApiResponse.ok(payItemRuleService.list(user.companyId(), id));
+    }
+
+    /** 규칙 값(또는 해제)을 적용 시작일과 함께 더한다. */
+    @PostMapping("/api/pay-items/{id}/rules")
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequirePermission(PermissionCode.PAYROLL_MANAGE)
+    public ApiResponse<List<PayItemRuleView>> addRule(@CurrentUser LoginUser user, @PathVariable long id,
+                                                      @Valid @RequestBody PayItemRuleRequest request) {
+        return ApiResponse.ok(payItemRuleService.create(user, id, request));
     }
 
     /** 보험 항목별 요율 · 상한 · 하한의 현재 · 예정 · 이력. */

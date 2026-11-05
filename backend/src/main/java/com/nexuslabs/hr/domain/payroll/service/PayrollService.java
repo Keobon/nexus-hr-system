@@ -67,6 +67,7 @@ public class PayrollService {
     private final PayrollRunRepository runRepository;
     private final PayVariableService payVariableService;
     private final PayItemRateService payItemRateService;
+    private final PayItemAmountResolver amountResolver;
     private final TaxBracketService taxBracketService;
     private final AttendanceCalculator attendanceCalculator;
     private final WorkCalendar workCalendar;
@@ -77,6 +78,7 @@ public class PayrollService {
 
     public PayrollService(PayItemRepository payItemRepository, PayrollRunRepository runRepository,
                           PayVariableService payVariableService, PayItemRateService payItemRateService,
+                          PayItemAmountResolver amountResolver,
                           TaxBracketService taxBracketService,
                           AttendanceCalculator attendanceCalculator, WorkCalendar workCalendar, JdbcTemplate jdbc,
                           EntityManager em, AuditLogger auditLogger, Clock clock) {
@@ -84,6 +86,7 @@ public class PayrollService {
         this.runRepository = runRepository;
         this.payVariableService = payVariableService;
         this.payItemRateService = payItemRateService;
+        this.amountResolver = amountResolver;
         this.taxBracketService = taxBracketService;
         this.attendanceCalculator = attendanceCalculator;
         this.workCalendar = workCalendar;
@@ -296,7 +299,7 @@ public class PayrollService {
 
         List<PayItem> active = payItemRepository.findAll().stream().filter(PayItem::isActive).toList();
         Map<Long, Map<Long, Long>> manual = manualAmounts(manualInputs, active, new HashSet<>(ids));
-        Map<Long, Map<Long, Long>> selected = selectedAmounts(companyId, ids, last);
+        Map<Long, Map<Long, PayItemAmountResolver.Resolved>> fixed = amountResolver.resolve(companyId, ids, active, last);
         Map<Long, MonthlyAttendance> attendance = attendanceCalculator.months(companyId, ids, month);
         WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
         boolean tripItem = active.stream().anyMatch(i -> i.getCalcMethod() == PayCalcMethod.TRIP_EXPENSE);
@@ -332,11 +335,14 @@ public class PayrollService {
             minutes.put(AttendanceBasis.ABSENCE, absenceMinutes);
             List<long[]> mine = claims.getOrDefault(t.id(), List.of());
             int[] fam = family.getOrDefault(t.id(), new int[]{0, 0});
+            Map<Long, PayItemAmountResolver.Resolved> resolved = fixed.getOrDefault(t.id(), Map.of());
+            Map<Long, Long> amounts = new HashMap<>();
+            resolved.forEach((itemId, r) -> amounts.put(itemId, r.amount()));
             PayrollCalculator.Input input = new PayrollCalculator.Input(monthlyBase.get(t.id()), t.workedDays(),
-                    month.lengthOfMonth(), selected.getOrDefault(t.id(), Map.of()), manual.getOrDefault(t.id(), Map.of()),
+                    month.lengthOfMonth(), amounts, manual.getOrDefault(t.id(), Map.of()),
                     minutes, s.absentDays(), mine.stream().mapToLong(c -> c[1]).sum(), fam[0], fam[1]);
-            calcs.add(new Calc(t, PayrollCalculator.calculate(settings, input), s, absenceMinutes, fam[0], fam[1],
-                    mine.stream().map(c -> c[0]).toList(), month.lengthOfMonth()));
+            calcs.add(new Calc(t, withSources(PayrollCalculator.calculate(settings, input), resolved), s, absenceMinutes,
+                    fam[0], fam[1], mine.stream().map(c -> c[0]).toList(), month.lengthOfMonth()));
         }
         return new Computation(calcs, unregistered);
     }
@@ -392,24 +398,20 @@ public class PayrollService {
         return result;
     }
 
-    /** 직원 → (지정 직원 항목 → 그날 유효한 금액). */
-    private Map<Long, Map<Long, Long>> selectedAmounts(long companyId, List<Long> ids, LocalDate date) {
-        Map<Long, Map<Long, Long>> result = new HashMap<>();
-        if (ids.isEmpty()) {
-            return result;
-        }
-        jdbc.query("""
-                        SELECT DISTINCT ON (employee_id, pay_item_id) employee_id, pay_item_id, amount
-                        FROM employee_pay_item
-                        WHERE company_id = ? AND employee_id = ANY(?) AND effective_from <= ?
-                        ORDER BY employee_id, pay_item_id, effective_from DESC, created_at DESC, id DESC
-                        """,
-                rs -> {
-                    result.computeIfAbsent(rs.getLong("employee_id"), k -> new HashMap<>())
-                            .put(rs.getLong("pay_item_id"), rs.getLong("amount"));
-                },
-                companyId, ids.toArray(Long[]::new), Date.valueOf(date));
-        return result;
+    /** 고정액 줄의 산식 칸에 금액의 근거(개별 금액 · 직급 · 부서 규칙)를 남긴다 — 명세서 "계산 방법"에 보인다. */
+    private static PayrollCalculator.Result withSources(PayrollCalculator.Result r,
+                                                        Map<Long, PayItemAmountResolver.Resolved> resolved) {
+        List<PayrollCalculator.Line> lines = r.lines().stream().map(l -> {
+            PayItemAmountResolver.Resolved src = resolved.get(l.payItemId());
+            if (l.calcMethod() != PayCalcMethod.FIXED || src == null || src.source().note() == null) {
+                return l;
+            }
+            return new PayrollCalculator.Line(l.payItemId(), l.name(), l.itemKind(), l.calcMethod(), l.amount(),
+                    l.taxableAmount(), l.nonTaxableAmount(), l.companyAmount(), l.quantity(), l.unitPrice(),
+                    src.source().note(), l.sortOrder());
+        }).toList();
+        return new PayrollCalculator.Result(r.basePay(), r.ordinaryHourlyWage(), lines, r.grossPay(), r.taxablePay(),
+                r.incomeTax(), r.localIncomeTax(), r.totalDeduction(), r.netPay(), r.companyBurdenTotal());
     }
 
     /** 직원 → [청구 ID, 합계] — 승인됐고 아직 정산에 반영되지 않은 출장 경비(BR-PAY-012). */

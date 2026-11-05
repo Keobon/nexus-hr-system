@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.payroll.entity.PayApplyTo;
 import com.nexuslabs.hr.domain.payroll.entity.PayCalcMethod;
 import com.nexuslabs.hr.domain.payroll.entity.PayItemKind;
 import com.nexuslabs.hr.domain.payroll.entity.SalaryType;
+import com.nexuslabs.hr.domain.payroll.service.PayItemAmountResolver;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -24,12 +25,16 @@ public record EmployeeSalaries(long employeeId, boolean payrollEligible, Current
                               LocalDate effectiveFrom, String reason, String createdByName, OffsetDateTime createdAt) {
     }
 
-    /** currentAmount: 고정액(전원)은 기본 금액, 기본급 대비 %는 ⌊현재 월 기본급 × 요율 ÷ 100⌋(급여 없으면 null), 지정 직원은 오늘 유효한 금액. */
+    /**
+     * currentAmount: 고정액은 오늘 유효한 금액(개별 > 직급 > 부서 > 기본 — source 가 근거), 기본급 대비 %는
+     * ⌊현재 월 기본급 × 요율 ÷ 100⌋(급여 없으면 null). history 는 이 직원의 개별 금액 이력(amount null = 해제).
+     */
     public record PayItemLine(long payItemId, String name, PayItemKind itemKind, PayCalcMethod calcMethod,
-                              PayApplyTo applyTo, Long currentAmount, List<PayItemEntry> history) {
+                              PayApplyTo applyTo, Long currentAmount, PayItemAmountResolver.Source source,
+                              List<PayItemEntry> history) {
     }
 
-    public record PayItemEntry(long id, long amount, LocalDate effectiveFrom, String reason, String createdByName,
+    public record PayItemEntry(long id, Long amount, LocalDate effectiveFrom, String reason, String createdByName,
                                OffsetDateTime createdAt) {
     }
 }

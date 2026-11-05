@@ -16,7 +16,7 @@ import org.hibernate.annotations.Immutable;
 
 import java.time.LocalDate;
 
-/** 직원별 항목 금액 이력. append-only. 적용을 끝낼 때는 금액 0 행을 쌓는다. */
+/** 직원별 항목 금액 이력. append-only. 0 = 받지 않음, null = 개별 금액 해제(부서 · 직급 규칙 · 기본 금액을 따른다). */
 @Getter
 @Entity
 @Immutable
@@ -35,12 +35,12 @@ public class EmployeePayItem extends CreatedAtEntity {
     @JoinColumn(name = "pay_item_id")
     private PayItem payItem;
 
-    private long amount;
+    private Long amount;
     private LocalDate effectiveFrom;
     private String reason;
     private long createdBy;
 
-    public EmployeePayItem(Employee employee, PayItem payItem, long amount, LocalDate effectiveFrom, String reason,
+    public EmployeePayItem(Employee employee, PayItem payItem, Long amount, LocalDate effectiveFrom, String reason,
                            long createdBy) {
         this.employee = employee;
         this.payItem = payItem;

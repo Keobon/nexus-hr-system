@@ -70,6 +70,7 @@ CREATE TYPE approval_step_status AS ENUM ('WAITING','PENDING','APPROVED','REJECT
 CREATE TYPE pay_item_kind        AS ENUM ('EARNING','DEDUCTION');
 CREATE TYPE pay_calc_method      AS ENUM ('FIXED','BASE_RATE','MANUAL','TAXABLE_RATE','ATTENDANCE','TRIP_EXPENSE');
 CREATE TYPE pay_apply_to         AS ENUM ('ALL','SELECTED');
+CREATE TYPE pay_rule_target      AS ENUM ('ORG_UNIT','JOB_GRADE');
 CREATE TYPE attendance_basis     AS ENUM ('OVERTIME','NIGHT','HOLIDAY','HOLIDAY_OVERTIME','ABSENCE');
 CREATE TYPE pay_var_code         AS ENUM ('DEPENDENT_DEDUCTION','MULTI_CHILD_DEDUCTION','LOCAL_TAX_RATE','ANNUAL_SPLIT_MONTHS','MONTHLY_STANDARD_HOURS');
 CREATE TYPE salary_type          AS ENUM ('MONTHLY','ANNUAL');
@@ -701,6 +702,26 @@ CREATE UNIQUE INDEX ux_pay_item_attendance ON pay_item (company_id, attendance_b
 CREATE UNIQUE INDEX ux_pay_item_trip_expense ON pay_item (company_id)
   WHERE is_active AND calc_method = 'TRIP_EXPENSE';
 
+-- 고정액 항목의 부서 · 직급 규칙 이력(2026-11-06). append-only. amount NULL = 그 대상의 규칙 해제.
+-- 정산 때 금액: 직원 개별(employee_pay_item) > 직급 > 부서(가까운 부서 먼저) > 항목 기본 금액 중 처음 맞는 하나
+CREATE TABLE pay_item_rule (
+  id               BIGSERIAL PRIMARY KEY,
+  company_id       BIGINT NOT NULL REFERENCES company(id),
+  pay_item_id      BIGINT NOT NULL REFERENCES pay_item(id) ON DELETE CASCADE,
+  target_type      pay_rule_target NOT NULL,
+  org_unit_id      BIGINT REFERENCES org_unit(id),
+  include_sub_orgs BOOLEAN NOT NULL DEFAULT TRUE,                  -- ORG_UNIT 만 의미
+  job_grade_id     BIGINT REFERENCES job_grade(id),
+  grade_or_above   BOOLEAN NOT NULL DEFAULT FALSE,                 -- JOB_GRADE 만 의미
+  amount           BIGINT CHECK (amount IS NULL OR amount >= 0),
+  effective_from   DATE NOT NULL,
+  created_by       BIGINT REFERENCES employee(id),
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((target_type = 'ORG_UNIT') = (org_unit_id IS NOT NULL)),
+  CHECK ((target_type = 'JOB_GRADE') = (job_grade_id IS NOT NULL))
+);
+CREATE INDEX ix_pay_item_rule ON pay_item_rule (pay_item_id, effective_from, created_at);
+
 -- 과세액 대비 요율 항목(4대보험)의 요율 · 기준 상한 · 하한 이력. append-only. 정산은 귀속 월 말일에 유효한 행을 쓴다
 CREATE TABLE pay_item_rate (
   id               BIGSERIAL PRIMARY KEY,
@@ -761,7 +782,7 @@ CREATE TABLE employee_pay_item (
   company_id     BIGINT NOT NULL REFERENCES company(id),
   employee_id    BIGINT NOT NULL REFERENCES employee(id),
   pay_item_id    BIGINT NOT NULL REFERENCES pay_item(id),
-  amount         BIGINT NOT NULL CHECK (amount >= 0),
+  amount         BIGINT CHECK (amount IS NULL OR amount >= 0),     -- NULL = 개별 금액 해제(부서 · 직급 규칙을 따른다), 0 = 받지 않음
   effective_from DATE NOT NULL,
   reason         VARCHAR(255),
   created_by     BIGINT NOT NULL REFERENCES employee(id),
