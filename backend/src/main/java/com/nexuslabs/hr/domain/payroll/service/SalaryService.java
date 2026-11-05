@@ -61,18 +61,21 @@ public class SalaryService {
     private final EmployeePayItemRepository employeePayItemRepository;
     private final PayItemRepository payItemRepository;
     private final PayVariableService payVariableService;
+    private final PayItemAmountResolver amountResolver;
     private final JdbcTemplate jdbc;
     private final EntityManager em;
     private final AuditLogger auditLogger;
     private final Clock clock;
 
     public SalaryService(EmployeeSalaryRepository salaryRepository, EmployeePayItemRepository employeePayItemRepository,
-                         PayItemRepository payItemRepository, PayVariableService payVariableService, JdbcTemplate jdbc,
+                         PayItemRepository payItemRepository, PayVariableService payVariableService,
+                         PayItemAmountResolver amountResolver, JdbcTemplate jdbc,
                          EntityManager em, AuditLogger auditLogger, Clock clock) {
         this.salaryRepository = salaryRepository;
         this.employeePayItemRepository = employeePayItemRepository;
         this.payItemRepository = payItemRepository;
         this.payVariableService = payVariableService;
+        this.amountResolver = amountResolver;
         this.jdbc = jdbc;
         this.em = em;
         this.auditLogger = auditLogger;
@@ -119,7 +122,10 @@ public class SalaryService {
                 settledWarning(cid, request.effectiveFrom()));
     }
 
-    /** 직원별 항목 금액 등록 — 활성인 "지정 직원" 고정액 항목만. 적용을 끝낼 때는 금액 0. 대상 직원 규칙은 기본 급여와 같다. */
+    /**
+     * 직원별 항목 금액 등록 — 활성 고정액 항목(전원 · 지정 직원 모두, 2026-11-06). 0 = 받지 않음, null = 개별 금액 해제
+     * (부서 · 직급 규칙 · 기본 금액을 따른다). 대상 직원 규칙은 기본 급여와 같다.
+     */
     @Transactional
     public PayItemAssigned assignItem(LoginUser user, long employeeId, EmployeePayItemRequest request) {
         long cid = user.companyId();
@@ -128,8 +134,8 @@ public class SalaryService {
         if (!item.isActive()) {
             throw new BusinessException(ErrorCode.INACTIVE_REFERENCE);
         }
-        if (item.getApplyTo() != PayApplyTo.SELECTED) {
-            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "\"지정 직원\" 항목만 직원별 금액을 등록합니다");
+        if (item.getCalcMethod() != PayCalcMethod.FIXED) {
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "고정액 항목만 직원별 금액을 등록합니다");
         }
         requireTarget(cid, employeeId, request.effectiveFrom());
         String reason = request.reason() == null || request.reason().isBlank() ? null : request.reason().trim();
@@ -208,13 +214,13 @@ public class SalaryService {
                         rs.getString("org_unit_name"), CURRENT_MAPPER.mapRow(rs, i)),
                 pageArgs.toArray());
         List<PayItem> items = activeItems();
-        Map<Long, Map<Long, Long>> selected = selectedAmounts(companyId,
-                bases.stream().map(Base::id).toList(), today);
+        Map<Long, Map<Long, PayItemAmountResolver.Resolved>> fixed = amountResolver.resolve(companyId,
+                bases.stream().map(Base::id).toList(), items, today);
         List<SalaryRow> rows = bases.stream().map(b -> b.current() == null
                 ? new SalaryRow(b.id(), b.no(), b.name(), b.org(), false, null, null, null, null, null)
                 : new SalaryRow(b.id(), b.no(), b.name(), b.org(), true, b.current().type(), b.current().annual(),
                         b.current().monthly(), b.current().effectiveFrom(),
-                        fixedEarnings(items, b.current().monthly(), selected.getOrDefault(b.id(), Map.of()))))
+                        fixedEarnings(items, b.current().monthly(), fixed.getOrDefault(b.id(), Map.of()))))
                 .toList();
         return new PageImpl<>(rows, pageable, total);
     }
@@ -262,19 +268,20 @@ public class SalaryService {
 
         List<PayItem> items = new ArrayList<>(payItemRepository.findAll());
         items.sort(Comparator.comparingInt(PayItem::getSortOrder).thenComparing(PayItem::getId));
+        Map<Long, PayItemAmountResolver.Resolved> fixed = amountResolver.resolve(companyId, List.of(employeeId),
+                items.stream().filter(PayItem::isActive).toList(), today).getOrDefault(employeeId, Map.of());
         List<EmployeeSalaries.PayItemLine> lines = new ArrayList<>();
         for (PayItem item : items) {
-            if (item.getApplyTo() == PayApplyTo.SELECTED) {
-                List<EmployeeSalaries.PayItemEntry> history = histories.get(item.getId());
-                if (history != null) {
-                    Long amount = history.stream().filter(h -> !h.effectiveFrom().isAfter(today)).findFirst()
-                            .map(EmployeeSalaries.PayItemEntry::amount).orElse(null);
-                    lines.add(line(item, amount, history));
+            List<EmployeeSalaries.PayItemEntry> history = histories.getOrDefault(item.getId(), List.of());
+            if (item.getCalcMethod() == PayCalcMethod.FIXED) {
+                PayItemAmountResolver.Resolved r = item.isActive() ? fixed.get(item.getId()) : null;
+                // 전원 항목은 늘, 지정 직원 항목은 정해진 금액이나 개별 이력이 있을 때만(비활성 항목은 이력만)
+                if (r != null || !history.isEmpty()) {
+                    lines.add(line(item, r == null ? null : r.amount(), r == null ? null : r.source(), history));
                 }
-            } else if (item.isActive() && item.getCalcMethod() == PayCalcMethod.FIXED) {
-                lines.add(line(item, item.getDefaultAmount(), List.of()));
             } else if (item.isActive() && item.getCalcMethod() == PayCalcMethod.BASE_RATE) {
-                lines.add(line(item, current == null ? null : baseRateAmount(current.monthlyBase(), item), List.of()));
+                lines.add(line(item, current == null ? null : baseRateAmount(current.monthlyBase(), item), null,
+                        List.of()));
             }
         }
         return new EmployeeSalaries(employeeId, eligible, current == null ? null
@@ -282,10 +289,10 @@ public class SalaryService {
                 current.effectiveFrom()), salaries, lines);
     }
 
-    private static EmployeeSalaries.PayItemLine line(PayItem item, Long amount,
+    private static EmployeeSalaries.PayItemLine line(PayItem item, Long amount, PayItemAmountResolver.Source source,
                                                      List<EmployeeSalaries.PayItemEntry> history) {
         return new EmployeeSalaries.PayItemLine(item.getId(), item.getName(), item.getItemKind(), item.getCalcMethod(),
-                item.getApplyTo(), amount, history);
+                item.getApplyTo(), amount, source, history);
     }
 
     /** 최신순(적용 시작일 → 만든 시각). 첫 행 중 오늘 이전 것이 오늘 유효한 값이다. */
@@ -318,7 +325,7 @@ public class SalaryService {
                         """,
                 rs -> {
                     result.computeIfAbsent(rs.getLong("pay_item_id"), k -> new ArrayList<>())
-                            .add(new EmployeeSalaries.PayItemEntry(rs.getLong("id"), rs.getLong("amount"),
+                            .add(new EmployeeSalaries.PayItemEntry(rs.getLong("id"), rs.getObject("amount", Long.class),
                                     rs.getObject("effective_from", LocalDate.class), rs.getString("reason"),
                                     rs.getString("created_by_name"),
                                     seoul(rs.getObject("created_at", OffsetDateTime.class))));
@@ -327,40 +334,21 @@ public class SalaryService {
         return result;
     }
 
-    /** 직원 ID → (지정 직원 항목 ID → 그날 유효한 금액). 여러 직원을 쿼리 한 번으로. */
-    private Map<Long, Map<Long, Long>> selectedAmounts(long companyId, Collection<Long> employeeIds, LocalDate date) {
-        Map<Long, Map<Long, Long>> result = new HashMap<>();
-        if (employeeIds.isEmpty()) {
-            return result;
-        }
-        jdbc.query("""
-                        SELECT DISTINCT ON (employee_id, pay_item_id) employee_id, pay_item_id, amount
-                        FROM employee_pay_item
-                        WHERE company_id = ? AND employee_id = ANY(?) AND effective_from <= ?
-                        ORDER BY employee_id, pay_item_id, effective_from DESC, created_at DESC, id DESC
-                        """,
-                rs -> {
-                    result.computeIfAbsent(rs.getLong("employee_id"), k -> new HashMap<>())
-                            .put(rs.getLong("pay_item_id"), rs.getLong("amount"));
-                },
-                companyId, employeeIds.toArray(Long[]::new), Date.valueOf(date));
-        return result;
-    }
-
     private List<PayItem> activeItems() {
         return payItemRepository.findAll().stream().filter(PayItem::isActive).toList();
     }
 
-    /** 고정액 지급(전원 기본 금액 + 지정 직원 금액) + 기본급 대비 % 지급. 항목마다 원 미만 내림. */
-    private static long fixedEarnings(List<PayItem> items, long monthlyBase, Map<Long, Long> selected) {
+    /** 고정액 지급(직원에게 정해진 금액 — 개별 · 직급 · 부서 · 기본) + 기본급 대비 % 지급. 항목마다 원 미만 내림. */
+    private static long fixedEarnings(List<PayItem> items, long monthlyBase,
+                                      Map<Long, PayItemAmountResolver.Resolved> fixed) {
         long sum = 0;
         for (PayItem item : items) {
             if (item.getItemKind() != PayItemKind.EARNING) {
                 continue;
             }
             if (item.getCalcMethod() == PayCalcMethod.FIXED) {
-                sum += item.getApplyTo() == PayApplyTo.ALL ? item.getDefaultAmount()
-                        : selected.getOrDefault(item.getId(), 0L);
+                PayItemAmountResolver.Resolved r = fixed.get(item.getId());
+                sum += r == null ? 0 : r.amount();
             } else if (item.getCalcMethod() == PayCalcMethod.BASE_RATE) {
                 sum += baseRateAmount(monthlyBase, item);
             }
