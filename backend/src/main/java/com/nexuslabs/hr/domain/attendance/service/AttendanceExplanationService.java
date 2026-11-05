@@ -266,7 +266,7 @@ public class AttendanceExplanationService {
 
     private boolean settled(long companyId, YearMonth month) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ?)",
+                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ? AND status <> 'CANCELLED')",
                 Boolean.class, companyId, month.toString()));
     }
 

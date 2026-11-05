@@ -390,7 +390,7 @@ public class AttendanceCorrectionService {
 
     private AttendanceCorrectionResponse response(long companyId, Attendance a) {
         Boolean settled = jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ?)",
+                "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month = ? AND status <> 'CANCELLED')",
                 Boolean.class, companyId, YearMonth.from(a.getWorkDate()).toString());
         return new AttendanceCorrectionResponse(a.getId(), a.getEmployee().getId(), a.getWorkDate(), a.getStatus(),
                 a.getWorkType(), seoul(a.getCheckInAt()), seoul(a.getCheckOutAt()), a.getCorrectionReason(),
