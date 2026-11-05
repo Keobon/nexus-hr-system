@@ -46,7 +46,7 @@ public final class PayrollCalculator {
      * 직원 한 명의 입력.
      *
      * @param monthlyBase     귀속 월 말일에 유효한 월 기본급(일할 전)
-     * @param selectedAmounts 지정 직원 항목 ID → 귀속 월 말일에 유효한 금액
+     * @param selectedAmounts 고정액 항목 ID → 이 직원에게 정해진 금액(개별 · 직급 · 부서 규칙, 귀속 월 말일 기준). 없으면 전원 항목은 기본 금액
      * @param manualAmounts   수동 입력 항목 ID → 금액
      * @param minutes         근거 시간 → 분(결근은 결근한 날의 소정근로시간 합)
      * @param absentDays      결근 일수(결근 줄 산식 표시용)
@@ -138,8 +138,9 @@ public final class PayrollCalculator {
     /** 고정액 · 기본급 대비 % 의 일할 전 금액. */
     private static long fullAmount(Item item, Input in) {
         return switch (item.method()) {
-            case FIXED -> item.applyTo() == PayApplyTo.ALL ? nz(item.defaultAmount())
-                    : in.selectedAmounts().getOrDefault(item.id(), 0L);
+            // 직원별로 정해진 금액(개별 · 직급 · 부서 규칙)이 있으면 그 값, 없으면 전원 항목의 기본 금액
+            case FIXED -> in.selectedAmounts().containsKey(item.id()) ? in.selectedAmounts().get(item.id())
+                    : item.applyTo() == PayApplyTo.ALL ? nz(item.defaultAmount()) : 0L;
             case BASE_RATE -> floor(BigDecimal.valueOf(in.monthlyBase()).multiply(item.baseRate()).divide(HUNDRED));
             default -> 0;
         };

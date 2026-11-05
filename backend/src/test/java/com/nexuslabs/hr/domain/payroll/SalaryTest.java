@@ -153,7 +153,7 @@ class SalaryTest {
     }
 
     @Test
-    void 직원별_항목은_지정_직원_고정액_활성_항목만_등록한다() throws Exception {
+    void 직원별_항목은_활성_고정액_항목만_등록한다() throws Exception {
         long hazard = item("{\"name\": \"위험수당\", \"itemKind\": \"EARNING\", \"calcMethod\": \"FIXED\", \"applyTo\": \"SELECTED\"}");
         assign(kim.id(), hazard, 150000, "2030-03-01")
                 .andExpect(status().isCreated())
@@ -162,14 +162,18 @@ class SalaryTest {
                 .andExpect(jsonPath("$.data.reason").value("현장 배치"))
                 .andExpect(jsonPath("$.data.warning").value(nullValue()));
 
+        // 전원 고정액 항목도 개별 금액을 받는다(2026-11-06), 고정액이 아닌 항목은 거부
         long meal = item("{\"name\": \"식대\", \"itemKind\": \"EARNING\", \"calcMethod\": \"FIXED\", \"defaultAmount\": 200000}");
-        assign(kim.id(), meal, 1, "2030-03-01").andExpect(status().isBadRequest())
+        assign(kim.id(), meal, 1, "2030-03-01").andExpect(status().isCreated());
+        long bonus = item("{\"name\": \"성과급\", \"itemKind\": \"EARNING\", \"calcMethod\": \"MANUAL\"}");
+        assign(kim.id(), bonus, 1, "2030-03-01").andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("BUSINESS_RULE_VIOLATION"));
         assign(kim.id(), hazard, -1, "2030-03-01").andExpect(jsonPath("$.error.fields.amount").exists());
         jdbc.update("UPDATE pay_item SET is_active = FALSE WHERE id = ?", hazard);
         assign(kim.id(), hazard, 0, "2030-04-01").andExpect(jsonPath("$.error.code").value("INACTIVE_REFERENCE"));
+        // 위험수당 · 식대 등록 2건
         assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_log WHERE company_id = ? AND target_type = 'EMPLOYEE_PAY_ITEM'",
-                Long.class, company.id())).isEqualTo(1);
+                Long.class, company.id())).isEqualTo(2);
     }
 
     @Test
