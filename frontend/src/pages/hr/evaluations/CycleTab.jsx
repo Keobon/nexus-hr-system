@@ -28,6 +28,7 @@ import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
 import { ModalFoot } from '../parts';
 import { CycleBadge, HALF_MONTHS, cycleParts, dots, yearOptions } from './shared';
+import { customRulesOf, leadRuleOf, mergeRegularRules, restRuleOf } from './targetRules';
 
 /** 대상 규칙 → "리더 평가(조직장) · 일반 평가" */
 function typeText(rules, cycle) {
@@ -189,22 +190,17 @@ export default function CycleTab({ onResults }) {
 }
 
 /* ───── 평가 만들기 · 수정(473-11844) — 평가지는 여기서만 고른다. 저장하면 대상 규칙까지 넣는다 ───── */
-const leadRuleOf = (rules) => rules.find((r) => r.condIsOrgLead === true);
-const restRuleOf = (rules) => rules.find((r) => r.condIsOrgLead == null && !r.condJobGradeId && !r.condJobTitleId && !r.condEmploymentTypeId);
-// 직급 · 직책 · 고용형태 조건 규칙(예: 인턴 제외)은 이 창에서 만들지 않고 그대로 둔다
-const customRulesOf = (rules) => rules.filter((r) => r.condJobGradeId || r.condJobTitleId || r.condEmploymentTypeId);
-
-/** 정기: 조직장(직원과 다르면) → 조건 규칙 → 나머지 직원. 고과: 고과 평가지 하나 */
-function buildRules(kind, v, custom) {
+/** 정기: 조직장 · 나머지 규칙만 바꾸고 다른 규칙(예: 인턴 제외)은 순서 그대로. 고과: 고과 평가지 하나 */
+function buildRules(kind, v, rules) {
   if (kind === 'PROMOTION') return [{ priority: 1, evalTemplateId: v.promotionTemplateId }];
-  const next = [];
-  if (v.leadTemplateId !== 'SAME' && v.leadTemplateId !== v.staffTemplateId) {
-    next.push({ priority: 1, condIsOrgLead: true, evalTemplateId: v.leadTemplateId === 'NONE' ? null : v.leadTemplateId });
-  }
-  custom.forEach((r) => next.push({ ...r, priority: next.length + 1 }));
-  next.push({ priority: next.length + 1, evalTemplateId: v.staffTemplateId });
-  return next;
+  return mergeRegularRules(rules, v);
 }
+// 정기 평가 이름은 연도 · 반기로 만든다 — 그 형식이 아닌 이름(API로 붙인 이름)은 수정해도 그대로 둔다
+const regularName = (year, half) => `${year} ${half} 평가`;
+const customLabel = (r) =>
+  [r.condIsOrgLead === true ? '조직장' : r.condIsOrgLead === false ? '조직장 아님' : null, r.condEmploymentTypeName, r.condJobGradeName, r.condJobTitleName]
+    .filter(Boolean)
+    .join(', ');
 
 function EvalFormModal({ cycle, onClose, onSaved }) {
   const notify = useNotify();
@@ -229,7 +225,8 @@ function EvalFormModal({ cycle, onClose, onSaved }) {
     mutationFn: async (v) => {
       const kind = cycle?.kind ?? v.kind;
       const dates = { startDate: v.startDate.format('YYYY-MM-DD'), endDate: v.endDate.format('YYYY-MM-DD') };
-      const name = kind === 'PROMOTION' ? v.name.trim() : `${v.year} ${v.half} 평가`;
+      const was = cycle ? cycleParts(cycle) : null;
+      const name = kind === 'PROMOTION' ? v.name.trim() : cycle && cycle.name !== regularName(was.year, was.half) ? cycle.name : regularName(v.year, v.half);
       let c;
       if (cycle) {
         const patch = Object.fromEntries(Object.entries({ name, ...dates }).filter(([k, val]) => cycle[k] !== val));
@@ -237,7 +234,7 @@ function EvalFormModal({ cycle, onClose, onSaved }) {
       } else {
         c = await createEvalCycle(kind === 'PROMOTION' ? { name, kind, minYearsInGrade: v.minYearsInGrade, ...dates } : { name, ...dates });
       }
-      await putEvalTargets(c.id, { rules: buildRules(kind, v, custom) });
+      await putEvalTargets(c.id, { rules: buildRules(kind, v, rules) });
       return c;
     },
     onSuccess: (c) => {
@@ -355,7 +352,7 @@ function EvalFormModal({ cycle, onClose, onSaved }) {
               </Form.Item>
             </div>
             {custom.length > 0 && (
-              <p className="ea-hint">{`조건 규칙은 그대로 둡니다 — ${custom.map((r) => `${r.condEmploymentTypeName ?? r.condJobGradeName ?? r.condJobTitleName} → ${r.evalTemplateName ?? '평가 제외'}`).join(' · ')}`}</p>
+              <p className="ea-hint">{`조건 규칙은 그대로 둡니다 — ${custom.map((r) => `${customLabel(r)} → ${r.evalTemplateName ?? '평가 제외'}`).join(' · ')}`}</p>
             )}
           </>
         )}
