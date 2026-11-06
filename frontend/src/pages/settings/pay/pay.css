@@ -418,3 +418,8 @@
     min-width: 46rem;
   }
 }
+
+/* 항목 수정 창 › 기본 정보 · 적용 대상 */
+.pay-section-tabs {
+  margin-bottom: 1rem;
+}

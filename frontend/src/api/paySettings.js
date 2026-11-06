@@ -18,6 +18,15 @@ export const updatePayItem = (id, patch) => api.patch(`/pay-items/${id}`, patch)
 export const deletePayItem = (id) => api.delete(`/pay-items/${id}`);
 
 /**
+ * 고정액 항목의 부서 · 직급 규칙(적용 대상) — 규칙마다 { targetType ORG_UNIT|JOB_GRADE, orgUnitId, orgUnitName, includeSubOrgs,
+ * jobGradeId, jobGradeName, gradeOrAbove, current, upcoming[], history[] }, 행 { amount(null=해제), effectiveFrom, createdAt, superseded }
+ */
+export const payItemRulesKey = (id) => ['pay-items', id, 'rules'];
+export const getPayItemRules = (id) => api.get(`/pay-items/${id}/rules`);
+/** body: { effectiveFrom, targetType, orgUnitId?, includeSubOrgs?, jobGradeId?, gradeOrAbove?, amount(null = 해제) } */
+export const addPayItemRule = (id, body) => api.post(`/pay-items/${id}/rules`, body);
+
+/**
  * GET /pay-variables → [{ varCode, current: Row|null, upcoming: Row[], history: Row[] }]
  * Row = { value, effectiveFrom, createdAt, superseded } — 같은 적용 시작일이 여럿이면 나중 것이 정정본(앞 것 superseded)
  * varCode: DEPENDENT_DEDUCTION · MULTI_CHILD_DEDUCTION · LOCAL_TAX_RATE · ANNUAL_SPLIT_MONTHS · MONTHLY_STANDARD_HOURS
