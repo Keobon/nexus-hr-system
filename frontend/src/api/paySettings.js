@@ -23,7 +23,7 @@ export const deletePayItem = (id) => api.delete(`/pay-items/${id}`);
  */
 export const payItemRulesKey = (id) => ['pay-items', id, 'rules'];
 export const getPayItemRules = (id) => api.get(`/pay-items/${id}/rules`);
-/** body: { effectiveFrom, targetType, orgUnitId?, includeSubOrgs?, jobGradeId?, gradeOrAbove?, amount(null = 해제) } */
+/** body: { effectiveFrom, targetType, orgUnitId?, includeSubOrgs?, jobGradeId?, gradeOrAbove?, amount(null = 해제) } → { rules, warning(PAY_MONTH_SETTLED) } */
 export const addPayItemRule = (id, body) => api.post(`/pay-items/${id}/rules`, body);
 
 /**

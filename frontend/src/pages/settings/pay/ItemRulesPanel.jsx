@@ -88,10 +88,11 @@ function RuleModal({ item, rule, onClose }) {
         gradeOrAbove: rule ? rule.gradeOrAbove : !!v.gradeOrAbove,
         amount: v.release ? null : v.amount,
       }),
-    onSuccess: () => {
+    // 적용 시작일이 정산된 달에 걸치면 저장하고 warning PAY_MONTH_SETTLED — 정산된 명세서는 바뀌지 않는다
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: payItemRulesKey(item.id) });
       queryClient.invalidateQueries({ queryKey: ['salaries'] });
-      notify.success(release ? '규칙을 해제했습니다' : '규칙을 저장했습니다');
+      notify.success(release ? '규칙을 해제했습니다' : '규칙을 저장했습니다', saved);
       onClose();
     },
     onError: (err) => {

@@ -122,12 +122,15 @@ export function PayTable({ p }) {
  * 계산 방법(Figma 429:8503) — 서버 계산식(PayrollCalculator)을 말로. 근태 연동 줄은 서버가 준 산식(formulaNote)을 그대로,
  * 고정액 줄의 formulaNote 는 금액의 근거(개별 금액 · 과장 이상 규칙 · 개발본부 규칙)라 "근거 금액 × 근무일 비례"로 보여 준다
  */
+// "개발본부 규칙" → "개발본부 규칙 금액", "개별 금액"은 그대로
+const fixedBasis = (note) => (note ? (note.endsWith('금액') ? note : `${note} 금액`) : null);
+
 function calcRows(p) {
   const days = `근무일 ${p.workedDays}/${p.monthDays}일 비례`;
   const earning = (l) => {
     if (l.formulaNote && l.calcMethod !== 'FIXED') return l.formulaNote;
     const base = {
-      FIXED: `${l.formulaNote ?? '정해진 금액'}${l.formulaNote ? ' 금액' : ''} × ${days}`,
+      FIXED: `${fixedBasis(l.formulaNote) ?? '정해진 금액'} × ${days}`,
       BASE_RATE: `월 기본급 × 지급률 × ${days}`,
       MANUAL: '인사 담당이 이번 달 금액을 직접 입력',
       TRIP_EXPENSE: '승인된 출장 경비 청구 합계',
@@ -136,7 +139,7 @@ function calcRows(p) {
     return l.nonTaxableAmount > 0 ? `${base} · 비과세 ${won(l.nonTaxableAmount)}원` : base;
   };
   const deduction = (l) =>
-    (l.calcMethod === 'FIXED' && l.formulaNote ? `${l.formulaNote} 금액` : l.formulaNote) ??
+    (l.calcMethod === 'FIXED' ? fixedBasis(l.formulaNote) : l.formulaNote) ??
     {
       TAXABLE_RATE: `과세 급여 ${won(p.taxablePay)}원 × 근로자 요율(약 ${pct(l.amount, p.taxablePay)}, 기준 상·하한 적용)`,
       FIXED: '정해진 금액',
