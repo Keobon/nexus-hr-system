@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.payroll.service;
 
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleRequest;
+import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleSaved;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleView;
 import com.nexuslabs.hr.domain.payroll.entity.PayCalcMethod;
 import com.nexuslabs.hr.domain.payroll.entity.PayItem;
@@ -98,9 +99,9 @@ public class PayItemRuleService {
         return result;
     }
 
-    /** 새 값(또는 해제)을 적용 시작일과 함께 더한다. 같은 대상 · 같은 날짜면 새 행이 정정본. 201 응답은 그 항목의 규칙 목록. */
+    /** 새 값(또는 해제)을 적용 시작일과 함께 더한다. 같은 대상 · 같은 날짜면 새 행이 정정본. 201 응답은 그 항목의 규칙 목록과 정산된 월 경고. */
     @Transactional
-    public List<PayItemRuleView> create(LoginUser user, long payItemId, PayItemRuleRequest request) {
+    public PayItemRuleSaved create(LoginUser user, long payItemId, PayItemRuleRequest request) {
         long cid = user.companyId();
         PayItem item = get(payItemId);
         if (item.getCalcMethod() != PayCalcMethod.FIXED) {
@@ -139,7 +140,8 @@ public class PayItemRuleService {
         after.put("amount", request.amount());
         after.put("effectiveFrom", request.effectiveFrom().toString());
         auditLogger.log(user, AuditAction.CREATE, AUDIT_TARGET, saved.getId(), null, after);
-        return list(cid, payItemId);
+        return new PayItemRuleSaved(list(cid, payItemId),
+                SalaryService.settledWarning(jdbc, cid, request.effectiveFrom()));
     }
 
     private PayItem get(long id) {
