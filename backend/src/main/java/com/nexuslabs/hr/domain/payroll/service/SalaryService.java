@@ -9,7 +9,6 @@ import com.nexuslabs.hr.domain.payroll.dto.SalaryRequest;
 import com.nexuslabs.hr.domain.payroll.dto.SalaryRow;
 import com.nexuslabs.hr.domain.payroll.entity.EmployeePayItem;
 import com.nexuslabs.hr.domain.payroll.entity.EmployeeSalary;
-import com.nexuslabs.hr.domain.payroll.entity.PayApplyTo;
 import com.nexuslabs.hr.domain.payroll.entity.PayCalcMethod;
 import com.nexuslabs.hr.domain.payroll.entity.PayItem;
 import com.nexuslabs.hr.domain.payroll.entity.PayItemKind;
@@ -40,7 +39,6 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -119,7 +117,7 @@ public class SalaryService {
                         "effectiveFrom", entry.effectiveFrom().toString(), "reason", entry.reason()));
         return new SalaryRegistered(entry.id(), entry.salaryType(), entry.annualSalary(), entry.monthlyBase(),
                 entry.effectiveFrom(), entry.reason(), entry.createdByName(), entry.createdAt(),
-                settledWarning(cid, request.effectiveFrom()));
+                settledWarning(jdbc, cid, request.effectiveFrom()));
     }
 
     /**
@@ -152,7 +150,7 @@ public class SalaryService {
         after.put("reason", reason);
         auditLogger.log(user, AuditAction.CREATE, "EMPLOYEE_PAY_ITEM", saved.getId(), null, after);
         return new PayItemAssigned(entry.id(), item.getId(), entry.amount(), entry.effectiveFrom(), entry.reason(),
-                entry.createdByName(), entry.createdAt(), settledWarning(cid, request.effectiveFrom()));
+                entry.createdByName(), entry.createdAt(), settledWarning(jdbc, cid, request.effectiveFrom()));
     }
 
     /** 한 직원의 급여(PAYROLL_READ). 다른 회사 직원은 404. */
@@ -251,8 +249,8 @@ public class SalaryService {
         }
     }
 
-    /** 적용 시작일의 귀속 월이나 그 뒤의 월이 이미 정산됐으면 경고 — 그 명세서는 바뀌지 않는다(BR-PAY-005). */
-    private String settledWarning(long companyId, LocalDate effectiveFrom) {
+    /** 적용 시작일의 귀속 월이나 그 뒤의 월이 이미 정산됐으면 경고 — 그 명세서는 바뀌지 않는다(BR-PAY-005). 규칙 등록도 쓴다. */
+    static String settledWarning(JdbcTemplate jdbc, long companyId, LocalDate effectiveFrom) {
         Boolean settled = jdbc.queryForObject(
                 "SELECT EXISTS (SELECT 1 FROM payroll_run WHERE company_id = ? AND pay_month >= ? AND status <> 'CANCELLED')",
                 Boolean.class, companyId, YearMonth.from(effectiveFrom).toString());
