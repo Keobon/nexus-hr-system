@@ -25,6 +25,7 @@ public class JobGradeService extends OrgSettingItemService<JobGrade> {
                     OR EXISTS (SELECT 1 FROM assignment_history WHERE company_id = ? AND from_job_grade_id = ?)
                     OR EXISTS (SELECT 1 FROM assignment_history WHERE company_id = ? AND to_job_grade_id = ?)
                     OR EXISTS (SELECT 1 FROM eval_cycle_target WHERE company_id = ? AND cond_job_grade_id = ?)
+                    OR EXISTS (SELECT 1 FROM pay_item_rule WHERE company_id = ? AND job_grade_id = ?)
                 """;
     }
 }

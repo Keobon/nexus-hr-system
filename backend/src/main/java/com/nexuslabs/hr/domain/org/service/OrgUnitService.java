@@ -264,9 +264,10 @@ public class OrgUnitService {
                             OR EXISTS (SELECT 1 FROM assignment_history WHERE company_id = ? AND from_org_unit_id = ?)
                             OR EXISTS (SELECT 1 FROM assignment_history WHERE company_id = ? AND to_org_unit_id = ?)
                             OR EXISTS (SELECT 1 FROM paystub WHERE company_id = ? AND org_unit_id_snap = ?)
+                            OR EXISTS (SELECT 1 FROM pay_item_rule WHERE company_id = ? AND org_unit_id = ?)
                         """,
                 Boolean.class, user.companyId(), orgUnitId, user.companyId(), orgUnitId, user.companyId(), orgUnitId,
-                user.companyId(), orgUnitId, user.companyId(), orgUnitId);
+                user.companyId(), orgUnitId, user.companyId(), orgUnitId, user.companyId(), orgUnitId);
         if (Boolean.TRUE.equals(used)) {
             orgUnit.deactivate();
             return DeleteResult.deactivated();
