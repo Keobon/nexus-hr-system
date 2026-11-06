@@ -19,4 +19,13 @@ class IntegrityMappingTest {
         assertThat(response.getStatusCode().value()).isEqualTo(409);
         assertThat(response.getBody().error().code()).isEqualTo("ATT_ALREADY_CHECKED_IN");
     }
+
+    @Test
+    void 같은_달_정산_두_번이면_PAY_MONTH_SETTLED() {
+        var e = new DataIntegrityViolationException("insert", new SQLException(
+                "ERROR: duplicate key value violates unique constraint \"ux_payroll_run_month\""));
+        var response = new GlobalExceptionHandler().handleIntegrity(e);
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody().error().code()).isEqualTo("PAY_MONTH_SETTLED");
+    }
 }

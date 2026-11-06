@@ -242,6 +242,21 @@ class PayItemRuleTest {
     }
 
     @Test
+    void 정산된_달에_걸친_규칙은_저장하고_경고한다() throws Exception {
+        jdbc.update("""
+                INSERT INTO payroll_run (company_id, pay_month, pay_date, company_name_snap, ceo_name_snap,
+                                         business_reg_no_snap, company_address_snap, confirmed_by)
+                VALUES (?, '2030-02', DATE '2030-02-25', '회사', '대표', '000-00-00000', '서울', ?)
+                """, cid, company.adminId());
+        orgRule(meal, division, true, "250000", "2030-02-01").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.warning").value("PAY_MONTH_SETTLED"))
+                .andExpect(jsonPath("$.data.rules[0].orgUnitName").value("개발본부"));
+        gradeRule(meal, "과장", true, "300000", "2030-03-01").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.warning").doesNotExist())
+                .andExpect(jsonPath("$.data.rules.length()").value(2));
+    }
+
+    @Test
     void 규칙_목록과_감사_로그_직원_급여의_출처() throws Exception {
         orgRule(meal, division, true, "250000", "2030-01-01");
         orgRule(meal, division, true, "270000", "2030-05-01");

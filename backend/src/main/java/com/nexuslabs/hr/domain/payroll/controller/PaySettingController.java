@@ -5,6 +5,7 @@ import com.nexuslabs.hr.domain.payroll.dto.InsuranceRateView;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemResponse;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleRequest;
+import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleSaved;
 import com.nexuslabs.hr.domain.payroll.dto.PayItemRuleView;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableRequest;
 import com.nexuslabs.hr.domain.payroll.dto.PayVariableView;
@@ -98,8 +99,8 @@ public class PaySettingController {
     @PostMapping("/api/pay-items/{id}/rules")
     @ResponseStatus(HttpStatus.CREATED)
     @RequirePermission(PermissionCode.PAYROLL_MANAGE)
-    public ApiResponse<List<PayItemRuleView>> addRule(@CurrentUser LoginUser user, @PathVariable long id,
-                                                      @Valid @RequestBody PayItemRuleRequest request) {
+    public ApiResponse<PayItemRuleSaved> addRule(@CurrentUser LoginUser user, @PathVariable long id,
+                                                 @Valid @RequestBody PayItemRuleRequest request) {
         return ApiResponse.ok(payItemRuleService.create(user, id, request));
     }
 
