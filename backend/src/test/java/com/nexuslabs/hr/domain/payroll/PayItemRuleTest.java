@@ -19,6 +19,7 @@ import java.util.List;
 
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -225,6 +226,19 @@ class PayItemRuleTest {
         mvc.perform(json(post("/api/pay-items/" + meal + "/rules"), "{}")
                         .header("Authorization", fixture.token(staffInTeam, cid)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 규칙에만_쓰인_부서와_직급은_지우지_않고_비활성화한다() throws Exception {
+        long empty = fixture.orgUnit(cid, division, "빈팀");
+        jdbc.update("INSERT INTO job_grade (company_id, name, sort_order) VALUES (?, '수석', 99)", cid);
+        orgRule(meal, empty, true, "1", "2030-01-01").andExpect(status().isCreated());
+        gradeRule(meal, "수석", false, "1", "2030-01-01").andExpect(status().isCreated());
+
+        admin(delete("/api/org-units/" + empty)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("DEACTIVATED"));
+        admin(delete("/api/job-grades/" + gradeId("수석"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result").value("DEACTIVATED"));
     }
 
     @Test
