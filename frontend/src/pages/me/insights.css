@@ -1,0 +1,296 @@
+/* 홈 전사 위젯 — 성과 현황 · 직원별 인건비. 카드 틀은 exec.css(.ex-card) 와 같이 쓴다. 값은 rem(px ÷ 16) */
+
+.ins {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.ins-card .ex-card-head {
+  flex-wrap: wrap;
+}
+
+.ins-head-tools {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ins-select {
+  min-width: 9rem;
+}
+
+.ins-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.ins-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.8125rem;
+}
+
+.ins-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ins-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.ins-summary span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ins-summary strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ins-summary small {
+  margin-left: 0.25rem;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.ins-summary em {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.ins-summary em.is-up {
+  color: #dc2626;
+}
+
+.ins-summary em.is-down {
+  color: #2563eb;
+}
+
+.ins-sub {
+  margin: 0 0 0.5rem;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.ins-note {
+  margin: 0.375rem 0 0;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+/* 수준 분포 */
+.ins-bar {
+  display: flex;
+  overflow: hidden;
+  height: 0.875rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.ins-bar > span {
+  flex-basis: 0;
+  min-width: 0.25rem;
+}
+
+.ins-bar > span.is-empty {
+  flex-grow: 1;
+  background: #f1f5f9;
+}
+
+.ins-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  color: #475569;
+  font-size: 0.75rem;
+  list-style: none;
+}
+
+.ins-legend i {
+  display: inline-block;
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.375rem;
+  border-radius: 2px;
+  vertical-align: -0.0625rem;
+}
+
+.ins-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+/* 표 */
+.ins-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #0f172a;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.ins-table th {
+  padding: 0.5rem 0.375rem;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ins-table td {
+  padding: 0.5rem 0.375rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ins-table td.is-left {
+  text-align: left;
+}
+
+.ins-table td.is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ins-table td em {
+  margin-left: 0.375rem;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-style: normal;
+}
+
+.ins-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #2563eb;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ins-name:hover {
+  text-decoration: underline;
+}
+
+.ins-level {
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ins-level.is-VERY_GOOD {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.ins-level.is-GOOD {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ins-level.is-POOR {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.ins-level.is-VERY_POOR {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* 조직별 합계 */
+.ins-orgs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+}
+
+.ins-orgs li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr) 8rem;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ins-orgs span {
+  overflow: hidden;
+  color: #334155;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ins-orgs b {
+  color: #0f172a;
+  font-weight: 600;
+  text-align: right;
+}
+
+.ins-org-bar {
+  overflow: hidden;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.ins-org-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #a5a1f5;
+}
+
+.ins-pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+@media (max-width: 75rem) {
+  .ins {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 인사 담당 등 업무 홈 아래 — 전사 현황 */
+.home-ins {
+  margin-top: 1.5rem;
+}
+
+.home-ins > h2 {
+  margin: 0 0 1rem;
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 700;
+}

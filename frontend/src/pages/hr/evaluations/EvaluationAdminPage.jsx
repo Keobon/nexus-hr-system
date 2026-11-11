@@ -16,7 +16,7 @@ export default function EvaluationAdminPage() {
   const tab = tabs.some(([k]) => k === sp.get('tab')) ? sp.get('tab') : tabs[0][0];
   const go = (k, extra = {}) => setSp({ tab: k, ...extra });
   // 조회만 하는 사람(경영진 · 조직장) — Figma 72-7789 평가 결과 조회 전용
-  if (!manage) return <EvalReadView />;
+  if (!manage) return <EvalReadView initialEvaluation={Number(sp.get('evaluation')) || null} />;
 
   return (
     <div className="hr ea">
@@ -29,7 +29,7 @@ export default function EvaluationAdminPage() {
         ))}
       </nav>
       {tab === 'cycles' && <CycleTab onResults={(cycleId) => go('results', { cycle: String(cycleId) })} />}
-      {tab === 'results' && <ResultTab manage={manage} initialCycle={sp.get('cycle')} />}
+      {tab === 'results' && <ResultTab manage={manage} initialCycle={sp.get('cycle')} initialEvaluation={Number(sp.get('evaluation')) || null} />}
     </div>
   );
 }

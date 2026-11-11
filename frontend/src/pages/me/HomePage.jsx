@@ -10,6 +10,7 @@ import { getMyProfile, myProfileKey } from '../../api/profile';
 import { useMe } from '../../auth/useMe';
 import { isExecutive } from '../../components/layout/menu';
 import ExecutiveHome from './ExecutiveHome';
+import CompanyInsights from './CompanyInsights';
 import { useNotify } from '../../components/common/useNotify';
 import { labelOf } from '../../constants/labels';
 import { errorMessage } from '../../constants/errors';
@@ -547,6 +548,9 @@ export default function HomePage() {
       </div>
 
       <InfoCard profile={profile.data} payrollEligible={me.employee?.payrollEligible} />
+
+      {/* 전사 위젯(성과 현황 · 직원별 인건비) — 권한이 없으면 CompanyInsights 가 아무것도 그리지 않는다 */}
+      {home.data.company && <CompanyInsights company={home.data.company} title="전사 현황" />}
     </div>
   );
 }

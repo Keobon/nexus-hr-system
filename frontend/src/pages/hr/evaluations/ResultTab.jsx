@@ -17,13 +17,13 @@ import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
 import { HALF_MONTHS, EvalStatusChip, avgOf, cycleParts, levelOf, num, resultState, yearOptions } from './shared';
 
-export default function ResultTab({ manage, initialCycle }) {
+export default function ResultTab({ manage, initialCycle, initialEvaluation }) {
   // 조회만 하는 사람은 EvalReadView(EvaluationAdminPage 에서 분기)
-  return manage ? <ManageResults initialCycle={initialCycle} /> : null;
+  return manage ? <ManageResults initialCycle={initialCycle} initialEvaluation={initialEvaluation} /> : null;
 }
 
 /* ───── 인사 담당(EVAL_MANAGE) — 진행 현황으로 전원 · 확정 / 확정 취소 ───── */
-function ManageResults({ initialCycle }) {
+function ManageResults({ initialCycle, initialEvaluation }) {
   const cycles = useQuery({ queryKey: evalCyclesKey, queryFn: getEvalCycles });
   const started = (cycles.data ?? []).filter((c) => c.status !== 'SCHEDULED').sort((a, b) => b.startDate.localeCompare(a.startDate));
   const first = started.find((c) => String(c.id) === initialCycle) ?? started[0];
@@ -47,7 +47,7 @@ function ManageResults({ initialCycle }) {
   const orgs = [...new Set(items.map((i) => i.orgUnitName))];
   const term = (applied.term ?? '').trim().toLowerCase();
   const rows = items.filter((i) => (!applied.type || i.templateName === applied.type) && (!applied.org || i.orgUnitName === applied.org) && (!term || i.targetName.toLowerCase().includes(term)));
-  const [pick, setPick] = useState(null);
+  const [pick, setPick] = useState(initialEvaluation);
   const selected = rows.find((r) => r.evaluationId === pick) ?? rows.find((r) => r.status === 'SUBMITTED') ?? rows[0];
 
   if (cycles.isLoading) return <Spin />;

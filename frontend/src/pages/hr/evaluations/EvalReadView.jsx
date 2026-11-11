@@ -12,13 +12,13 @@ import { Field, OrgField, Pill, Table } from '../attendance/shared';
 import { num } from './shared';
 import '../attendance/at.css';
 
-export default function EvalReadView() {
+export default function EvalReadView({ initialEvaluation = null }) {
   const { me } = useMe();
   const whole = (me?.permissions ?? []).some((p) => p.code === 'EVAL_READ' && p.scope === 'ALL');
   const [cycle, setCycle] = useState(null);
   const [orgUnitId, setOrgUnitId] = useState(null);
   const [employeeNo, setEmployeeNo] = useState(null);
-  const [pick, setPick] = useState(null);
+  const [pick, setPick] = useState(initialEvaluation);
 
   const results = useQuery({ queryKey: evalResultsKey({ all: true, orgUnitId }), queryFn: () => fetchAllPages(getEvalResults, { orgUnitId: orgUnitId ?? undefined }) });
   // 대상자 직급 — 결과 행에 없어 직원 목록에서(못 읽으면 부서만)
