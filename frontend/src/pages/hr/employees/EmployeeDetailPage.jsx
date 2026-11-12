@@ -26,6 +26,7 @@ import { formatMoney } from '../../../utils/format';
 import { ConfirmModal, EmpStatusBadge, ModalFoot, PageHead, useOrgOptions } from '../parts';
 import EmployeeFamilyCard from './EmployeeFamilyCard';
 import EmployeeFieldsCard from './EmployeeFieldsCard';
+import EmployeeProfileCard from './EmployeeProfileCard';
 
 const KV = ({ k, children }) => (
   <div className="hr-kv">
@@ -123,6 +124,8 @@ export default function EmployeeDetailPage() {
           <button type="button" className="hr-btn" disabled={resigned} onClick={() => setStatusTarget(e.status === 'ON_LEAVE' ? 'ACTIVE' : 'ON_LEAVE')}>재직상태 변경</button>
         )}
       </PageHead>
+
+      <EmployeeProfileCard employee={e} canEdit={manage && !resigned} />
 
       <div className="hr-row2">
         <div className="hr-card hr-info">
