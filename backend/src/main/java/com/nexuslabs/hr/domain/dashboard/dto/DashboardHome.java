@@ -39,9 +39,15 @@ public record DashboardHome(Me me, Todos todos, Company company, MyOrg myOrg, Ad
     public record Todos(long approvalsPending, long evaluationsToSubmit) {
     }
 
-    /** DASHBOARD_COMPANY — 인원(F-DASH-02) · 이번 달 휴가(F-DASH-03) · 최근 발령 10건(F-DASH-04). */
+    /**
+     * DASHBOARD_COMPANY — 인원(F-DASH-02) · 이번 달 휴가(F-DASH-03) · 최근 발령 10건(F-DASH-04) ·
+     * 성과 현황(F-DASH-06, 전사 EVAL_READ) · 직원별 인건비(F-DASH-07, PAYROLL_READ). 권한이 없거나 데이터가 없으면
+     * performance · laborCost 필드 자체가 없다.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Company(Headcount headcount, List<Vacation> onVacationThisMonth, List<LeaveUsage> leaveUsageThisMonth,
-                          List<AssignmentItem> recentAssignments) {
+                          List<AssignmentItem> recentAssignments, CompanyPerformance performance,
+                          CompanyLaborCost laborCost) {
     }
 
     /** byOrgUnit 은 최상위 바로 아래 조직부터, 펼치면 하위(children). count 는 하위 조직까지 포함한 재직 · 휴직 인원. */

@@ -25,7 +25,7 @@ public enum PermissionCode {
     ASSIGNMENT_MANAGE("발령 등록 · 정정", "F-ASSIGN-01·04", false),
     EVAL_READ("다른 직원의 확정된 평가 결과 조회", "F-EVAL-05", true),
     EVAL_MANAGE("평가 기간 · 템플릿 · 대상 · 확정 · 진행 현황", "F-EVAL-01·02·03·06", false),
-    DASHBOARD_COMPANY("전사 집계 위젯", "F-DASH-02–04", false);
+    DASHBOARD_COMPANY("전사 집계 위젯", "F-DASH-02–07", false);
 
     private final String description;
     private final String relatedFeatures;

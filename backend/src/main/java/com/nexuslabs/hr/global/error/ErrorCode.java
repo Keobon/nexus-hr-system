@@ -64,6 +64,7 @@ public enum ErrorCode {
 
     // 급여
     PAY_MONTH_SETTLED(HttpStatus.CONFLICT, "이미 정산된 월입니다"),
+    PAYROLL_NOT_FOUND(HttpStatus.NOT_FOUND, "정산 내역이 없습니다"),
     TAX_BRACKET_INVALID(HttpStatus.BAD_REQUEST, "세율 구간이 0원부터 빈틈없이 이어져야 합니다"),
 
     // 평가

@@ -40,7 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * 홈 대시보드(F-DASH-01–05, API 설계서 13장). 영역마다 이미 있는 메서드를 모아 부르고(역할 분담 v2 2.1),
+ * 홈 대시보드(F-DASH-01–07, API 설계서 13장). 영역마다 이미 있는 메서드를 모아 부르고(역할 분담 v2 2.1),
  * 회사 · 내 조직 집계만 여기서 SQL 로 센다. 저장하지 않고 원천 데이터에서 바로 집계한다(BR-DASH-001).
  */
 @Service
@@ -64,6 +64,7 @@ public class DashboardService {
     private final EvalResultService evalResultService;
     private final AssignmentQueryService assignmentQueryService;
     private final CompanySetupService companySetupService;
+    private final CompanyInsightService companyInsightService;
     private final Clock clock;
 
     public DashboardService(JdbcTemplate jdbc, PermissionReader permissionReader, ScopeResolver scopeResolver,
@@ -73,7 +74,8 @@ public class DashboardService {
                             OvertimeService overtimeService, BusinessTripService businessTripService,
                             ExpenseClaimService expenseClaimService, PayslipService payslipService,
                             EvalResultService evalResultService, AssignmentQueryService assignmentQueryService,
-                            CompanySetupService companySetupService, Clock clock) {
+                            CompanySetupService companySetupService, CompanyInsightService companyInsightService,
+                            Clock clock) {
         this.jdbc = jdbc;
         this.permissionReader = permissionReader;
         this.scopeResolver = scopeResolver;
@@ -90,6 +92,7 @@ public class DashboardService {
         this.evalResultService = evalResultService;
         this.assignmentQueryService = assignmentQueryService;
         this.companySetupService = companySetupService;
+        this.companyInsightService = companyInsightService;
         this.clock = clock;
     }
 
@@ -99,7 +102,8 @@ public class DashboardService {
         MeResponse.Todos todos = meService.todos(user);
         YearMonth month = YearMonth.now(clock);
 
-        DashboardHome.Company company = granted.containsKey(PermissionCode.DASHBOARD_COMPANY) ? company(user, month) : null;
+        DashboardHome.Company company = granted.containsKey(PermissionCode.DASHBOARD_COMPANY) ? company(user, granted, month)
+                : null;
         List<Long> leadOrgUnitIds = scopeResolver.leadOrgUnitIds(user);
         DashboardHome.MyOrg myOrg = leadOrgUnitIds.isEmpty() ? null : myOrg(user, leadOrgUnitIds, month);
         DashboardHome.Admin admin = admin(user, granted, todos);
@@ -127,7 +131,7 @@ public class DashboardService {
 
     // ------------------------------------------------------------------ 회사 (DASHBOARD_COMPANY)
 
-    private DashboardHome.Company company(LoginUser user, YearMonth month) {
+    private DashboardHome.Company company(LoginUser user, Map<PermissionCode, PermissionScope> granted, YearMonth month) {
         long cid = user.companyId();
         Map<String, Long> byStatus = new HashMap<>();
         jdbc.query("SELECT status::text AS status, count(*) AS n FROM employee WHERE company_id = ? GROUP BY status",
@@ -164,7 +168,9 @@ public class DashboardService {
                         rs.getInt("days")),
                 cid, Date.valueOf(month.atEndOfMonth()), Date.valueOf(month.atDay(1)));
         return new DashboardHome.Company(headcount, vacations, leaveUsage(cid, null, month),
-                assignmentQueryService.recent(cid, RECENT_ASSIGNMENTS));
+                assignmentQueryService.recent(cid, RECENT_ASSIGNMENTS),
+                CompanyInsightService.canSeePerformance(granted) ? companyInsightService.homePerformance(cid) : null,
+                CompanyInsightService.canSeeLaborCost(granted) ? companyInsightService.homeLaborCost(cid) : null);
     }
 
     /** 활성 조직 트리를 한 번 읽어 최상위 바로 아래 조직부터 하위 포함 인원을 센다. */
