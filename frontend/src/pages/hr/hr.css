@@ -823,3 +823,84 @@
   height: auto;
   padding: 2rem 1.25rem;
 }
+
+/* 직원 상세 프로필(EmployeeProfileCard) */
+.ep-card {
+  display: flex;
+  flex-direction: row;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.ep-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #e0f2fe;
+  color: #0284c7;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.ep-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ep-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.ep-name {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+}
+
+.ep-name strong {
+  color: #0f172a;
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.ep-no {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.ep-sub {
+  color: #334155;
+  font-size: 0.9375rem;
+}
+
+.ep-hint {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+
+.ep-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 16rem;
+}
+
+.ep-actions em {
+  width: 100%;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-style: normal;
+  text-align: right;
+}
