@@ -38,6 +38,7 @@ export const createEmployee = (body) => api.post('/employees', body);
 export const updateEmployee = (id, patch) => api.patch(`/employees/${id}`, patch);
 
 /** POST /employees/{id}/status { status, effectiveDate, reason } → 이력 한 줄. 퇴직이면 계정 · 조직장 등을 서버가 같이 처리 */
+/** body: { status, effectiveDate, reason, resignReason?(퇴직일 때 — JOB_CHANGE · PERSONAL · CONTRACT_END · RETIREMENT · DISMISSAL · ETC) } */
 export const changeEmploymentStatus = (id, body) => api.post(`/employees/${id}/status`, body);
 
 /** GET /employees/{id}/status-history → [{ id, status, effectiveDate, reason, createdByName, createdAt }] 시간순 */

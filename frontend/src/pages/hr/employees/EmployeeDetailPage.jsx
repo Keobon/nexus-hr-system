@@ -150,6 +150,8 @@ export default function EmployeeDetailPage() {
           <KV k="고용형태">{e.employmentTypeName ?? '-'}</KV>
           {has(e.hireDate) && <KV k="입사일">{e.hireDate}</KV>}
           <KV k="재직상태"><EmpStatusBadge status={e.status} /></KV>
+          {e.resignDate && <KV k="퇴사일">{e.resignDate}</KV>}
+          {e.resignReason && <KV k="퇴사 사유">{labelOf('resignReason', e.resignReason)}</KV>}
           <p className="hr-note">※ 부서·직급·직책은 [인사발령 등록]으로 바꾸며 발령 이력에 남습니다. 고용형태는 [기본정보 수정], 재직상태는 [재직상태 변경]에서 바꿉니다. 입사일 · 사원번호는 바꿀 수 없습니다.</p>
         </div>
       </div>
@@ -264,7 +266,10 @@ function EditModal({ employee: e, onClose }) {
   );
 }
 
-/** MODAL_employment_status — 퇴직은 MODAL_confirm 을 한 번 더 */
+/**
+ * MODAL_employment_status — 퇴직은 MODAL_confirm 을 한 번 더. 퇴직이면 퇴사 사유(코드)도 필수로 받는다 — 직원 데이터는 지우지 않고
+ * 퇴사일(발효일) · 사유를 남겨 퇴사 통계에 쓴다. 발효일 = 퇴사일 = 마지막 근무일 다음 날(그날부터 재직 인원에서 빠진다)
+ */
 function StatusModal({ employee: e, target, onClose }) {
   const notify = useNotify();
   const queryClient = useQueryClient();
@@ -282,7 +287,12 @@ function StatusModal({ employee: e, target, onClose }) {
     },
   });
 
-  const toBody = (v) => ({ status: v.status, effectiveDate: v.effectiveDate.format('YYYY-MM-DD'), reason: v.reason.trim() });
+  const toBody = (v) => ({
+    status: v.status,
+    effectiveDate: v.effectiveDate.format('YYYY-MM-DD'),
+    reason: v.reason.trim(),
+    ...(v.status === 'RESIGNED' && { resignReason: v.resignReason }),
+  });
   const submit = async (v) => {
     if (v.status === 'RESIGNED') { setPending(toBody(v)); return; }
     try { await save.mutateAsync(toBody(v)); } catch (err) { if (!applyFieldErrors(form, err)) notify.error(err); }
@@ -298,10 +308,15 @@ function StatusModal({ employee: e, target, onClose }) {
           <Form.Item name="status" label="변경할 상태" rules={[{ required: true, message: '상태를 선택하세요' }]}>
             <Select options={optionsOf('employmentStatus').filter((o) => o.value !== e.status)} />
           </Form.Item>
-          <Form.Item name="reason" label="사유" rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
-            <Input.TextArea rows={3} maxLength={255} placeholder="예: 육아휴직 신청" />
+          {status === 'RESIGNED' && (
+            <Form.Item name="resignReason" label="퇴사 사유" rules={[{ required: true, message: '퇴사 사유를 고르세요' }]}>
+              <Select placeholder="사유 선택" options={optionsOf('resignReason')} />
+            </Form.Item>
+          )}
+          <Form.Item name="reason" label={status === 'RESIGNED' ? '상세 사유' : '사유'} rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
+            <Input.TextArea rows={3} maxLength={255} placeholder={status === 'RESIGNED' ? '예: 타사 이직(개발 직군)' : '예: 육아휴직 신청'} />
           </Form.Item>
-          <Form.Item name="effectiveDate" label="발효일" rules={[{ required: true, message: '발효일을 선택하세요' }]}
+          <Form.Item name="effectiveDate" label={status === 'RESIGNED' ? '퇴사일' : '발효일'} rules={[{ required: true, message: '발효일을 선택하세요' }]}
             extra={status === 'RESIGNED' ? '퇴직은 마지막 근무일 다음 날을 고릅니다.' : undefined}>
             <DatePicker className="full-width" format="YYYY-MM-DD" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
           </Form.Item>

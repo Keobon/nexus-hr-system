@@ -72,6 +72,15 @@ export const LABELS = {
     ON_LEAVE: L('휴직', 'gold'),
     RESIGNED: L('퇴직'),
   },
+  // 퇴사 사유 — 퇴사 처리 때 고르고 퇴사 통계(사유별)에 쓴다
+  resignReason: {
+    JOB_CHANGE: L('이직'),
+    PERSONAL: L('개인 사정'),
+    CONTRACT_END: L('계약 만료'),
+    RETIREMENT: L('정년'),
+    DISMISSAL: L('권고사직/해고'),
+    ETC: L('기타'),
+  },
   permissionScope: {
     TEAM: L('팀', 'blue'),
     ALL: L('전사', 'purple'),
