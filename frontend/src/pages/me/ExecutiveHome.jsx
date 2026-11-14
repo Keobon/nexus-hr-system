@@ -11,6 +11,7 @@ import { getLeaveBalancePage, getLeaveRequestPage } from '../../api/leaves';
 import { getPayrollRuns, payrollRunsKey } from '../../api/payrollAdmin';
 import { labelOf } from '../../constants/labels';
 import CompanyInsights from './CompanyInsights';
+import TurnoverOverview from '../hr/turnover/TurnoverOverview';
 import './exec.css';
 
 const ORG_COLORS = ['#a5a1f5', '#9fe0c4', '#fa9fb0', '#fdb24c', '#b9b5f8', '#7dd3fc', '#fcd34d'];
@@ -97,6 +98,8 @@ export default function ExecutiveHome({ company }) {
         <OrgDonut headcount={hc} />
         <WeeklyAttendance today={today} />
       </div>
+
+      <TurnoverOverview />
 
       <CompanyInsights company={company} />
 

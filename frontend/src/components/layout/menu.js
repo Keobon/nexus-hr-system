@@ -13,6 +13,7 @@ import {
   FileSearchOutlined,
   FormOutlined,
   HomeOutlined,
+  LineChartOutlined,
   IdcardOutlined,
   StarOutlined,
   TeamOutlined,
@@ -56,10 +57,10 @@ const GROUPS = [
   {
     key: 'me',
     title: '인사 서비스',
-    // 경영진은 사이드바에 개인 메뉴(내 근태 · 휴가 · 급여 …) 없이 승인 · 평가만 — 주소 · 프로필 메뉴(내 정보)로는 들어간다
+    // 경영진은 사이드바에 개인 메뉴(근태 · 휴가 신청 · 급여 …) 없이 내 정보 · 승인 · 평가만 — 나머지는 주소로는 들어간다
     titleFor: (ctx) => (isExecutive(ctx) ? '승인·평가' : null),
     items: [
-      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always, navHiddenFor: isExecutive },
+      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always },
       {
         key: 'my-attendance',
         path: '/me/attendance',
@@ -175,6 +176,14 @@ const GROUPS = [
         labelFor: (ctx) => (isExecutive(ctx) ? '전사 평가 결과' : null),
         icon: StarOutlined,
         visible: ({ canAny }) => canAny('EVAL_READ', 'EVAL_MANAGE'),
+      },
+      {
+        // 퇴사 통계 — 경영진 · 인사 담당(회사 대시보드 권한). 퇴사자 이름은 서버가 관리 권한이 없으면 가린다
+        key: 'turnover',
+        path: '/statistics/turnover',
+        label: '퇴사 통계',
+        icon: LineChartOutlined,
+        visible: ({ can }) => can('DASHBOARD_COMPANY'),
       },
     ],
   },
