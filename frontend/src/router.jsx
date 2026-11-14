@@ -42,7 +42,6 @@ import SetupWizardPage from './pages/settings/admin/setup/SetupWizardPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
-import ExecutiveDashboardPage from './pages/me/ExecutiveDashboardPage';
 import TurnoverStatsPage from './pages/hr/turnover/TurnoverStatsPage';
 import LoginPage from './pages/public/LoginPage';
 import PasswordPage from './pages/public/PasswordPage';
@@ -51,7 +50,6 @@ import SignupPage from './pages/public/SignupPage';
 // 메뉴별 화면. 만든 화면은 여기에 넣고, 없으면 담당자 표시와 함께 PlaceholderPage(역할 분담 3장)
 const PAGES = {
   home: HomePage,
-  'exec-dashboard': ExecutiveDashboardPage,
   'my-info': MyInfoPage,
   'my-attendance': MyAttendancePage,
   'my-leaves': MyLeavePage,

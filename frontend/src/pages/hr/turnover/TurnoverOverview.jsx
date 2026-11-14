@@ -1,5 +1,5 @@
 // 경영진 대시보드 — 인력 변동(퇴사) 현황(작업 지시서 1-4). 조회 전용, 카드 · 표 · 그래프를 누르면 퇴사 통계 상세(/statistics/turnover)
-// 요약 카드 4개(이번 달), 최근 12개월 퇴사율 추이, 부서별 인원 · 퇴사율(최근 12개월)
+// 요약 카드 3개(이번 달 입사 · 퇴사 · 퇴사율 — 재직 인원은 위 "전사 재직 인원"과 겹쳐 뺐다), 최근 12개월 퇴사율 추이, 부서별 인원 · 퇴사율(최근 12개월)
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -22,8 +22,7 @@ export default function TurnoverOverview() {
   const s = summary.data;
   const diff = s && s.prevTurnoverRate != null ? Math.round((Number(s.turnoverRate) - Number(s.prevTurnoverRate)) * 10) / 10 : null;
   const tiles = [
-    { label: '전체 재직 인원', value: s?.headcount, unit: '명', sub: s ? `순증감 ${s.netChange > 0 ? '+' : ''}${s.netChange}명` : '', tone: 'is-green' },
-    { label: '이번 달 입사자', value: s?.hires, unit: '명', sub: `${dayjs().month() + 1}월 입사`, tone: 'is-blue' },
+    { label: '이번 달 입사자', value: s?.hires, unit: '명', sub: `${dayjs().month() + 1}월 입사${s ? ` · 순증감 ${s.netChange > 0 ? '+' : ''}${s.netChange}명` : ''}`, tone: 'is-blue' },
     { label: '이번 달 퇴사자', value: s?.resignations, unit: '명', sub: `${dayjs().month() + 1}월 퇴사`, tone: 'is-orange' },
     {
       label: '이번 달 퇴사율',

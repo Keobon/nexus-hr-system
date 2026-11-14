@@ -12,7 +12,6 @@ import {
   DollarOutlined,
   FileSearchOutlined,
   FormOutlined,
-  FundOutlined,
   HomeOutlined,
   LineChartOutlined,
   IdcardOutlined,
@@ -53,18 +52,7 @@ const GROUPS = [
   {
     key: 'main',
     title: 'MAIN',
-    items: [
-      { key: 'home', path: '/', label: '대시보드', icon: HomeOutlined, navIcon: navDashboard, visible: always },
-      {
-        // 경영진 대시보드 — 경영진(EXECUTIVE)은 첫 화면이 이것이라 사이드바에 따로 두지 않고, 인사 담당 등 회사 대시보드 권한자가 연다
-        key: 'exec-dashboard',
-        path: '/executive',
-        label: '경영진 대시보드',
-        icon: FundOutlined,
-        visible: ({ can }) => can('DASHBOARD_COMPANY'),
-        navHiddenFor: isExecutive,
-      },
-    ],
+    items: [{ key: 'home', path: '/', label: '대시보드', icon: HomeOutlined, navIcon: navDashboard, visible: always }],
   },
   {
     key: 'me',
