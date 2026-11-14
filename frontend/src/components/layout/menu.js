@@ -12,7 +12,9 @@ import {
   DollarOutlined,
   FileSearchOutlined,
   FormOutlined,
+  FundOutlined,
   HomeOutlined,
+  LineChartOutlined,
   IdcardOutlined,
   StarOutlined,
   TeamOutlined,
@@ -51,15 +53,26 @@ const GROUPS = [
   {
     key: 'main',
     title: 'MAIN',
-    items: [{ key: 'home', path: '/', label: '대시보드', icon: HomeOutlined, navIcon: navDashboard, visible: always }],
+    items: [
+      { key: 'home', path: '/', label: '대시보드', icon: HomeOutlined, navIcon: navDashboard, visible: always },
+      {
+        // 경영진 대시보드 — 경영진(EXECUTIVE)은 첫 화면이 이것이라 사이드바에 따로 두지 않고, 인사 담당 등 회사 대시보드 권한자가 연다
+        key: 'exec-dashboard',
+        path: '/executive',
+        label: '경영진 대시보드',
+        icon: FundOutlined,
+        visible: ({ can }) => can('DASHBOARD_COMPANY'),
+        navHiddenFor: isExecutive,
+      },
+    ],
   },
   {
     key: 'me',
     title: '인사 서비스',
-    // 경영진은 사이드바에 개인 메뉴(내 근태 · 휴가 · 급여 …) 없이 승인 · 평가만 — 주소 · 프로필 메뉴(내 정보)로는 들어간다
+    // 경영진은 사이드바에 개인 메뉴(근태 · 휴가 신청 · 급여 …) 없이 내 정보 · 승인 · 평가만 — 나머지는 주소로는 들어간다
     titleFor: (ctx) => (isExecutive(ctx) ? '승인·평가' : null),
     items: [
-      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always, navHiddenFor: isExecutive },
+      { key: 'my-info', path: '/me', label: '내정보', icon: UserOutlined, navIcon: navAccount, visible: always },
       {
         key: 'my-attendance',
         path: '/me/attendance',
@@ -175,6 +188,14 @@ const GROUPS = [
         labelFor: (ctx) => (isExecutive(ctx) ? '전사 평가 결과' : null),
         icon: StarOutlined,
         visible: ({ canAny }) => canAny('EVAL_READ', 'EVAL_MANAGE'),
+      },
+      {
+        // 퇴사 통계 — 경영진 · 인사 담당(회사 대시보드 권한). 퇴사자 이름은 서버가 관리 권한이 없으면 가린다
+        key: 'turnover',
+        path: '/statistics/turnover',
+        label: '퇴사 통계',
+        icon: LineChartOutlined,
+        visible: ({ can }) => can('DASHBOARD_COMPANY'),
       },
     ],
   },
