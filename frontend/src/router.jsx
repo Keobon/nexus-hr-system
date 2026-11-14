@@ -43,6 +43,7 @@ import ForbiddenPage from './pages/ForbiddenPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import ExecutiveDashboardPage from './pages/me/ExecutiveDashboardPage';
+import TurnoverStatsPage from './pages/hr/turnover/TurnoverStatsPage';
 import LoginPage from './pages/public/LoginPage';
 import PasswordPage from './pages/public/PasswordPage';
 import SignupPage from './pages/public/SignupPage';
@@ -66,6 +67,7 @@ const PAGES = {
   evaluations: EvaluationAdminPage,
   attendance: AttendanceAdminPage,
   leaves: LeaveAdminPage,
+  turnover: TurnoverStatsPage,
   'set-orgs': OrgSettingsPage,
   'set-titles': TitleSettingsPage,
   'set-expense-types': ExpenseTypeSettingsPage,

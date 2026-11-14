@@ -3,11 +3,14 @@ const W = 720;
 const PAD = { top: 16, right: 44, bottom: 34, left: 40 };
 export const COLORS = { hires: '#7dd3fc', resignations: '#fa9fb0', rate: '#f59e0b', bar: '#a5a1f5' };
 
-const niceMax = (v) => {
-  if (v <= 0) return 1;
-  const p = 10 ** Math.floor(Math.log10(v));
-  return Math.ceil(v / p) * p;
+/** 눈금 4칸이 깔끔하게 떨어지는 최댓값 — 한 칸 = 1 · 2 · 2.5 · 5 × 10^k(int 면 1 이상 정수) */
+const axisMax = (v, int = false) => {
+  const raw = Math.max(v, int ? 4 : 1) / 4;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * p).find((s) => s >= raw && (!int || Number.isInteger(s)));
+  return step * 4;
 };
+const tick = (v) => Math.round(v * 10) / 10;
 
 /** '2026-03' → '26.03' · '2026-Q1' → '26 Q1' · '2026' → '2026' */
 export function periodLabel(p) {
@@ -20,14 +23,15 @@ export function periodLabel(p) {
  * 퇴사율 추이(선, 오른쪽 축 %) + 입사자 · 퇴사자(막대, 왼쪽 축 명). bars=false 면 선만(대시보드 12개월 추이)
  * items: [{ period, hires, resignations, turnoverRate }]
  */
-export function TrendChart({ items, bars = true, height = 260 }) {
+export function TrendChart({ items, bars = true, height = 260, width = W }) {
   const H = height;
+  const W = width; // 가로로 넓은 자리는 width 를 키워 글자가 커지지 않게
   const iw = W - PAD.left - PAD.right;
   const ih = H - PAD.top - PAD.bottom;
   const n = items.length;
   const step = iw / Math.max(1, n);
-  const maxCount = niceMax(Math.max(0, ...items.flatMap((d) => [d.hires ?? 0, d.resignations ?? 0])));
-  const maxRate = niceMax(Math.max(1, ...items.map((d) => Number(d.turnoverRate) || 0)));
+  const maxCount = axisMax(Math.max(0, ...items.flatMap((d) => [d.hires ?? 0, d.resignations ?? 0])), true);
+  const maxRate = axisMax(Math.max(0, ...items.map((d) => Number(d.turnoverRate) || 0)));
   const x = (i) => PAD.left + step * i + step / 2;
   const yCount = (v) => PAD.top + ih - (v / maxCount) * ih;
   const yRate = (v) => PAD.top + ih - (v / maxRate) * ih;
@@ -44,10 +48,10 @@ export function TrendChart({ items, bars = true, height = 260 }) {
             <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="#eef2f7" />
             {bars && (
               <text x={PAD.left - 6} y={y + 4} textAnchor="end" className="to-axis">
-                {Math.round(maxCount * t)}
+                {tick(maxCount * t)}
               </text>
             )}
-            <text x={W - PAD.right + 6} y={y + 4} className="to-axis">{`${Math.round(maxRate * t * 10) / 10}%`}</text>
+            <text x={W - PAD.right + 6} y={y + 4} className="to-axis">{`${tick(maxRate * t)}%`}</text>
           </g>
         );
       })}
@@ -97,10 +101,11 @@ export function TrendLegend({ bars = true }) {
 /** 세로 막대 — items: [{ key, label, value }] */
 export function BarChart({ items, unit = '명', height = 220 }) {
   const H = height;
+  const W = 560;
   const iw = W - PAD.left - PAD.right;
   const ih = H - PAD.top - PAD.bottom;
   const step = iw / Math.max(1, items.length);
-  const max = niceMax(Math.max(0, ...items.map((d) => d.value)));
+  const max = axisMax(Math.max(0, ...items.map((d) => d.value)), true);
   const bw = Math.min(64, step / 2);
   return (
     <svg className="to-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="근속기간별 퇴사자">
@@ -109,7 +114,7 @@ export function BarChart({ items, unit = '명', height = 220 }) {
         return (
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="#eef2f7" />
-            <text x={PAD.left - 6} y={y + 4} textAnchor="end" className="to-axis">{Math.round(max * t)}</text>
+            <text x={PAD.left - 6} y={y + 4} textAnchor="end" className="to-axis">{tick(max * t)}</text>
           </g>
         );
       })}
