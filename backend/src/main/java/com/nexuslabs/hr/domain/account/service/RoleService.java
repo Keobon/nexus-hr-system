@@ -12,6 +12,7 @@ import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
 import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.permission.PermissionScope;
+import com.nexuslabs.hr.global.permission.RoleGrantGuard;
 import com.nexuslabs.hr.global.response.DeleteResult;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +35,12 @@ public class RoleService {
 
     private final JdbcTemplate jdbc;
     private final AuditLogger auditLogger;
+    private final RoleGrantGuard roleGrantGuard;
 
-    public RoleService(JdbcTemplate jdbc, AuditLogger auditLogger) {
+    public RoleService(JdbcTemplate jdbc, AuditLogger auditLogger, RoleGrantGuard roleGrantGuard) {
         this.jdbc = jdbc;
         this.auditLogger = auditLogger;
+        this.roleGrantGuard = roleGrantGuard;
     }
 
     public List<PermissionInfo> permissions() {
@@ -69,6 +73,7 @@ public class RoleService {
     @Transactional
     public RoleDetail create(LoginUser user, RoleRequest request) {
         validatePermissions(request.permissions());
+        requireGrantsWithin(user, request.permissions());
         checkNameUnique(user.companyId(), request.name().trim(), null);
         long roleId = jdbc.queryForObject(
                 "INSERT INTO role (company_id, name, description, is_system) VALUES (?, ?, ?, FALSE) RETURNING id",
@@ -86,6 +91,8 @@ public class RoleService {
             throw new BusinessException(ErrorCode.SYSTEM_ROLE_READONLY);
         }
         validatePermissions(request.permissions());
+        roleGrantGuard.requireWithin(user, roleId);              // 내 권한을 넘는 역할은 고치지도 못한다
+        requireGrantsWithin(user, request.permissions());
         checkNameUnique(user.companyId(), request.name().trim(), roleId);
         jdbc.update("UPDATE role SET name = ?, description = ?, updated_at = now() WHERE id = ? AND company_id = ?",
                 request.name().trim(), blankToNull(request.description()), roleId, user.companyId());
@@ -182,5 +189,13 @@ public class RoleService {
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    /** 내 권한 범위를 넘는 권한은 역할에 붙일 수 없다(2026-11-15, RoleGrantGuard). */
+    private void requireGrantsWithin(LoginUser user, List<RoleRequest.Grant> grants) {
+        Map<PermissionCode, PermissionScope> map = new EnumMap<>(PermissionCode.class);
+        grants.forEach(g -> map.merge(g.code(), g.scope(),
+                (a, b) -> a == PermissionScope.ALL || b == PermissionScope.ALL ? PermissionScope.ALL : PermissionScope.TEAM));
+        roleGrantGuard.requireWithin(user, map);
     }
 }

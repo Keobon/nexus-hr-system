@@ -43,10 +43,10 @@ SELECT r.company_id, r.id, p, 'ALL'
 FROM role r CROSS JOIN unnest(enum_range(NULL::permission_code)) AS p
 WHERE r.is_system;
 
--- 인사 담당: 14개
+-- 인사 담당: 15개(역할 관리 포함, 2026-11-15)
 INSERT INTO role_permission (company_id, role_id, permission_code, scope)
 SELECT r.company_id, r.id, p::permission_code, 'ALL'
-FROM role r CROSS JOIN unnest(ARRAY['ORG_MANAGE','EMPLOYEE_READ','EMPLOYEE_MANAGE','ATTENDANCE_READ',
+FROM role r CROSS JOIN unnest(ARRAY['ROLE_MANAGE','ORG_MANAGE','EMPLOYEE_READ','EMPLOYEE_MANAGE','ATTENDANCE_READ',
   'ATTENDANCE_MANAGE','LEAVE_READ','LEAVE_MANAGE','PAYROLL_READ','PAYROLL_MANAGE','ASSIGNMENT_READ',
   'ASSIGNMENT_MANAGE','EVAL_READ','EVAL_MANAGE','DASHBOARD_COMPANY']) AS p
 WHERE r.name = '인사 담당';
@@ -448,6 +448,7 @@ UPDATE employee_no_seq SET last_seq = 2 WHERE company_id = 1 AND hire_year = 202
 INSERT INTO employment_status_history (company_id, employee_id, status, effective_date, reason, created_by) VALUES
  (1, 13, 'ACTIVE', '2024-03-04', '입사', NULL),
  (1, 13, 'RESIGNED', '2026-09-01', '개인 사유(이직)', 4);
+UPDATE employee SET resign_date = '2026-09-01', resign_reason = 'JOB_CHANGE' WHERE id = 13;   -- 퇴사일 = 퇴직 발효일
 INSERT INTO account (company_id, employee_id, password_hash, role_id, is_active, must_change_password)
 SELECT 1, 13, password_hash, 4, FALSE, FALSE FROM account WHERE employee_id = 2;
 INSERT INTO employee_salary (company_id, employee_id, salary_type, annual_salary, monthly_base, effective_from, reason, created_by) VALUES

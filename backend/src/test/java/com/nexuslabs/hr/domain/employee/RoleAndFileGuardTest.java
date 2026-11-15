@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 시연 전 보안 항목(역할 분담 v2 2.3 I 69번, 2026-10-10).
- * ① 직원 등록에서 기본 역할이 아닌 역할을 주려면 ROLE_MANAGE ② 프로필 사진 · 로고는 서류와 같은 파일 규칙(BR-FILE-001) —
+ * ① 직원 등록에서 기본 역할이 아닌 역할을 주려면 ROLE_MANAGE, 그리고 내 권한 안의 역할만(2026-11-15) ② 프로필 사진 · 로고는 서류와 같은 파일 규칙(BR-FILE-001) —
  * 요청자가 올린 파일만, 이미 다른 곳(서류 · 영수증 · 프로필 사진 · 로고)에 쓰인 파일은 거부.
  * JPA 를 쓰는 기능이라 @Transactional 없이 새 회사를 만들고 지우지 않는다(백엔드 안내 7장).
  */
@@ -90,14 +90,14 @@ class RoleAndFileGuardTest {
 
     @Test
     void 기본_역할이_아닌_역할을_주려면_역할_관리_권한이_필요하다() throws Exception {
-        // 인사 담당은 EMPLOYEE_MANAGE 는 있지만 ROLE_MANAGE 는 없다
+        // 인사 담당은 ROLE_MANAGE 가 있어도(2026-11-15) 자기 권한을 넘는 최고 관리자 역할은 못 준다
         register(hr, "boss", "\"roleId\": " + role("최고 관리자"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
         assertThat(registered("boss")).isFalse();
         register(hr, "plain", "\"roleId\": " + role("직원")).andExpect(status().isCreated());
         register(hr, "none", "").andExpect(status().isCreated());
-        // 최고 관리자(ROLE_MANAGE 있음)는 어떤 역할이든 줄 수 있다
+        // 최고 관리자(모든 권한)는 어떤 역할이든 줄 수 있다
         register(admin, "hr2", "\"roleId\": " + role("인사 담당")).andExpect(status().isCreated());
     }
 

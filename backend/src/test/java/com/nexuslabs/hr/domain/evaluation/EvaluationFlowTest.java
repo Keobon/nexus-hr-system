@@ -240,7 +240,7 @@ class EvaluationFlowTest {
                 .formatted(q1)).andExpect(status().isOk());
         // 서예린 퇴직 — 평가는 자동으로 넘어가지 않는다
         send(post("/api/employees/" + org.seo.id() + "/status"),
-                "{\"status\": \"RESIGNED\", \"effectiveDate\": \"2030-03-04\", \"reason\": \"개인 사정\"}")
+                "{\"status\": \"RESIGNED\", \"effectiveDate\": \"2030-03-04\", \"reason\": \"개인 사정\", \"resignReason\": \"PERSONAL\"}")
                 .andExpect(status().isOk());
         String flag = "$.data.items[?(@.evaluationId == %d)].needsEvaluatorChange";
         as(hr, get("/api/eval-cycles/" + cycle + "/progress"))

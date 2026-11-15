@@ -79,7 +79,7 @@ public class EmployeeUpdateService {
         if (employee.getStatus() == EmpStatus.RESIGNED) {
             throw new BusinessException(ErrorCode.EMPLOYEE_RESIGNED);
         }
-        accountService.requireRoleManageForSuperAdmin(user, employeeId);
+        accountService.requireCanManageSuperAdmin(user, employeeId);
         EmployeeUpdateRequest request = merge(employee, fields);
 
         String email = CompanyRegistrationService.normalizeEmail(request.email());

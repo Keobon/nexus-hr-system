@@ -72,6 +72,14 @@ public class Employee extends BaseTimeEntity {
     @Column(columnDefinition = "emp_status")
     private EmpStatus status = EmpStatus.ACTIVE;
 
+    /** 퇴직 발효일(마지막 근무일 다음 날) · 사유 — 퇴직 처리 때만 채운다(퇴사 통계). 둘 다 있거나 둘 다 없다. */
+    private LocalDate resignDate;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "resign_reason")
+    private ResignReason resignReason;
+
     private boolean payrollEligible = true;
     private LocalDate contractEndDate;
     private LocalDate probationEndDate;
@@ -158,5 +166,12 @@ public class Employee extends BaseTimeEntity {
     /** 재직상태 변경(F-EMP-04). 이력 추가와 퇴직 연쇄 처리는 EmploymentStatusService 가 한다. */
     public void changeStatus(EmpStatus status) {
         this.status = status;
+    }
+
+    /** 퇴직(종단) — 재직상태와 함께 퇴사일(발효일) · 사유를 남긴다. 직원 행은 지우지 않는다. */
+    public void resign(LocalDate resignDate, ResignReason reason) {
+        this.status = EmpStatus.RESIGNED;
+        this.resignDate = resignDate;
+        this.resignReason = reason;
     }
 }

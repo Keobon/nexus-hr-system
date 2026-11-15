@@ -54,6 +54,7 @@ CREATE TYPE company_doc_type     AS ENUM ('BUSINESS_REGISTRATION','CORP_REGISTRA
 CREATE TYPE employee_doc_type    AS ENUM ('LABOR_CONTRACT','BANKBOOK_COPY','RESUME','FAMILY_CERT','HEALTH_CHECK','OTHER');
 CREATE TYPE holiday_type         AS ENUM ('PUBLIC','COMPANY','SUBSTITUTE');
 CREATE TYPE emp_status           AS ENUM ('ACTIVE','ON_LEAVE','RESIGNED');
+CREATE TYPE resign_reason        AS ENUM ('JOB_CHANGE','PERSONAL','CONTRACT_END','RETIREMENT','DISMISSAL','ETC');  -- 퇴사 사유(2026-11-15)
 CREATE TYPE gender               AS ENUM ('MALE','FEMALE');
 CREATE TYPE field_type           AS ENUM ('TEXT','LONG_TEXT','NUMBER','DATE','SELECT');
 CREATE TYPE family_relation      AS ENUM ('SPOUSE','CHILD','PARENT','SIBLING','OTHER');
@@ -293,6 +294,8 @@ CREATE TABLE employee (
   job_title_id        BIGINT REFERENCES job_title(id),
   employment_type_id  BIGINT NOT NULL REFERENCES employment_type(id),
   status              emp_status NOT NULL DEFAULT 'ACTIVE',
+  resign_date         DATE,                                         -- 퇴직 발효일(마지막 근무일 다음 날) — 퇴사 통계 기준
+  resign_reason       resign_reason,
   payroll_eligible    BOOLEAN NOT NULL DEFAULT TRUE,
   contract_end_date   DATE,
   probation_end_date  DATE,
@@ -305,7 +308,8 @@ CREATE TABLE employee (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (company_id, employee_no),
-  CHECK ((bank_account_enc IS NULL) = (bank_account_last4 IS NULL))
+  CHECK ((bank_account_enc IS NULL) = (bank_account_last4 IS NULL)),
+  CHECK ((resign_date IS NULL) = (resign_reason IS NULL))
 );
 CREATE INDEX ix_employee_org ON employee (org_unit_id);
 CREATE INDEX ix_employee_company_status ON employee (company_id, status);

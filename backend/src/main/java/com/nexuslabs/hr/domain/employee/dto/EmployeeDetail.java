@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.nexuslabs.hr.domain.attendance.service.TodayStatus;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
 import com.nexuslabs.hr.domain.employee.entity.Gender;
+import com.nexuslabs.hr.domain.employee.entity.ResignReason;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,12 +26,14 @@ public record EmployeeDetail(long id, String employeeNo, String name, String org
     /**
      * 전사 범위에서만 더해지는 항목. 부양가족 수 · 자녀 수는 가족 정보에서 센 값이다(BR-EMP-007, 가족 API 와 같은 계산) —
      * 가족 명단은 EMPLOYEE_MANAGE 만 보는 가족 API 에 있다.
+     * resignDate · resignReason 은 퇴직자만(재직 · 휴직이면 null, 2026-11-15).
      */
     public record Full(String nameEn, LocalDate birthDate, Gender gender, String emergencyName,
                        String emergencyRelation, String emergencyPhone, LocalDate hireDate, long orgUnitId,
                        Long jobGradeId, Long jobTitleId, long employmentTypeId, boolean payrollEligible,
                        LocalDate contractEndDate, LocalDate probationEndDate,
-                       List<MyProfileResponse.FieldValue> fieldValues, int dependentsCount, int childrenCount) {
+                       List<MyProfileResponse.FieldValue> fieldValues, int dependentsCount, int childrenCount,
+                       LocalDate resignDate, ResignReason resignReason) {
     }
 
     /** 이번 달 근태 요약(F-EMP-06) — 지각 · 조퇴 횟수와 결근 · 재택 · 외근 일수. */

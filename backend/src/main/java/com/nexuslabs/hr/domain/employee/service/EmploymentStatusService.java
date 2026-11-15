@@ -91,13 +91,20 @@ public class EmploymentStatusService {
         if (employee.getStatus() == request.status()) {
             throw new BusinessException(ErrorCode.INVALID_STATE, "이미 그 재직상태입니다");
         }
-        accountService.requireRoleManageForSuperAdmin(user, employeeId);
+        if (request.status() == EmpStatus.RESIGNED && request.resignReason() == null) {
+            throw BusinessException.invalidFields(Map.of("resignReason", "퇴사 사유를 고르세요"));
+        }
+        accountService.requireCanManageSuperAdmin(user, employeeId);
         checkEffectiveDate(cid, employee, request.effectiveDate());
 
         // ① 이력 · 현재 상태 — 뒤의 SQL(조직장 해제 등)이 바뀐 상태를 보도록 바로 반영한다
         EmploymentStatusHistory history = historyRepository.save(new EmploymentStatusHistory(employee,
                 request.status(), request.effectiveDate(), request.reason().strip(), user.employeeId()));
-        employee.changeStatus(request.status());
+        if (request.status() == EmpStatus.RESIGNED) {
+            employee.resign(request.effectiveDate(), request.resignReason());
+        } else {
+            employee.changeStatus(request.status());
+        }
         employeeRepository.flush();
 
         if (request.status() == EmpStatus.RESIGNED) {

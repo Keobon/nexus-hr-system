@@ -10,8 +10,7 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
-import com.nexuslabs.hr.global.permission.PermissionCode;
-import com.nexuslabs.hr.global.permission.PermissionReader;
+import com.nexuslabs.hr.global.permission.RoleGrantGuard;
 import com.nexuslabs.hr.global.request.PatchRequest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -70,20 +69,20 @@ public class AccountService {
     private final TemporaryPasswordGenerator passwordGenerator;
     private final AuditLogger auditLogger;
     private final ApprovalService approvalService;
-    private final PermissionReader permissionReader;
+    private final RoleGrantGuard roleGrantGuard;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
     public AccountService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder,
                           TemporaryPasswordGenerator passwordGenerator, AuditLogger auditLogger,
-                          ApprovalService approvalService, PermissionReader permissionReader, Clock clock,
+                          ApprovalService approvalService, RoleGrantGuard roleGrantGuard, Clock clock,
                           ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
         this.passwordGenerator = passwordGenerator;
         this.auditLogger = auditLogger;
         this.approvalService = approvalService;
-        this.permissionReader = permissionReader;
+        this.roleGrantGuard = roleGrantGuard;
         this.clock = clock;
         this.objectMapper = objectMapper;
     }
@@ -143,7 +142,7 @@ public class AccountService {
 
     /**
      * 역할 변경 · 활성/비활성(PATCH — 보낸 필드만 바꾼다). 두 필드 모두 비울 수 없어 null 이면 VALIDATION_ERROR.
-     * 마지막 활성 최고 관리자를 잃게 되면 LAST_SUPER_ADMIN.
+     * 마지막 활성 최고 관리자를 잃게 되면 LAST_SUPER_ADMIN. 지금 역할과 새 역할 모두 내 권한 안이어야 한다(RoleGrantGuard).
      */
     @Transactional
     public AccountRow update(LoginUser user, long employeeId, Map<String, Object> patch) {
@@ -160,6 +159,8 @@ public class AccountService {
     private AccountRow update(LoginUser user, long employeeId, AccountUpdateRequest request) {
         AccountState before = lock(user.companyId(), employeeId);
         long newRoleId = request.roleId() != null ? requireRole(user.companyId(), request.roleId()) : before.roleId();
+        roleGrantGuard.requireWithin(user, before.roleId());
+        roleGrantGuard.requireWithin(user, newRoleId);
         boolean newActive = request.active() != null ? request.active() : before.active();
 
         if (newActive && !before.active() && before.resigned()) {
@@ -220,10 +221,14 @@ public class AccountService {
         return row(user, employeeId);
     }
 
-    /** 관리자가 임시 비밀번호를 새로 발급한다(비밀번호 찾기 기능 대신). 감사 로그에 비밀번호는 남기지 않는다. */
+    /**
+     * 관리자가 임시 비밀번호를 새로 발급한다(비밀번호 찾기 기능 대신). 감사 로그에 비밀번호는 남기지 않는다.
+     * 비밀번호를 받은 사람이 그 계정으로 들어갈 수 있으므로 대상 역할이 내 권한 안이어야 한다(RoleGrantGuard).
+     */
     @Transactional
     public TemporaryPasswordResponse resetPassword(LoginUser user, long employeeId) {
-        lock(user.companyId(), employeeId);
+        AccountState target = lock(user.companyId(), employeeId);
+        roleGrantGuard.requireWithin(user, target.roleId());
         String temporaryPassword = passwordGenerator.generate();
         jdbc.update("""
                         UPDATE account SET password_hash = ?, must_change_password = TRUE, updated_at = now()
@@ -259,21 +264,18 @@ public class AccountService {
     }
 
     /**
-     * 대상 직원이 최고 관리자 역할이면 요청자에게 ROLE_MANAGE 도 있어야 한다(아니면 FORBIDDEN) — EMPLOYEE_MANAGE 만 있는
-     * 인사 담당이 최고 관리자의 로그인 ID 를 바꾸거나 휴직 · 퇴직시켜 내보내지 못하게(2026-10-10). 직원 수정 · 재직상태 변경이 부른다.
+     * 대상 직원이 최고 관리자 역할이면 요청자도 그 역할의 권한을 모두 가져야 한다(사실상 최고 관리자만, 아니면 FORBIDDEN) —
+     * 인사 담당이 최고 관리자의 로그인 ID 를 바꾸거나 휴직 · 퇴직시켜 내보내지 못하게(2026-10-10). 인사 담당에 ROLE_MANAGE 가
+     * 생기면서 "ROLE_MANAGE 가 있으면 된다"에서 바꿨다(2026-11-15). 직원 수정 · 재직상태 변경이 부른다.
      */
     @Transactional(readOnly = true)
-    public void requireRoleManageForSuperAdmin(LoginUser user, long employeeId) {
-        Boolean superAdmin = jdbc.queryForObject("""
-                        SELECT EXISTS (SELECT 1 FROM account a
-                                       JOIN role r ON r.id = a.role_id AND r.company_id = a.company_id AND r.is_system
-                                       WHERE a.company_id = ? AND a.employee_id = ?)
+    public void requireCanManageSuperAdmin(LoginUser user, long employeeId) {
+        jdbc.queryForList("""
+                        SELECT a.role_id FROM account a
+                        JOIN role r ON r.id = a.role_id AND r.company_id = a.company_id AND r.is_system
+                        WHERE a.company_id = ? AND a.employee_id = ?
                         """,
-                Boolean.class, user.companyId(), employeeId);
-        if (Boolean.TRUE.equals(superAdmin)
-                && !permissionReader.permissionsOf(user).containsKey(PermissionCode.ROLE_MANAGE)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "최고 관리자의 정보는 역할 관리 권한이 있어야 바꿀 수 있습니다");
-        }
+                Long.class, user.companyId(), employeeId).forEach(roleId -> roleGrantGuard.requireWithin(user, roleId));
     }
 
     /** 나를 뺀 활성 최고 관리자 수. 동시에 두 명을 해제하는 경우를 막으려고 그 계정들을 잠근다. */

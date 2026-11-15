@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import static com.nexuslabs.hr.support.TestClock.MONDAY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -59,8 +60,13 @@ class EmploymentStatusTest {
             throws Exception {
         return as(actorId, post("/api/employees/" + employeeId + "/status").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"status": "%s", "effectiveDate": "%s", "reason": "개인 사정"}
+                        {"status": "%s", "effectiveDate": "%s", "reason": "개인 사정", "resignReason": "PERSONAL"}
                         """.formatted(status, effectiveDate)));
+    }
+
+    private ResultActions changeStatus(long employeeId, String body) throws Exception {
+        return as(hr.id(), post("/api/employees/" + employeeId + "/status").contentType(MediaType.APPLICATION_JSON)
+                .content(body));
     }
 
     private long create(TestFixture.Employee e, String path, String body) throws Exception {
@@ -138,6 +144,43 @@ class EmploymentStatusTest {
     }
 
     @Test
+    void 퇴직은_사유가_필수고_퇴사일_사유를_남기며_직원은_지우지_않는다() throws Exception {
+        changeStatus(org.cho.id(), """
+                {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "이직"}""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.error.fields.resignReason").exists());
+        changeStatus(org.cho.id(), """
+                {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "이직", "resignReason": "BORED"}""")
+                .andExpect(status().isBadRequest());
+        assertThat(statusOf("employee", org.cho.id())).isEqualTo("ACTIVE");
+
+        // 휴직에 보낸 퇴사 사유는 쓰지 않는다
+        changeStatus(org.cho.id(), """
+                {"status": "ON_LEAVE", "effectiveDate": "2030-03-02", "reason": "육아", "resignReason": "ETC"}""")
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT resign_reason IS NULL FROM employee WHERE id = ?", Boolean.class,
+                org.cho.id())).isTrue();
+
+        // 마지막 근무일 3/3 → 발효일 3/4 = 퇴사일
+        changeStatus(org.cho.id(), """
+                {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "이직", "resignReason": "JOB_CHANGE"}""")
+                .andExpect(status().isOk());
+        assertThat(jdbc.queryForMap("SELECT status::text AS status, resign_date::text AS resign_date, resign_reason::text AS resign_reason FROM employee WHERE id = ?",
+                org.cho.id()))
+                .containsEntry("status", "RESIGNED").containsEntry("resign_date", "2030-03-04")
+                .containsEntry("resign_reason", "JOB_CHANGE");
+        as(hr.id(), get("/api/employees/" + org.cho.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.resignDate").value("2030-03-04"))
+                .andExpect(jsonPath("$.data.resignReason").value("JOB_CHANGE"));
+        // 재직자는 두 값이 null
+        as(hr.id(), get("/api/employees/" + org.seo.id()))
+                .andExpect(jsonPath("$.data.resignDate").value(nullValue()))
+                .andExpect(jsonPath("$.data.resignReason").value(nullValue()));
+    }
+
+    @Test
     void 휴직과_복직은_이력만_남기고_연쇄_처리는_없다() throws Exception {
         changeStatus(hr.id(), org.seo.id(), "ON_LEAVE", "2030-03-01").andExpect(status().isOk());
         changeStatus(hr.id(), org.seo.id(), "ON_LEAVE", "2030-03-02")
@@ -172,7 +215,7 @@ class EmploymentStatusTest {
     @Test
     void 마지막_최고_관리자는_퇴직할_수_없고_아무것도_바뀌지_않는다() throws Exception {
         long admin = org.company.adminId();
-        // 인사 담당(ROLE_MANAGE 없음)은 최고 관리자의 재직상태를 바꿀 수 없다(2026-10-10)
+        // 인사 담당은 최고 관리자의 재직상태를 바꿀 수 없다(2026-10-10) — ROLE_MANAGE 가 생겨도(2026-11-15) 내 권한을 넘는 역할의 계정이라
         changeStatus(hr.id(), admin, "ON_LEAVE", "2030-03-04")
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));

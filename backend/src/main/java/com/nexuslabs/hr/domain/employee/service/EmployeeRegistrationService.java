@@ -24,6 +24,7 @@ import com.nexuslabs.hr.global.error.ErrorCode;
 import com.nexuslabs.hr.global.file.FileService;
 import com.nexuslabs.hr.domain.company.service.CompanyBootstrapService;
 import com.nexuslabs.hr.global.permission.PermissionReader;
+import com.nexuslabs.hr.global.permission.RoleGrantGuard;
 import com.nexuslabs.hr.global.permission.PermissionCode;
 import com.nexuslabs.hr.global.file.StoredFile;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -58,6 +59,7 @@ public class EmployeeRegistrationService {
     private final FileService fileService;
     private final DocumentFiles documentFiles;
     private final PermissionReader permissionReader;
+    private final RoleGrantGuard roleGrantGuard;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
@@ -69,7 +71,7 @@ public class EmployeeRegistrationService {
                                        EmploymentTypeService employmentTypeService, AccountService accountService,
                                        LeaveGrantService leaveGrantService, FileService fileService,
                                        DocumentFiles documentFiles, PermissionReader permissionReader,
-                                       JdbcTemplate jdbc, Clock clock) {
+                                       RoleGrantGuard roleGrantGuard, JdbcTemplate jdbc, Clock clock) {
         this.employeeRepository = employeeRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.employeeNoGenerator = employeeNoGenerator;
@@ -83,6 +85,7 @@ public class EmployeeRegistrationService {
         this.fileService = fileService;
         this.documentFiles = documentFiles;
         this.permissionReader = permissionReader;
+        this.roleGrantGuard = roleGrantGuard;
         this.jdbc = jdbc;
         this.clock = clock;
     }
@@ -157,11 +160,15 @@ public class EmployeeRegistrationService {
     }
 
     /**
-     * 기본 역할("직원")이 아닌 역할을 주려면 ROLE_MANAGE(계정 역할 부여)가 있어야 한다 — 인사 담당이 직원을
-     * 최고 관리자 같은 높은 역할로 등록하지 못하게(2026-10-10, 역할 분담 2.3 I 69번).
+     * 기본 역할("직원")이 아닌 역할을 주려면 ROLE_MANAGE(계정 역할 부여)가 있어야 하고, 그 역할은 내 권한 안이어야 한다 —
+     * 직원을 최고 관리자 같은 높은 역할로 등록하지 못하게(2026-10-10, 역할 분담 2.3 I 69번 · 2026-11-15 RoleGrantGuard).
      */
     private void requireRoleGrant(LoginUser user, Long roleId) {
-        if (roleId == null || permissionReader.permissionsOf(user).containsKey(PermissionCode.ROLE_MANAGE)) {
+        if (roleId == null) {
+            return;
+        }
+        if (permissionReader.permissionsOf(user).containsKey(PermissionCode.ROLE_MANAGE)) {
+            roleGrantGuard.requireWithin(user, roleId);
             return;
         }
         Long defaultRole = jdbc.queryForObject("SELECT id FROM role WHERE company_id = ? AND name = ?", Long.class,
