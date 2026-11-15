@@ -1,8 +1,9 @@
 // 승인함(F-APPR-01 · 02) — Figma 112-5774. 내가 현재 단계 승인자인 휴가 · 휴가 취소 · 연장근무 · 출장 · 출장 경비를 승인 · 반려한다
 // 승인자는 신청할 때 승인선으로 정해진다(소속 조직장, 본인 · 공석이면 위 조직장, 최상위면 자동 승인 — 회사 설정 › 승인선)
 // 반려는 사유 필수. 연장근무는 인정 시간을 줄여 승인할 수 있다(앞 단계 값 이하)
+// 여러 건은 체크해서 [선택 승인], 지금 목록 전체는 [전체 승인] — 한 건씩 차례로 승인하고 결과를 모아 보여 준다(2026-11-15)
 import { useMemo, useState } from 'react';
-import { Drawer, Form, Input, InputNumber, Modal } from 'antd';
+import { Checkbox, Drawer, Form, Input, InputNumber, Modal } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { approveStep, getHistoryPage, getInboxPage, historyKey, inboxKey, rejectStep } from '../../../api/approvals';
@@ -28,6 +29,12 @@ const hm = (t) => (t ? dayjs(t).format('HH:mm') : '');
 const range = (a, b) => (!a ? '–' : a === b ? a : `${a} ~ ${b}`);
 const hhmm = (min) => (min == null ? '–' : `${Math.floor(min / 60)}시간${min % 60 ? ` ${min % 60}분` : ''}`);
 const won = (n) => `${Number(n ?? 0).toLocaleString('ko-KR')}원`;
+/** 받침이 있으면 "을", 없으면 "를"(휴가 신청을 · 연장근무를). 한글이 아니면 "을(를)" */
+const eulReul = (word) => {
+  const code = (word ?? '').charCodeAt((word ?? '').length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return '을(를)';
+  return code % 28 ? '을' : '를';
+};
 
 /** 한 줄 요약 칸 — 종류마다 내용 · 기간 · 일수 · 사유 */
 function cells(it) {
@@ -52,11 +59,18 @@ export default function ApprovalInboxPage() {
   const [filter, setFilter] = useState('ALL');
   const [action, setAction] = useState(null); // { kind: 'approve' | 'reject', item }
   const [detail, setDetail] = useState(null);
+  const [checked, setChecked] = useState(() => new Set()); // 선택 승인할 stepId
+  const [bulk, setBulk] = useState(null); // 일괄 승인할 항목들
   const inbox = useQuery({ queryKey: inboxKey, queryFn: () => fetchAllPages(getInboxPage, {}) });
   const history = useQuery({ queryKey: historyKey, queryFn: () => getHistoryPage({ size: 50 }), enabled: tab === 'history' });
   const all = useMemo(() => inbox.data ?? [], [inbox.data]);
   const rows = all.filter((it) => filter === 'ALL' || it.workType === filter);
   const count = (k) => (k === 'ALL' ? all.length : all.filter((it) => it.workType === k).length);
+  // 선택은 지금 목록(필터)에 보이는 건만 센다 — 처리되어 목록에서 빠진 건은 자연히 빠진다
+  const selected = rows.filter((it) => checked.has(it.stepId));
+  const allChecked = rows.length > 0 && selected.length === rows.length;
+  const toggle = (id, on) => setChecked((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
+  const toggleAll = (on) => setChecked(on ? new Set(rows.map((it) => it.stepId)) : new Set());
 
   return (
     <div className="hr at ap">
@@ -85,8 +99,18 @@ export default function ApprovalInboxPage() {
                 ))}
               </div>
             </div>
+            <div className="ap-bulk">
+              <span>{selected.length ? `${selected.length}건 선택` : '여러 건은 체크해서 한 번에 승인할 수 있습니다'}</span>
+              <button type="button" className="ap-btn is-ok" disabled={selected.length === 0} onClick={() => setBulk(selected)}>
+                {`선택 승인${selected.length ? ` ${selected.length}건` : ''}`}
+              </button>
+              <button type="button" className="ap-btn is-ok is-outline" disabled={rows.length === 0} onClick={() => setBulk(rows)}>
+                {`전체 승인 ${rows.length}건`}
+              </button>
+            </div>
             <Table
               cols={[
+                { key: 'check', label: <Checkbox checked={allChecked} indeterminate={selected.length > 0 && !allChecked} disabled={rows.length === 0} onChange={(e) => toggleAll(e.target.checked)} aria-label="보이는 건 모두 선택" />, width: '2.5rem' },
                 { key: 'who', label: '신청자', width: '6.5rem' },
                 { key: 'org', label: '소속 부서', width: '8rem' },
                 { key: 'kind', label: '구분', width: '6.5rem' },
@@ -106,6 +130,9 @@ export default function ApprovalInboxPage() {
                 const c = cells(it);
                 return (
                   <tr key={it.stepId} className="is-click" onClick={() => setDetail(it)}>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={checked.has(it.stepId)} onChange={(e) => toggle(it.stepId, e.target.checked)} aria-label={`${it.applicantName} ${KIND[it.workType]?.[0] ?? ''} 선택`} />
+                    </td>
                     <td className="at-strong">{it.applicantName}</td>
                     <td>{it.applicantOrgUnitName}</td>
                     <td>
@@ -176,6 +203,7 @@ export default function ApprovalInboxPage() {
 
       {detail && <DetailDrawer item={detail} onClose={() => setDetail(null)} onAction={(kind) => { setAction({ kind, item: detail }); setDetail(null); }} />}
       {action && <DecisionModal action={action} onClose={() => setAction(null)} />}
+      {bulk && <BulkApproveModal items={bulk} onClose={() => setBulk(null)} onDone={() => setChecked(new Set())} />}
     </div>
   );
 }
@@ -249,7 +277,8 @@ function DecisionModal({ action, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: meKey });
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
-      notify.success(`${item.applicantName}님의 ${KIND[item.workType]?.[0] ?? '신청'}을(를) ${approve ? '승인' : '반려'}했습니다`);
+      const what = KIND[item.workType]?.[0] ?? '신청';
+      notify.success(`${item.applicantName}님의 ${what}${eulReul(what)} ${approve ? '승인' : '반려'}했습니다`);
       onClose();
     },
     onError: (err) => notify.error(err),
@@ -304,6 +333,75 @@ function DecisionModal({ action, onClose }) {
           </button>
         </div>
       </Form>
+    </Modal>
+  );
+}
+
+/* ───── 일괄 승인 — 종류별 건수, 의견은 모든 건에 같이. 연장근무는 신청(앞 단계 인정) 시간 그대로(서버 상한) ───── */
+function BulkApproveModal({ items, onClose, onDone }) {
+  const notify = useNotify();
+  const queryClient = useQueryClient();
+  const [comment, setComment] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null); // { ok, failed: [{ item, message }] }
+  const byKind = Object.entries(items.reduce((m, it) => ({ ...m, [it.workType]: (m[it.workType] ?? 0) + 1 }), {}));
+  const hasOvertime = items.some((it) => it.workType === 'OVERTIME');
+
+  const run = async () => {
+    setBusy(true);
+    let ok = 0;
+    const failed = [];
+    // 차례로 — 같은 신청자의 잔여 휴가 · 다음 단계가 앞 건 결과에 따라 달라질 수 있다
+    for (const it of items) {
+      try {
+        await approveStep(it.stepId, { comment: comment.trim() || null });
+        ok += 1;
+      } catch (err) {
+        failed.push({ item: it, message: errorMessage(err) });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['approvals'] });
+    queryClient.invalidateQueries({ queryKey: meKey });
+    queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+    setBusy(false);
+    onDone();
+    if (failed.length === 0) {
+      notify.success(`${ok}건을 승인했습니다`);
+      onClose();
+    } else {
+      setResult({ ok, failed });
+    }
+  };
+
+  return (
+    <Modal open title={result ? '일괄 승인 결과' : `${items.length}건 승인`} footer={null} onCancel={() => !busy && onClose()} width={480} className="hr-modal" destroyOnHidden centered>
+      {result ? (
+        <>
+          <p className="hr-modal-sub">{`${result.ok}건 승인 · ${result.failed.length}건 실패 — 실패한 건은 승인함에 남아 있습니다`}</p>
+          <ul className="ap-bulk-fail">
+            {result.failed.map(({ item, message }) => (
+              <li key={item.stepId}>
+                <strong>{`${item.applicantName} · ${KIND[item.workType]?.[0] ?? item.workType}`}</strong>
+                <span>{message}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="hr-modal-foot">
+            <button type="button" className="hr-btn" onClick={onClose}>닫기</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="hr-modal-sub">{byKind.map(([k, n]) => `${KIND[k]?.[0] ?? k} ${n}건`).join(' · ')}</p>
+          {hasOvertime && <p className="hr-notice">연장근무는 신청 시간(앞 단계가 줄였으면 그 시간) 그대로 인정합니다. 시간을 줄일 건은 하나씩 승인하세요.</p>}
+          <label className="ap-bulk-label" htmlFor="bulk-comment">의견 (선택) — 모든 건에 같이 남습니다</label>
+          <Input.TextArea id="bulk-comment" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} autoSize={{ minRows: 2, maxRows: 4 }} placeholder="예: 일정 확인했습니다" />
+          <div className="hr-modal-foot">
+            <button type="button" className="hr-btn is-secondary" onClick={onClose} disabled={busy}>취소</button>
+            <button type="button" className="hr-btn" onClick={run} disabled={busy}>{busy ? '승인 중…' : `${items.length}건 승인`}</button>
+          </div>
+        </>
+      )}
     </Modal>
   );
 }
