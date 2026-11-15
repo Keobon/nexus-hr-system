@@ -905,4 +905,184 @@ BEGIN
   END LOOP;
 END $$;
 
+
+-- ---------------------------------------------------------------------
+-- 퇴사 통계 데모(2026-11-15, 시퀀스를 맞춘 뒤라 기본 ID 를 쓴다) — 영업본부(영업1 · 2팀) · 마케팅팀을 더하고 재직 21명 · 퇴직 19명을 넣는다
+--   NEXUS LABS 53명(재직 33 · 퇴직 20). 퇴직은 최근 2년(2024-12 ~ 2026-11)에 고르게, 사유 6종 · 근속 4구간
+--   근속 구간 {'OVER_5Y': 4, 'UNDER_1Y': 5, 'Y1_3': 4, 'Y3_5': 6} · 사유 {'CONTRACT_END': 3, 'DISMISSAL': 2, 'ETC': 3, 'JOB_CHANGE': 5, 'PERSONAL': 4, 'RETIREMENT': 2}
+--   이번 달(2026-11) 입사 2명 · 퇴사 2명. 새 직원은 근태 · 신청 · 정산 기록이 없다(8 · 9월 명세서에도 없다)
+-- ---------------------------------------------------------------------
+INSERT INTO org_unit (id, company_id, parent_id, name, level_name, monthly_budget, sort_order) VALUES
+ (8,  1, 1, '영업본부', '본부', 50000000, 3),
+ (9,  1, 8, '영업1팀',  '팀',   20000000, 1),
+ (10, 1, 8, '영업2팀',  '팀',   20000000, 2),
+ (19, 1, 1, '마케팅팀', '팀',   25000000, 4);
+
+INSERT INTO employee (id, company_id, employee_no, name, name_en, email, phone, birth_date, gender,
+                      hire_date, org_unit_id, job_grade_id, job_title_id, employment_type_id,
+                      resign_date, resign_reason, status) VALUES
+ (14,1,'NX-2016-0002','백승훈','Seunghoon Baek','seunghoon.baek@nexuslabs.example','010-1000-0014','1979-03-11','MALE','2016-04-04',8,5,2,1,NULL,NULL,'ACTIVE'),
+ (15,1,'NX-2019-0002','남궁지수','Jisu Namgung','jisu.namgung@nexuslabs.example','010-1000-0015','1986-07-19','FEMALE','2019-02-11',9,3,3,1,NULL,NULL,'ACTIVE'),
+ (16,1,'NX-2021-0002','문재원','Jaewon Moon','jaewon.moon@nexuslabs.example','010-1000-0016','1993-01-08','MALE','2021-06-01',9,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (17,1,'NX-2024-0003','배하은','Haeun Bae','haeun.bae@nexuslabs.example','010-1000-0017','1997-09-23','FEMALE','2024-01-08',9,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (18,1,'NX-2025-0002','고민석','Minseok Ko','minseok.ko@nexuslabs.example','010-1000-0018','1995-04-30','MALE','2025-03-04',9,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (19,1,'NX-2026-0002','유채원','Chaewon Yoo','chaewon.yoo@nexuslabs.example','010-1000-0019','2000-12-02','FEMALE','2026-11-02',9,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (20,1,'NX-2018-0002','홍성민','Seongmin Hong','seongmin.hong@nexuslabs.example','010-1000-0020','1987-05-14','MALE','2018-09-03',10,3,3,1,NULL,NULL,'ACTIVE'),
+ (21,1,'NX-2022-0002','안소희','Sohee Ahn','sohee.ahn@nexuslabs.example','010-1000-0021','1994-08-27','FEMALE','2022-03-02',10,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (22,1,'NX-2024-0004','전우진','Woojin Jeon','woojin.jeon@nexuslabs.example','010-1000-0022','1996-11-05','MALE','2024-07-01',10,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (23,1,'NX-2025-0003','송예진','Yejin Song','yejin.song@nexuslabs.example','010-1000-0023','1998-02-17','FEMALE','2025-09-01',10,1,NULL,2,NULL,NULL,'ACTIVE'),
+ (24,1,'NX-2026-0003','양태호','Taeho Yang','taeho.yang@nexuslabs.example','010-1000-0024','1991-10-09','MALE','2026-05-04',10,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (25,1,'NX-2017-0002','권나연','Nayeon Kwon','nayeon.kwon@nexuslabs.example','010-1000-0025','1984-06-21','FEMALE','2017-11-01',19,4,3,1,NULL,NULL,'ACTIVE'),
+ (26,1,'NX-2023-0002','노현수','Hyunsu Noh','hyunsu.noh@nexuslabs.example','010-1000-0026','1992-03-03','MALE','2023-04-03',19,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (27,1,'NX-2025-0004','하지우','Jiwoo Ha','jiwoo.ha@nexuslabs.example','010-1000-0027','1999-07-07','FEMALE','2025-01-06',19,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (28,1,'NX-2026-0004','곽도윤','Doyun Kwak','doyun.kwak@nexuslabs.example','010-1000-0028','2001-04-12','MALE','2026-11-02',19,1,NULL,3,NULL,NULL,'ACTIVE'),
+ (29,1,'NX-2020-0002','구본재','Bonjae Koo','bonjae.koo@nexuslabs.example','010-1000-0029','1990-12-12','MALE','2020-10-05',6,3,NULL,1,NULL,NULL,'ACTIVE'),
+ (30,1,'NX-2025-0005','서지안','Jian Seo','jian.seo@nexuslabs.example','010-1000-0030','1997-05-25','FEMALE','2025-07-01',6,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (31,1,'NX-2023-0003','민경호','Kyungho Min','kyungho.min@nexuslabs.example','010-1000-0031','1994-09-30','MALE','2023-08-01',7,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (32,1,'NX-2026-0005','채윤서','Yunseo Chae','yunseo.chae@nexuslabs.example','010-1000-0032','1999-01-19','FEMALE','2026-02-02',7,1,NULL,1,NULL,NULL,'ACTIVE'),
+ (33,1,'NX-2022-0003','엄주희','Juhee Eom','juhee.eom@nexuslabs.example','010-1000-0033','1993-11-11','FEMALE','2022-11-01',5,2,NULL,1,NULL,NULL,'ACTIVE'),
+ (34,1,'NX-2026-0006','편승우','Seungwoo Pyeon','seungwoo.pyeon@nexuslabs.example','010-1000-0034','1998-08-08','MALE','2026-07-01',4,1,NULL,2,NULL,NULL,'ACTIVE'),
+ (35,1,'NX-2024-0005','김태윤','Taeyun Kim','taeyun.kim@nexuslabs.example','010-1000-0035','1996-02-02','MALE','2024-03-04',9,1,NULL,1,'2024-12-02','JOB_CHANGE','RESIGNED'),
+ (36,1,'NX-2021-0003','이서준','Seojun Lee','seojun.lee@nexuslabs.example','010-1000-0036','1990-06-06','MALE','2021-05-03',6,2,NULL,1,'2025-01-06','JOB_CHANGE','RESIGNED'),
+ (37,1,'NX-2023-0004','박민지','Minji Park','minji.park@nexuslabs.example','010-1000-0037','1995-03-15','FEMALE','2023-02-01',10,1,NULL,1,'2025-02-03','PERSONAL','RESIGNED'),
+ (38,1,'NX-2024-0006','최유진','Yujin Choi','yujin.choi@nexuslabs.example','010-1000-0038','2001-09-09','FEMALE','2024-09-02',19,1,NULL,2,'2025-03-03','CONTRACT_END','RESIGNED'),
+ (39,1,'NX-2003-0001','정현우','Hyunwoo Jung','hyunwoo.jung@nexuslabs.example','010-1000-0039','1965-04-04','MALE','2003-03-03',3,5,NULL,1,'2025-04-01','RETIREMENT','RESIGNED'),
+ (40,1,'NX-2022-0004','조은비','Eunbi Jo','eunbi.jo@nexuslabs.example','010-1000-0040','1993-12-12','FEMALE','2022-04-04',7,2,NULL,1,'2025-05-06','JOB_CHANGE','RESIGNED'),
+ (41,1,'NX-2018-0003','윤도경','Dokyung Yoon','dokyung.yoon@nexuslabs.example','010-1000-0041','1988-08-18','MALE','2018-06-04',5,3,NULL,1,'2025-06-02','DISMISSAL','RESIGNED'),
+ (42,1,'NX-2024-0007','장수빈','Subin Jang','subin.jang@nexuslabs.example','010-1000-0042','1999-10-10','FEMALE','2024-08-01',9,1,NULL,1,'2025-07-01','PERSONAL','RESIGNED'),
+ (43,1,'NX-2023-0005','임재성','Jaeseong Lim','jaeseong.lim@nexuslabs.example','010-1000-0043','1992-05-05','MALE','2023-06-01',10,2,NULL,1,'2025-08-04','ETC','RESIGNED'),
+ (44,1,'NX-2024-0008','한소율','Soyul Han','soyul.han@nexuslabs.example','010-1000-0044','1997-01-21','FEMALE','2024-01-02',6,1,NULL,2,'2025-10-01','CONTRACT_END','RESIGNED'),
+ (45,1,'NX-2021-0004','오승현','Seunghyun Oh','seunghyun.oh@nexuslabs.example','010-1000-0045','1989-11-11','MALE','2021-09-01',4,3,NULL,1,'2025-11-03','JOB_CHANGE','RESIGNED'),
+ (46,1,'NX-2025-0006','신다현','Dahyun Shin','dahyun.shin@nexuslabs.example','010-1000-0046','1998-04-14','FEMALE','2025-03-04',19,1,NULL,1,'2025-12-01','PERSONAL','RESIGNED'),
+ (47,1,'NX-2008-0001','류진혁','Jinhyuk Ryu','jinhyuk.ryu@nexuslabs.example','010-1000-0047','1964-07-07','MALE','2008-01-02',2,5,NULL,1,'2026-01-02','RETIREMENT','RESIGNED'),
+ (48,1,'NX-2022-0005','김나래','Narae Kim','narae.kim@nexuslabs.example','010-1000-0048','1994-02-28','FEMALE','2022-12-01',10,2,NULL,1,'2026-02-02','ETC','RESIGNED'),
+ (49,1,'NX-2023-0006','이준호','Junho Lee','junho.lee@nexuslabs.example','010-1000-0049','1991-06-16','MALE','2023-03-02',7,2,NULL,1,'2026-03-03','DISMISSAL','RESIGNED'),
+ (50,1,'NX-2024-0009','박서윤','Seoyun Park','seoyun.park@nexuslabs.example','010-1000-0050','1996-09-19','FEMALE','2024-06-03',9,1,NULL,2,'2026-06-01','CONTRACT_END','RESIGNED'),
+ (51,1,'NX-2019-0003','최성호','Sungho Choi','sungho.choi@nexuslabs.example','010-1000-0051','1985-03-23','MALE','2019-04-01',6,3,NULL,1,'2026-08-03','JOB_CHANGE','RESIGNED'),
+ (52,1,'NX-2022-0006','정예원','Yewon Jung','yewon.jung@nexuslabs.example','010-1000-0052','1993-07-27','FEMALE','2022-09-01',19,2,NULL,1,'2026-11-02','PERSONAL','RESIGNED'),
+ (53,1,'NX-2026-0007','강동원','Dongwon Kang','dongwon.kang@nexuslabs.example','010-1000-0053','2000-05-05','MALE','2026-03-03',10,1,NULL,1,'2026-11-09','ETC','RESIGNED');
+
+INSERT INTO employee_no_seq (company_id, hire_year, last_seq)
+SELECT company_id, EXTRACT(YEAR FROM hire_date)::smallint, COUNT(*) FROM employee WHERE company_id = 1
+GROUP BY company_id, EXTRACT(YEAR FROM hire_date)
+ON CONFLICT (company_id, hire_year) DO UPDATE SET last_seq = EXCLUDED.last_seq;
+
+UPDATE org_unit o SET lead_employee_id = v.emp FROM (VALUES (8,14),(9,15),(10,20),(19,25)) AS v(org, emp) WHERE o.id = v.org;
+
+INSERT INTO employment_status_history (company_id, employee_id, status, effective_date, reason, created_by) VALUES
+ (1,14,'ACTIVE','2016-04-04','입사',NULL),
+ (1,15,'ACTIVE','2019-02-11','입사',NULL),
+ (1,16,'ACTIVE','2021-06-01','입사',NULL),
+ (1,17,'ACTIVE','2024-01-08','입사',NULL),
+ (1,18,'ACTIVE','2025-03-04','입사',NULL),
+ (1,19,'ACTIVE','2026-11-02','입사',NULL),
+ (1,20,'ACTIVE','2018-09-03','입사',NULL),
+ (1,21,'ACTIVE','2022-03-02','입사',NULL),
+ (1,22,'ACTIVE','2024-07-01','입사',NULL),
+ (1,23,'ACTIVE','2025-09-01','입사',NULL),
+ (1,24,'ACTIVE','2026-05-04','입사',NULL),
+ (1,25,'ACTIVE','2017-11-01','입사',NULL),
+ (1,26,'ACTIVE','2023-04-03','입사',NULL),
+ (1,27,'ACTIVE','2025-01-06','입사',NULL),
+ (1,28,'ACTIVE','2026-11-02','입사',NULL),
+ (1,29,'ACTIVE','2020-10-05','입사',NULL),
+ (1,30,'ACTIVE','2025-07-01','입사',NULL),
+ (1,31,'ACTIVE','2023-08-01','입사',NULL),
+ (1,32,'ACTIVE','2026-02-02','입사',NULL),
+ (1,33,'ACTIVE','2022-11-01','입사',NULL),
+ (1,34,'ACTIVE','2026-07-01','입사',NULL),
+ (1,35,'ACTIVE','2024-03-04','입사',NULL),
+ (1,35,'RESIGNED','2024-12-02','이직',4),
+ (1,36,'ACTIVE','2021-05-03','입사',NULL),
+ (1,36,'RESIGNED','2025-01-06','이직',4),
+ (1,37,'ACTIVE','2023-02-01','입사',NULL),
+ (1,37,'RESIGNED','2025-02-03','개인 사정',4),
+ (1,38,'ACTIVE','2024-09-02','입사',NULL),
+ (1,38,'RESIGNED','2025-03-03','계약 만료',4),
+ (1,39,'ACTIVE','2003-03-03','입사',NULL),
+ (1,39,'RESIGNED','2025-04-01','정년 퇴직',4),
+ (1,40,'ACTIVE','2022-04-04','입사',NULL),
+ (1,40,'RESIGNED','2025-05-06','이직',4),
+ (1,41,'ACTIVE','2018-06-04','입사',NULL),
+ (1,41,'RESIGNED','2025-06-02','권고사직',4),
+ (1,42,'ACTIVE','2024-08-01','입사',NULL),
+ (1,42,'RESIGNED','2025-07-01','개인 사정',4),
+ (1,43,'ACTIVE','2023-06-01','입사',NULL),
+ (1,43,'RESIGNED','2025-08-04','기타(학업)',4),
+ (1,44,'ACTIVE','2024-01-02','입사',NULL),
+ (1,44,'RESIGNED','2025-10-01','계약 만료',4),
+ (1,45,'ACTIVE','2021-09-01','입사',NULL),
+ (1,45,'RESIGNED','2025-11-03','이직',4),
+ (1,46,'ACTIVE','2025-03-04','입사',NULL),
+ (1,46,'RESIGNED','2025-12-01','개인 사정',4),
+ (1,47,'ACTIVE','2008-01-02','입사',NULL),
+ (1,47,'RESIGNED','2026-01-02','정년 퇴직',4),
+ (1,48,'ACTIVE','2022-12-01','입사',NULL),
+ (1,48,'RESIGNED','2026-02-02','기타(해외 이주)',4),
+ (1,49,'ACTIVE','2023-03-02','입사',NULL),
+ (1,49,'RESIGNED','2026-03-03','징계 해고',4),
+ (1,50,'ACTIVE','2024-06-03','입사',NULL),
+ (1,50,'RESIGNED','2026-06-01','계약 만료',4),
+ (1,51,'ACTIVE','2019-04-01','입사',NULL),
+ (1,51,'RESIGNED','2026-08-03','이직',4),
+ (1,52,'ACTIVE','2022-09-01','입사',NULL),
+ (1,52,'RESIGNED','2026-11-02','개인 사정',4),
+ (1,53,'ACTIVE','2026-03-03','입사',NULL),
+ (1,53,'RESIGNED','2026-11-09','기타(건강)',4);
+
+INSERT INTO account (company_id, employee_id, password_hash, role_id, is_active, must_change_password)
+SELECT 1, e.id, a.password_hash, 4, e.status <> 'RESIGNED', FALSE
+FROM employee e CROSS JOIN (SELECT password_hash FROM account WHERE employee_id = 2) a
+WHERE e.company_id = 1 AND e.id BETWEEN 14 AND 53;
+
+INSERT INTO employee_salary (company_id, employee_id, salary_type, annual_salary, monthly_base, effective_from, reason, created_by) VALUES
+ (1,14,'ANNUAL',85000000,7083333,'2026-01-01','2026 연봉 계약',2),
+ (1,15,'ANNUAL',58000000,4833333,'2026-01-01','2026 연봉 계약',2),
+ (1,16,'ANNUAL',45000000,3750000,'2026-01-01','2026 연봉 계약',2),
+ (1,17,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,18,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,19,'ANNUAL',36000000,3000000,'2026-11-02','입사 계약',2),
+ (1,20,'ANNUAL',58000000,4833333,'2026-01-01','2026 연봉 계약',2),
+ (1,21,'ANNUAL',45000000,3750000,'2026-01-01','2026 연봉 계약',2),
+ (1,22,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,23,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,24,'ANNUAL',45000000,3750000,'2026-05-04','입사 계약',2),
+ (1,25,'ANNUAL',68000000,5666666,'2026-01-01','2026 연봉 계약',2),
+ (1,26,'ANNUAL',45000000,3750000,'2026-01-01','2026 연봉 계약',2),
+ (1,27,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,28,'ANNUAL',36000000,3000000,'2026-11-02','입사 계약',2),
+ (1,29,'ANNUAL',58000000,4833333,'2026-01-01','2026 연봉 계약',2),
+ (1,30,'ANNUAL',36000000,3000000,'2026-01-01','2026 연봉 계약',2),
+ (1,31,'ANNUAL',45000000,3750000,'2026-01-01','2026 연봉 계약',2),
+ (1,32,'ANNUAL',36000000,3000000,'2026-02-02','입사 계약',2),
+ (1,33,'ANNUAL',45000000,3750000,'2026-01-01','2026 연봉 계약',2),
+ (1,34,'ANNUAL',36000000,3000000,'2026-07-01','입사 계약',2);
+
+INSERT INTO leave_grant (company_id, employee_id, leave_type_id, leave_year, grant_type, days, reason) VALUES
+ (1,14,1,2026,'REGULAR',19,NULL),
+ (1,15,1,2026,'REGULAR',17,NULL),
+ (1,16,1,2026,'REGULAR',16,NULL),
+ (1,17,1,2026,'REGULAR',15,NULL),
+ (1,18,1,2026,'REGULAR',15,NULL),
+ (1,19,1,2026,'HIRE',2,NULL),
+ (1,20,1,2026,'REGULAR',18,NULL),
+ (1,21,1,2026,'REGULAR',16,NULL),
+ (1,22,1,2026,'REGULAR',15,NULL),
+ (1,23,1,2026,'REGULAR',15,NULL),
+ (1,24,1,2026,'HIRE',10,NULL),
+ (1,25,1,2026,'REGULAR',18,NULL),
+ (1,26,1,2026,'REGULAR',15,NULL),
+ (1,27,1,2026,'REGULAR',15,NULL),
+ (1,28,1,2026,'HIRE',2,NULL),
+ (1,29,1,2026,'REGULAR',17,NULL),
+ (1,30,1,2026,'REGULAR',15,NULL),
+ (1,31,1,2026,'REGULAR',15,NULL),
+ (1,32,1,2026,'HIRE',13,NULL),
+ (1,33,1,2026,'REGULAR',16,NULL),
+ (1,34,1,2026,'HIRE',7,NULL);
+
+-- 직접 번호를 준 조직 · 직원 시퀀스를 다시 맞춘다
+SELECT setval(pg_get_serial_sequence('org_unit', 'id'), (SELECT max(id) FROM org_unit));
+SELECT setval(pg_get_serial_sequence('employee', 'id'), (SELECT max(id) FROM employee));
+
 COMMIT;

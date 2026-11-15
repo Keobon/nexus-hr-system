@@ -3,6 +3,8 @@ package com.nexuslabs.hr.domain.dashboard.service;
 import com.nexuslabs.hr.domain.dashboard.dto.CompanyLaborCost;
 import com.nexuslabs.hr.domain.dashboard.dto.CompanyPerformance;
 import com.nexuslabs.hr.domain.evaluation.service.EvalScoreCalculator;
+import com.nexuslabs.hr.domain.org.service.TopOrgGroupReader;
+import com.nexuslabs.hr.domain.org.service.TopOrgGroups;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
@@ -25,7 +27,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 /**
  * 홈 전사 위젯 — 성과 현황(F-DASH-06) · 직원별 인건비(F-DASH-07). 저장하지 않고 원천 데이터에서 바로 집계한다(BR-DASH-001).
@@ -49,12 +50,14 @@ public class CompanyInsightService {
     private final JdbcTemplate jdbc;
     private final PermissionReader permissionReader;
     private final EvalScoreCalculator scoreCalculator;
+    private final TopOrgGroupReader orgGroupReader;
 
     public CompanyInsightService(JdbcTemplate jdbc, PermissionReader permissionReader,
-                                 EvalScoreCalculator scoreCalculator) {
+                                 EvalScoreCalculator scoreCalculator, TopOrgGroupReader orgGroupReader) {
         this.jdbc = jdbc;
         this.permissionReader = permissionReader;
         this.scoreCalculator = scoreCalculator;
+        this.orgGroupReader = orgGroupReader;
     }
 
     /** 홈에 넣을지 — DASHBOARD_COMPANY 는 부르는 쪽이 본다. */
@@ -157,7 +160,7 @@ public class CompanyInsightService {
             bottom.add(all.get(i));
         }
 
-        OrgGroups groups = orgGroups(cid);
+        TopOrgGroups groups = orgGroupReader.read(cid);
         Map<Long, List<BigDecimal>> byGroup = new HashMap<>();
         ranked.forEach(s -> byGroup.computeIfAbsent(groups.groupOf(s.orgUnitId()), k -> new ArrayList<>())
                 .add(s.totalScore()));
@@ -269,7 +272,7 @@ public class CompanyInsightService {
             changeRate = previous == 0 ? null : percent(total - previous, previous);
         }
 
-        OrgGroups groups = orgGroups(cid);
+        TopOrgGroups groups = orgGroupReader.read(cid);
         Map<Long, long[]> byGroup = new HashMap<>();   // [인원, 인건비]
         for (Stub s : stubs) {
             long[] acc = byGroup.computeIfAbsent(groups.groupOf(s.orgUnitId()), k -> new long[2]);
@@ -296,59 +299,5 @@ public class CompanyInsightService {
     private static BigDecimal percent(long part, long whole) {
         return whole == 0 ? null : BigDecimal.valueOf(part).multiply(HUNDRED)
                 .divide(BigDecimal.valueOf(whole), 1, RoundingMode.HALF_UP);
-    }
-
-    // ------------------------------------------------------------------ 조직 묶기
-
-    /**
-     * 지금 조직 트리(사용 중지된 조직 포함)로 각 조직을 최상위 바로 아래 조직에 묶는다. 최상위 자신은 최상위로 묶여 맨 뒤에 온다.
-     * 정산 당시 소속이 지금은 없는 조직이면(트리에 없음) 최상위로 본다.
-     */
-    private record OrgGroups(long rootId, Map<Long, Long> group, Map<Long, String> names, Map<Long, Integer> order) {
-
-        long groupOf(long orgUnitId) {
-            return group.getOrDefault(orgUnitId, rootId);
-        }
-
-        String name(long groupId) {
-            return names.get(groupId);
-        }
-
-        /** 조직 순서(sort_order, id)대로, 최상위는 맨 뒤. */
-        List<Long> ordered(java.util.Collection<Long> groupIds) {
-            return groupIds.stream()
-                    .sorted(Comparator.comparing((Function<Long, Boolean>) g -> g == rootId)
-                            .thenComparing(order::get))
-                    .toList();
-        }
-    }
-
-    private OrgGroups orgGroups(long cid) {
-        Map<Long, Long> parent = new HashMap<>();
-        Map<Long, String> names = new HashMap<>();
-        Map<Long, Integer> order = new HashMap<>();
-        long[] root = {-1};
-        jdbc.query("SELECT id, parent_id, name FROM org_unit WHERE company_id = ? ORDER BY sort_order, id",
-                rs -> {
-                    long id = rs.getLong("id");
-                    Long p = rs.getObject("parent_id", Long.class);
-                    names.put(id, rs.getString("name"));
-                    order.put(id, order.size());
-                    if (p == null) {
-                        root[0] = id;
-                    } else {
-                        parent.put(id, p);
-                    }
-                },
-                cid);
-        Map<Long, Long> group = new HashMap<>();
-        for (long id : names.keySet()) {
-            long g = id;
-            while (parent.containsKey(g) && parent.get(g) != root[0]) {
-                g = parent.get(g);
-            }
-            group.put(id, g);
-        }
-        return new OrgGroups(root[0], group, names, order);
     }
 }
