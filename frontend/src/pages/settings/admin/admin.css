@@ -1225,3 +1225,10 @@ button.ad-day {
   gap: 0.75rem;
   align-items: flex-start;
 }
+
+/* 계정 관리 — 내 권한보다 넓은 역할의 계정(manageable=false) 표시(2026-11-15) */
+.ad-mini-note {
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}

@@ -116,22 +116,33 @@ export default function AccountsPage() {
             <span style={{ width: '5.25rem', color: '#64748b' }}>{r.orgUnitName}</span>
             <span style={{ width: '6.25rem' }}><span className={`ad-role-badge ${tone[r.roleId] ?? ''}`}>{r.roleName}</span></span>
             <span style={{ width: '3.75rem' }}>
-              <Switch size="small" checked={r.active} aria-label={`${r.name} 활성`} onChange={(v) => setActiveTarget({ row: r, active: v })} />
+              <Switch size="small" checked={r.active} aria-label={`${r.name} 활성`} disabled={!r.manageable || (r.resigned && !r.active)}
+                title={r.resigned ? '퇴직한 직원의 계정은 다시 켤 수 없습니다' : !r.manageable ? '내 권한보다 넓은 역할의 계정입니다' : undefined}
+                onChange={(v) => setActiveTarget({ row: r, active: v })} />
             </span>
             <span style={{ width: '3.25rem' }}>{r.locked ? <span className="ad-locked">잠김</span> : '-'}</span>
             <span style={{ width: '6rem' }}>{shortTime(r.lastLoginAt)}</span>
             <span className="ad-mini-row" style={{ flex: '1 0 0', paddingRight: 0 }}>
-              <button type="button" className="ad-mini" onClick={() => setRoleTarget(r)}>역할변경</button>
-              <button type="button" className="ad-mini" onClick={() => setActiveTarget({ row: r, active: !r.active })}>{r.active ? '비활성화' : '활성화'}</button>
+              {/* 내 권한보다 넓은 역할의 계정(manageable=false)은 역할 · 활성 · 비밀번호를 못 다룬다, 퇴직자는 다시 켜지 않는다(2026-11-15) */}
+              {r.manageable ? (
+                <>
+                  {!r.resigned && <button type="button" className="ad-mini" onClick={() => setRoleTarget(r)}>역할변경</button>}
+                  {(r.active || !r.resigned) && (
+                    <button type="button" className="ad-mini" onClick={() => setActiveTarget({ row: r, active: !r.active })}>{r.active ? '비활성화' : '활성화'}</button>
+                  )}
+                </>
+              ) : (
+                <span className="ad-mini-note" title="이 계정의 역할에 내게 없는 권한이 있습니다">관리 권한 밖</span>
+              )}
               {r.locked && <button type="button" className="ad-mini is-on" onClick={() => unlock(r)}>잠금해제</button>}
-              <button type="button" className="ad-mini" onClick={() => setResetTarget(r)}>비밀번호초기화</button>
+              {r.manageable && !r.resigned && <button type="button" className="ad-mini" onClick={() => setResetTarget(r)}>비밀번호초기화</button>}
             </span>
           </div>
         ))}
       </div>
 
       <div className="ad-bar">
-        <span className="hr-note">＊퇴직한 직원의 계정은 자동으로 비활성화됩니다</span>
+        <span className="hr-note">＊퇴직한 직원의 계정은 자동으로 비활성화되고 다시 켤 수 없습니다. 내 권한보다 넓은 역할의 계정(예: 최고 관리자)은 여기서 바꿀 수 없습니다</span>
         {(list.data?.totalPages ?? 0) > 1 && (
           <Pagination size="small" current={page + 1} pageSize={PAGE_SIZE} total={list.data.totalElements} showSizeChanger={false} onChange={(p) => setPage(p - 1)} />
         )}
@@ -202,14 +213,14 @@ function RoleModal({ row, roles, onClose, onDone }) {
   });
   return (
     <Modal open title="역할 변경" footer={null} onCancel={onClose} width={460} className="hr-modal" destroyOnHidden centered>
-      <p className="hr-modal-sub">저장하면 즉시 반영됩니다. 다시 로그인할 필요가 없습니다.</p>
+      <p className="hr-modal-sub">저장하면 즉시 반영됩니다. 다시 로그인할 필요가 없습니다. 내 권한 안의 역할만 고를 수 있습니다.</p>
       <div className="ad-target">
         대상<strong>{`${row.name} (${row.employeeNo})`}</strong>현재 역할<strong>{row.roleName}</strong>
       </div>
       <Form form={form} layout="vertical" requiredMark initialValues={{ roleId: row.roleId }}
         onFinish={(v) => (v.roleId === row.roleId ? onClose() : save.mutate(v.roleId))}>
         <Form.Item name="roleId" label="새 역할" rules={[{ required: true, message: '역할을 고르세요' }]}>
-          <Select options={roles.map((r) => ({ value: r.id, label: r.name }))} />
+          <Select options={roles.filter((r) => r.grantable || r.id === row.roleId).map((r) => ({ value: r.id, label: r.name }))} />
         </Form.Item>
         <div className="hr-modal-foot">
           <button type="button" className="hr-btn is-secondary" onClick={onClose} disabled={save.isPending}>취소</button>

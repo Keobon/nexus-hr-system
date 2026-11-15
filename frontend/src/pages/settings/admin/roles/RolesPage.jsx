@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Checkbox, Form, Input, Modal, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { meKey } from '../../../../api/auth';
+import { useMe } from '../../../../auth/useMe';
 import { createRole, deleteRole, getPermissions, getRole, getRoles, permissionsKey, roleKey, rolesKey, updateRole } from '../../../../api/roles';
 import { applyFieldErrors } from '../../../../components/common/formErrors';
 import { useNotify } from '../../../../components/common/useNotify';
@@ -59,7 +60,8 @@ export default function RolesPage() {
         </section>
         <section className="ad-section ad-editor">
           {perms.isLoading || selected === null ? <Spin /> : perms.error ? <p className="hr-notice is-error">{errorMessage(perms.error)}</p> : (
-            <RoleEditor key={selected} roleId={selected} perms={perms.data} onSelect={setSelected} />
+            <RoleEditor key={selected} roleId={selected} perms={perms.data} onSelect={setSelected}
+              grantable={selected === NEW || (roles.data ?? []).find((r) => r.id === selected)?.grantable !== false} />
           )}
         </section>
       </div>
@@ -70,8 +72,11 @@ export default function RolesPage() {
 /** 권한 표 값: { [code]: scope | undefined } */
 const toMap = (list = []) => Object.fromEntries(list.map((p) => [p.code, p.scope]));
 
-function RoleEditor({ roleId, perms, onSelect }) {
+function RoleEditor({ roleId, perms, onSelect, grantable }) {
   const notify = useNotify();
+  // 내가 가진 권한 · 범위 — 이것을 넘는 권한은 역할에 붙일 수 없다(서버 RoleGrantGuard, 2026-11-15)
+  const { me } = useMe();
+  const mine = useMemo(() => Object.fromEntries((me?.permissions ?? []).map((p) => [p.code, p.scope])), [me]);
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const isNew = roleId === NEW;
@@ -87,7 +92,9 @@ function RoleEditor({ roleId, perms, onSelect }) {
     }
   }, [role.data, form]);
 
-  const readOnly = !isNew && role.data?.isSystem;
+  const systemRole = !isNew && role.data?.isSystem;
+  const beyondMe = !isNew && !systemRole && !grantable;   // 내게 없는 권한이 든 역할
+  const readOnly = systemRole || beyondMe;
   const used = useMemo(() => perms.filter((p) => grants[p.code]), [perms, grants]);
 
   const refresh = () => {
@@ -105,7 +112,8 @@ function RoleEditor({ roleId, perms, onSelect }) {
     },
   });
 
-  const toggle = (p, on) => setGrants((g) => ({ ...g, [p.code]: on ? (p.allowedScopes.includes('ALL') ? 'ALL' : p.allowedScopes[0]) : undefined }));
+  const scopesFor = (p) => p.allowedScopes.filter((s) => mine[p.code] === 'ALL' || s === 'TEAM');
+  const toggle = (p, on) => setGrants((g) => ({ ...g, [p.code]: on ? (scopesFor(p).includes('ALL') ? 'ALL' : scopesFor(p)[0]) : undefined }));
 
   const onFinish = (v) => setConfirm({
     name: v.name.trim(),
@@ -119,7 +127,10 @@ function RoleEditor({ roleId, perms, onSelect }) {
 
   return (
     <Form form={form} layout="vertical" requiredMark onFinish={onFinish} disabled={readOnly} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {readOnly && (
+      {beyondMe && (
+        <p className="ad-banner">이 역할에는 내게 없는 권한이 있어 수정 · 삭제할 수 없습니다. 최고 관리자에게 요청하세요.</p>
+      )}
+      {systemRole && (
         <p className="ad-banner">
           이 역할은 시스템 역할이라 수정·삭제할 수 없습니다. (SYSTEM_ROLE_READONLY)
           {role.data.name === '최고 관리자' ? ' · 마지막 1명은 강등·비활성화·퇴직 처리할 수 없습니다.' : ' 다른 권한 묶음이 필요하면 [+ 역할 추가]로 새 역할을 만드세요.'}
@@ -138,24 +149,26 @@ function RoleEditor({ roleId, perms, onSelect }) {
         <div className="ad-perm-head"><span>사용</span><span>권한 코드</span><span>설명 · 관련 기능</span><span>범위</span></div>
         {perms.map((p) => {
           const on = !!grants[p.code];
-          const teamOk = p.allowedScopes.length > 1;
+          const teamOk = scopesFor(p).length > 1;
+          const missing = !mine[p.code];   // 내게 없는 권한 — 새로 붙일 수 없다
           return (
             <div key={p.code} className={`ad-perm${on ? '' : ' is-off'}`}>
-              <Checkbox checked={on} disabled={readOnly} onChange={(e) => toggle(p, e.target.checked)} aria-label={p.code} />
+              <Checkbox checked={on} disabled={readOnly || (missing && !on)} onChange={(e) => toggle(p, e.target.checked)} aria-label={p.code}
+                title={missing && !on ? '내게 없는 권한은 역할에 붙일 수 없습니다' : undefined} />
               <code>{p.code}</code>
               <span className="desc">{p.description}<span className="rel">{p.relatedFeatures}</span></span>
               {!on ? (
                 <span className="ad-scope-fixed" style={{ border: 0 }}>-</span>
               ) : teamOk && !readOnly ? (
                 <Select size="small" value={grants[p.code]} onChange={(v) => setGrants((g) => ({ ...g, [p.code]: v }))}
-                  options={p.allowedScopes.map((s) => ({ value: s, label: labelOf('permissionScope', s) }))} />
+                  options={scopesFor(p).map((s) => ({ value: s, label: labelOf('permissionScope', s) }))} />
               ) : (
-                <span className="ad-scope-fixed">{teamOk ? labelOf('permissionScope', grants[p.code]) : '전사 (고정)'}</span>
+                <span className="ad-scope-fixed">{p.allowedScopes.length > 1 ? labelOf('permissionScope', grants[p.code]) : '전사 (고정)'}</span>
               )}
             </div>
           );
         })}
-        <p className="hr-hint" style={{ marginTop: '0.5rem' }}>팀 범위는 조회 권한 5개만 고를 수 있고, 조직장에게만 효력이 있습니다(자기 팀만 보입니다).</p>
+        <p className="hr-hint" style={{ marginTop: '0.5rem' }}>팀 범위는 조회 권한 5개만 고를 수 있고, 조직장에게만 효력이 있습니다(자기 팀만 보입니다). 내게 없는 권한은 붙일 수 없습니다.</p>
       </div>
 
       <div className="ad-editor-foot">

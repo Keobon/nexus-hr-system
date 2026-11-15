@@ -129,7 +129,7 @@ export default function EmployeeCreatePage({ onCancel, onDone }) {
           </Form.Item>
           {roleManage ? (
             <Form.Item name="roleId" label="역할" extra="비워 두면 '직원' 역할로 만들어집니다. 나중에 계정 관리에서 바꿀 수 있습니다.">
-              <Select placeholder="직원 (기본)" allowClear loading={roles.isLoading} options={opts(roles.data)} />
+              <Select placeholder="직원 (기본)" allowClear loading={roles.isLoading} options={opts((roles.data ?? []).filter((r) => r.grantable))} />
             </Form.Item>
           ) : (
             <div />
