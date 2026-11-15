@@ -13,8 +13,9 @@ import { labelOf, optionsOf } from '../../../constants/labels';
 import { EmpStatusBadge, PageHead, useOrgOptions } from '../parts';
 
 const PAGE_SIZE = 20;
-// "전체 상태"는 퇴직자까지 — status 를 비우면 서버는 재직 · 휴직만 준다
+// 기본(재직상태를 고르지 않음)은 재직 · 휴직 — status 를 비우면 서버가 재직 · 휴직만 준다. 퇴직자까지 보려면 "전체(퇴직 포함)"
 const ALL_STATUS = ['ACTIVE', 'ON_LEAVE', 'RESIGNED'];
+const STATUS_ALL = 'ALL';
 const TABS = [
   ['list', '직원 목록'],
   ['contacts', '연락처'],
@@ -75,7 +76,9 @@ const contactPart = (c) => (c ? { phone: c.phone, email: c.email } : {});
 export default function EmployeeListPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { can } = useMe();
+  const { me, can } = useMe();
+  // 팀 범위(조직장)는 내 조직만 보이므로 "전직원" 대신 "우리 조직"으로(2026-11-15 역할별 점검)
+  const whole = can('EMPLOYEE_MANAGE') || (me?.permissions ?? []).some((p) => p.code === 'EMPLOYEE_READ' && p.scope === 'ALL');
   const [sp, setSp] = useSearchParams();
   const tab = sp.get('tab') === 'contacts' ? 'contacts' : 'list';
   const isList = tab === 'list';
@@ -122,7 +125,7 @@ export default function EmployeeListPage() {
         jobGradeId: filters.jobGradeId,
         jobTitleId: filters.jobTitleId,
         employmentTypeId: filters.employmentTypeId,
-        status: filters.status ? [filters.status] : ALL_STATUS,
+        status: filters.status === STATUS_ALL ? ALL_STATUS : filters.status ? [filters.status] : undefined,
         keyword: filters.keyword,
       }
     : { orgUnitId: filters.orgUnitId, keyword: filters.keyword };
@@ -229,8 +232,17 @@ export default function EmployeeListPage() {
   return (
     <div className="hr">
       <div className="hr-titles">
-        <PageHead title="전직원 목록" desc="부서·직급·재직상태로 직원을 조회하고 상세 정보를 관리합니다." />
-        <nav className="hr-tabs" role="tablist" aria-label="전직원 목록 탭">
+        <PageHead
+          title={whole ? '전직원 목록' : '우리 조직 직원'}
+          desc={
+            can('EMPLOYEE_MANAGE')
+              ? '부서·직급·재직상태로 직원을 조회하고 상세 정보를 관리합니다.'
+              : whole
+                ? '부서·직급·재직상태로 직원을 조회합니다.'
+                : '내 조직(하위 조직 포함) 직원을 조회합니다.'
+          }
+        />
+        <nav className="hr-tabs" role="tablist" aria-label="직원 목록 탭">
           {TABS.map(([k, l]) => (
             <button
               key={k}
@@ -277,7 +289,7 @@ export default function EmployeeListPage() {
             </div>
             <div className="hr-field">
               <label>재직상태</label>
-              <Select className="hr-select" popupMatchSelectWidth={false} allowClear placeholder="전체 상태" value={filters.status} onChange={(v) => setFilter({ status: v })} options={optionsOf('employmentStatus')} />
+              <Select className="hr-select" popupMatchSelectWidth={false} allowClear placeholder="재직 · 휴직" value={filters.status} onChange={(v) => setFilter({ status: v })} options={[...optionsOf('employmentStatus'), { value: STATUS_ALL, label: '전체(퇴직 포함)' }]} />
             </div>
             <div className="hr-field">
               <label>직책</label>
