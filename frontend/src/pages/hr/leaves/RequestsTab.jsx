@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import { allLeaveTypesKey, getAllLeaveTypes, getLeaveRequest, getLeaveRequestPage, leaveRequestKey } from '../../../api/leaves';
 import { fetchAllPages } from '../../../api/employees';
 import { errorMessage } from '../../../constants/errors';
-import { labelOf } from '../../../constants/labels';
+import { halfSuffix, labelOf } from '../../../constants/labels';
 import { Field, ListCard, OrgField, Pill, SearchButton, Table, useApplied } from '../attendance/shared';
 
 export const TONE = { PENDING: 'warn', APPROVED: 'ok', REJECTED: 'alert', CANCEL_REQUESTED: 'warn', CANCELLED: 'gray' };
@@ -76,7 +76,7 @@ export default function RequestsTab() {
               <td>{r.orgUnitName}</td>
               <td>{r.leaveTypeName}</td>
               <td>{period(r.startDate, r.endDate)}</td>
-              <td>{`${r.days}일`}</td>
+              <td>{`${r.days}일${halfSuffix(r)}`}</td>
               <td>
                 <Pill tone={TONE[r.status]}>{labelOf('leaveStatus', r.status)}</Pill>
               </td>
@@ -110,7 +110,7 @@ export function DetailDrawer({ row, onClose }) {
           ['신청자', row.employeeName],
           ['종류', row.leaveTypeName],
           ['기간', period(row.startDate, row.endDate)],
-          ['일수', `${row.days}일`],
+          ['일수', `${row.days}일${halfSuffix(row)}`],
           ['사유', row.reason || '–'],
           ...(d?.cancelReason ? [['취소 사유', d.cancelReason]] : []),
         ].map(([k, v]) => (
