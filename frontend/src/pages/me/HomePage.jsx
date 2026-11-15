@@ -11,6 +11,7 @@ import { useMe } from '../../auth/useMe';
 import { isExecutive } from '../../components/layout/menu';
 import ExecutiveHome from './ExecutiveHome';
 import CompanyInsights from './CompanyInsights';
+import { MyOrgCard, TodoBar } from './HomeTeam';
 import { useNotify } from '../../components/common/useNotify';
 import { labelOf } from '../../constants/labels';
 import { errorMessage } from '../../constants/errors';
@@ -538,6 +539,10 @@ export default function HomePage() {
           to="/me/evaluations"
         />
       </div>
+
+      {/* 할 일(결재 · 평가 · 관리 배지)과 조직장의 내 조직 현황(F-DASH-05) — 해당하는 사람에게만 */}
+      <TodoBar todos={home.data.todos} admin={home.data.admin} isLead={!!home.data.myOrg} />
+      {home.data.myOrg && <MyOrgCard org={home.data.myOrg} isWorkday={mine.today.isWorkday} />}
 
       <div className="home-panels">
         <AttendancePanel today={mine.today} />
