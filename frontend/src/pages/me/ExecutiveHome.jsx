@@ -10,6 +10,7 @@ import { fetchAllPages } from '../../api/employees';
 import { getLeaveBalancePage, getLeaveRequestPage } from '../../api/leaves';
 import { getPayrollRuns, payrollRunsKey } from '../../api/payrollAdmin';
 import { labelOf } from '../../constants/labels';
+import { useWorkday } from '../../components/common/useWorkday';
 import CompanyInsights from './CompanyInsights';
 import TurnoverOverview from '../hr/turnover/TurnoverOverview';
 import './exec.css';
@@ -24,7 +25,8 @@ export default function ExecutiveHome({ company }) {
   const today = dayjs().format('YYYY-MM-DD');
   const year = dayjs().year();
 
-  // 금일 가동률 — 오늘 근태 전 직원
+  // 금일 가동률 — 오늘 근태 전 직원. 휴일에는 가동률 대신 "휴일"(0%로 보이지 않게)
+  const workday = useWorkday();
   const todayRows = useQuery({ queryKey: ['attendance', 'today-all'], queryFn: () => fetchAllPages(getTodayPage, {}), refetchInterval: 60_000 });
   // 연차 소진율 — 올해 차감 종류 부여 대비 사용
   const balances = useQuery({ queryKey: ['leave-balances', 'admin', year, null], queryFn: () => fetchAllPages(getLeaveBalancePage, { leaveYear: year }) });
@@ -55,7 +57,9 @@ export default function ExecutiveHome({ company }) {
 
   const tiles = [
     { label: '전사 재직 인원', value: hc.active, unit: '명', sub: `휴직 ${hc.onLeave}명 · 퇴직 ${hc.resigned}명`, tone: 'is-green' },
-    { label: '금일 전사 가동률', value: t.length ? pct(checkedIn / t.length) : '–', unit: '%', sub: `${checkedIn}명 정상 출근/${onVacation}명 휴가`, tone: 'is-blue' },
+    workday
+      ? { label: '금일 전사 가동률', value: t.length ? pct(checkedIn / t.length) : '–', unit: '%', sub: `${checkedIn}명 정상 출근/${onVacation}명 휴가`, tone: 'is-blue' }
+      : { label: '금일 전사 가동률', value: '휴일', unit: '', sub: `오늘은 휴일입니다 · 휴일 근무 ${checkedIn}명`, tone: 'is-blue' },
     { label: '연간 연차 소진율', value: used.g ? pct(used.u / used.g) : '–', unit: '%', sub: `${year}년 사용 ${used.u}일 / 부여 ${used.g}일`, tone: 'is-orange' },
     {
       label: '승인 대기 건수',

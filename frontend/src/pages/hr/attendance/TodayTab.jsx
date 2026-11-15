@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { getTodayPage } from '../../../api/attendanceAdmin';
 import { useMe } from '../../../auth/useMe';
+import { useWorkday } from '../../../components/common/useWorkday';
 import { fetchAllPages } from '../../../api/employees';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
@@ -19,6 +20,8 @@ export default function TodayTab() {
   // 팀 범위(조직장)는 내 조직만 — 요약 문구를 "전사"가 아니라 "내 조직"으로
   const whole = can('ATTENDANCE_MANAGE') || (me?.permissions ?? []).some((p) => p.code === 'ATTENDANCE_READ' && p.scope === 'ALL');
   const scopeName = whole ? '전사' : '내 조직';
+  // 휴일에는 출근 전이 결근이 아니다 — "미출근"(경고) 대신 "출근 전", 행은 "휴일"
+  const workday = useWorkday();
   const nos = useEmployeeNos();
   const f = useApplied({ orgUnitId: null, q: '' });
   // 전사 요약은 조건과 무관 — 전체를 한 번 읽어 센다
@@ -35,7 +38,7 @@ export default function TodayTab() {
   const count = (pred) => list.filter(pred).length;
   const tiles = [
     ['출근', count((r) => r.checkInAt != null)],
-    ['미출근', count((r) => r.todayStatus === 'BEFORE_WORK'), 'is-warn'],
+    [workday ? '미출근' : '출근 전', count((r) => r.todayStatus === 'BEFORE_WORK'), workday ? 'is-warn' : undefined],
     ['재택', count((r) => r.todayStatus === 'REMOTE')],
     ['외근', count((r) => r.todayStatus === 'FIELD')],
     ['출장', count((r) => r.todayStatus === 'BUSINESS_TRIP')],
@@ -46,7 +49,7 @@ export default function TodayTab() {
   return (
     <>
       <div className="at-summary">
-        <p className="at-muted is-strong">{`${scopeName} 전체 현황 · ${now.format('YYYY.MM.DD')} (${WEEK[now.day()]}) ${now.format('HH:mm')} 기준`}</p>
+        <p className="at-muted is-strong">{`${scopeName} 전체 현황 · ${now.format('YYYY.MM.DD')} (${WEEK[now.day()]})${workday ? '' : ' 휴일'} ${now.format('HH:mm')} 기준`}</p>
         <div className="at-tiles">
           {tiles.map(([label, n, cls]) => (
             <div key={label} className={`at-tile${cls ? ` ${cls}` : ''}`}>{`${label} ${all.isLoading ? '–' : n}`}</div>
@@ -86,10 +89,14 @@ export default function TodayTab() {
               <td>{r.name}</td>
               <td>{r.orgUnitName}</td>
               <td>
-                <Pill tone={TONE[r.todayStatus]}>{TEXT[r.todayStatus] ?? labelOf('todayStatus', r.todayStatus)}</Pill>
+                {!workday && r.todayStatus === 'BEFORE_WORK' ? (
+                  <Pill tone="gray">휴일</Pill>
+                ) : (
+                  <Pill tone={TONE[r.todayStatus]}>{TEXT[r.todayStatus] ?? labelOf('todayStatus', r.todayStatus)}</Pill>
+                )}
               </td>
               <td>{r.workType ? labelOf('workType', r.workType) : '–'}</td>
-              <td>{r.placeMemo || (r.todayStatus === 'BEFORE_WORK' ? '출근 기록 없음' : '–')}</td>
+              <td>{r.placeMemo || (r.todayStatus === 'BEFORE_WORK' && workday ? '출근 기록 없음' : '–')}</td>
               <td>{hm(r.checkInAt)}</td>
               <td>{hm(r.checkOutAt)}</td>
             </tr>
