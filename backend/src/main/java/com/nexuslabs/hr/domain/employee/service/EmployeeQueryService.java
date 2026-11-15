@@ -11,6 +11,7 @@ import com.nexuslabs.hr.domain.employee.dto.FamilyList;
 import com.nexuslabs.hr.domain.employee.dto.MyProfileResponse;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
 import com.nexuslabs.hr.domain.employee.entity.Gender;
+import com.nexuslabs.hr.domain.employee.entity.ResignReason;
 import com.nexuslabs.hr.domain.leave.service.LeaveBalanceService;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
@@ -276,7 +277,7 @@ public class EmployeeQueryService {
                                g.name AS job_grade_name, e.job_title_id, t.name AS job_title_name,
                                e.employment_type_id, et.name AS employment_type_name, e.status::text AS status,
                                e.payroll_eligible, e.contract_end_date, e.probation_end_date, e.profile_file_id,
-                               e.hr_memo
+                               e.hr_memo, e.resign_date, e.resign_reason::text AS resign_reason
                         """ + FROM + " WHERE e.company_id = ? AND e.id = ?",
                 (rs, i) -> new EmployeeDetail(rs.getLong("id"), rs.getString("employee_no"), rs.getString("name"),
                         rs.getString("org_unit_name"), rs.getString("job_grade_name"), rs.getString("job_title_name"),
@@ -292,7 +293,10 @@ public class EmployeeQueryService {
                                 rs.getObject("job_title_id", Long.class), rs.getLong("employment_type_id"),
                                 rs.getBoolean("payroll_eligible"), rs.getObject("contract_end_date", LocalDate.class),
                                 rs.getObject("probation_end_date", LocalDate.class), fieldValues,
-                                family.dependentsCount(), family.childrenCount()),
+                                family.dependentsCount(), family.childrenCount(),
+                                rs.getObject("resign_date", LocalDate.class),
+                                rs.getString("resign_reason") == null ? null
+                                        : ResignReason.valueOf(rs.getString("resign_reason"))),
                         manage ? Optional.ofNullable(rs.getString("hr_memo")) : null),
                 companyId, employeeId).getFirst();
     }

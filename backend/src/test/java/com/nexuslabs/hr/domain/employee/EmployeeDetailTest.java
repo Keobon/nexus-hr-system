@@ -137,7 +137,7 @@ class EmployeeDetailTest {
     void 퇴직자도_상세는_보이고_오늘_상태는_null() throws Exception {
         as(hr, post("/api/employees/" + org.cho.id() + "/status").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "개인 사정"}"""))
+                        {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "개인 사정", "resignReason": "PERSONAL"}"""))
                 .andExpect(status().isOk());
         detail(hr, org.cho.id())
                 .andExpect(status().isOk())
@@ -218,7 +218,7 @@ class EmployeeDetailTest {
         update(hr, org.cho.id(), """
                 {"employmentTypeId": %d}""".formatted(inactive))
                 .andExpect(jsonPath("$.error.code").value("INACTIVE_REFERENCE"));
-        // 최고 관리자는 ROLE_MANAGE 가 있어야 고친다 — 인사 담당은 못 하고 최고 관리자 본인은 된다(2026-10-10)
+        // 최고 관리자는 최고 관리자만 고친다 — 인사 담당은 못 하고 최고 관리자 본인은 된다(2026-10-10, 2026-11-15)
         TestFixture.Employee admin = new TestFixture.Employee(org.company.adminId(), cid, org.company.adminEmail());
         update(hr, admin.id(), """
                 {"phone": "010-9999-9999"}""")
@@ -235,7 +235,7 @@ class EmployeeDetailTest {
         // 퇴직자
         as(hr, post("/api/employees/" + org.cho.id() + "/status").contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "개인 사정"}"""))
+                        {"status": "RESIGNED", "effectiveDate": "2030-03-04", "reason": "개인 사정", "resignReason": "PERSONAL"}"""))
                 .andExpect(status().isOk());
         update(hr, org.cho.id(), """
                 {"phone": "010-0000-0000"}""")

@@ -81,9 +81,9 @@ class RoleTest {
         TestFixture.Employee hr = fixture.employee(company.id(), company.rootOrgUnitId(), "인사 담당", false);
         mvc.perform(get("/api/roles").header("Authorization", fixture.token(hr.id(), company.id())))
                 .andExpect(status().isOk());
-        // 인사 담당은 ROLE_MANAGE 가 없어 역할 상세·권한 목록은 못 본다
+        // 인사 담당은 ROLE_MANAGE 가 있어 권한 목록도 본다(2026-11-15)
         mvc.perform(get("/api/permissions").header("Authorization", fixture.token(hr.id(), company.id())))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
 
         TestFixture.Employee staff = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", false);
         mvc.perform(get("/api/roles").header("Authorization", fixture.token(staff.id(), company.id())))

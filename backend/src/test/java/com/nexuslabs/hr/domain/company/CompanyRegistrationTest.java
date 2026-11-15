@@ -68,7 +68,7 @@ class CompanyRegistrationTest {
                        count(*) FILTER (WHERE r.name = '직원' AND p.scope = 'TEAM') AS emp
                 FROM role_permission p JOIN role r ON r.id = p.role_id WHERE p.company_id = ?
                 """, cid);
-        assertThat(perms).containsEntry("super_admin", 18L).containsEntry("hr", 14L)
+        assertThat(perms).containsEntry("super_admin", 18L).containsEntry("hr", 15L)
                 .containsEntry("exec", 7L).containsEntry("emp", 5L);
         assertThat(count("SELECT count(*) FROM role WHERE company_id = ?", cid)).isEqualTo(4);
         assertThat(count("SELECT count(*) FROM role WHERE company_id = ? AND is_system", cid)).isEqualTo(1);

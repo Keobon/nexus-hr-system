@@ -67,7 +67,8 @@ public class CompanyBootstrapService {
                 INSERT INTO role_permission (company_id, role_id, permission_code, scope)
                 SELECT ?, ?, p, 'ALL' FROM unnest(enum_range(NULL::permission_code)) AS p
                 """, companyId, superAdmin);
-        grant(companyId, hr, "ALL", "ORG_MANAGE", "EMPLOYEE_READ", "EMPLOYEE_MANAGE", "ATTENDANCE_READ",
+        // 인사 담당은 역할 관리도 한다(2026-11-15) — 내 권한을 넘는 역할은 못 다룬다(RoleGrantGuard)
+        grant(companyId, hr, "ALL", "ROLE_MANAGE", "ORG_MANAGE", "EMPLOYEE_READ", "EMPLOYEE_MANAGE", "ATTENDANCE_READ",
                 "ATTENDANCE_MANAGE", "LEAVE_READ", "LEAVE_MANAGE", "PAYROLL_READ", "PAYROLL_MANAGE", "ASSIGNMENT_READ",
                 "ASSIGNMENT_MANAGE", "EVAL_READ", "EVAL_MANAGE", "DASHBOARD_COMPANY");
         grant(companyId, executive, "ALL", "EMPLOYEE_READ", "ATTENDANCE_READ", "LEAVE_READ", "PAYROLL_READ",
