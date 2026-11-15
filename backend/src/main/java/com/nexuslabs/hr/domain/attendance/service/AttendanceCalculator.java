@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.attendance.service;
 
 import com.nexuslabs.hr.domain.attendance.dto.AttendanceDay;
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.attendance.dto.AttendanceSummary;
 import com.nexuslabs.hr.domain.attendance.dto.MonthlyAttendance;
 import com.nexuslabs.hr.domain.attendance.entity.AttendanceStatus;
@@ -60,11 +61,31 @@ public class AttendanceCalculator {
      * @param status                  저장된 근태 상태. 근태 행이 없으면 null
      * @param approvedOvertimeMinutes 그날 승인된 연장근무 시간. 없으면 null
      * @param today                   오늘 — 기록 없는 근무일이 결근(지난 날)인지 미기록(오늘 이후)인지 가른다
+     * @param halfDay                 그날 승인된 반차(2026-11-15). 없으면 null
      */
     public record DayInput(LocalDate date, boolean workday, String holidayName, WorkScheduleView schedule,
                            AttendanceStatus status, WorkType workType, OffsetDateTime checkInAt,
                            OffsetDateTime checkOutAt, Integer approvedOvertimeMinutes, Employment employment,
-                           LocalDate today) {
+                           LocalDate today, HalfDay halfDay) {
+
+        /** 반차가 없는 날. */
+        public DayInput(LocalDate date, boolean workday, String holidayName, WorkScheduleView schedule,
+                        AttendanceStatus status, WorkType workType, OffsetDateTime checkInAt,
+                        OffsetDateTime checkOutAt, Integer approvedOvertimeMinutes, Employment employment,
+                        LocalDate today) {
+            this(date, workday, holidayName, schedule, status, workType, checkInAt, checkOutAt,
+                    approvedOvertimeMinutes, employment, today, null);
+        }
+    }
+
+    /** 반나절 — 그날 1일 소정근로시간의 절반(반차, 2026-11-15). */
+    public static int halfDayMinutes(WorkScheduleView schedule) {
+        return schedule.dailyStandardMinutes() / 2;
+    }
+
+    /** 결근으로 칠 시간 — 반차인 날은 반나절, 아니면 1일 소정근로시간(급여 결근 공제). */
+    public static int absenceMinutes(AttendanceDay day, WorkScheduleView schedule) {
+        return day.halfDay() != null ? halfDayMinutes(schedule) : schedule.dailyStandardMinutes();
     }
 
     /** 한 직원의 한 달. 다른 회사 직원이면 NOT_FOUND. */
@@ -143,6 +164,19 @@ public class AttendanceCalculator {
                 },
                 companyId, ids, first, last);
 
+        // 승인된 반차(취소 요청 중 포함) — 그날 출근 · 퇴근 기준을 반나절만큼 옮긴다(2026-11-15)
+        Map<Long, Map<LocalDate, HalfDay>> halfDays = new HashMap<>();
+        jdbc.query("""
+                        SELECT employee_id, start_date, half_day::text AS half_day FROM leave_request
+                        WHERE company_id = ? AND employee_id = ANY(?) AND start_date BETWEEN ? AND ?
+                          AND half_day IS NOT NULL AND status IN ('APPROVED', 'CANCEL_REQUESTED')
+                        """,
+                rs -> {
+                    halfDays.computeIfAbsent(rs.getLong("employee_id"), k -> new HashMap<>())
+                            .put(rs.getObject("start_date", LocalDate.class), HalfDay.valueOf(rs.getString("half_day")));
+                },
+                companyId, ids, first, last);
+
         // 날짜마다 가장 최근 근태 소명의 상태(F-ATT-10)
         Map<Long, Map<LocalDate, RequestStatus>> explanations = new HashMap<>();
         jdbc.query("""
@@ -162,6 +196,7 @@ public class AttendanceCalculator {
             Map<LocalDate, Row> employeeRows = rows.getOrDefault(employeeId, Map.of());
             Map<LocalDate, Integer> employeeApproved = approved.getOrDefault(employeeId, Map.of());
             Map<LocalDate, RequestStatus> employeeExplanations = explanations.getOrDefault(employeeId, Map.of());
+            Map<LocalDate, HalfDay> employeeHalfDays = halfDays.getOrDefault(employeeId, Map.of());
             List<AttendanceDay> days = new ArrayList<>();
             for (LocalDate date = month.atDay(1); !date.isAfter(month.atEndOfMonth()); date = date.plusDays(1)) {
                 Row row = employeeRows.get(date);
@@ -169,7 +204,8 @@ public class AttendanceCalculator {
                         calendar.scheduleOn(date), row == null ? null : row.status(),
                         row == null ? null : row.workType(), row == null ? null : row.checkInAt(),
                         row == null ? null : row.checkOutAt(), employeeApproved.get(date),
-                        employmentOn(date, start, changes), today)).withRecord(row == null ? null : row.id(),
+                        employmentOn(date, start, changes), today, employeeHalfDays.get(date)))
+                        .withRecord(row == null ? null : row.id(),
                         employeeExplanations.get(date)));
             }
             result.put(employeeId, new MonthlyAttendance(month.toString(), days, summarize(days)));
@@ -180,6 +216,8 @@ public class AttendanceCalculator {
     /**
      * 하루 계산(F-ATT-03). 출·퇴근 시각은 초를 버리고 분 단위로 계산한다.
      * 퇴근 시각이 없는 날(출근 중 · 퇴근미기록)은 시간이 모두 0 이고 지각만 판정한다.
+     * 반차인 날(2026-11-15)은 반나절만 일한다 — 오전 반차는 출근 기준을 시작 + 반나절 + 휴게로, 오후 반차는 퇴근 기준을
+     * 시작 + 반나절로 옮기고, 소정근로는 반나절, 휴게는 빼지 않는다(반나절 근무에는 휴게가 없다).
      */
     public static AttendanceDay day(DayInput in) {
         if (in.status() == null) {
@@ -190,23 +228,35 @@ public class AttendanceCalculator {
         }
         WorkScheduleView schedule = in.schedule();
         int standard = schedule.dailyStandardMinutes();
+        LocalTime expectedStart = schedule.startTime();
+        LocalTime expectedEnd = schedule.endTime();
+        int breakMinutes = schedule.breakMinutes();
+        if (in.halfDay() != null && in.workday()) {
+            standard = halfDayMinutes(schedule);
+            breakMinutes = 0;
+            if (in.halfDay() == HalfDay.AM) {
+                expectedStart = schedule.startTime().plusMinutes(standard + schedule.breakMinutes());
+            } else {
+                expectedEnd = schedule.startTime().plusMinutes(standard);
+            }
+        }
         if (in.status() == AttendanceStatus.ON_BUSINESS_TRIP) {
             // 출장일은 1일 소정근로시간을 일한 것으로 본다(BR-ATT-005)
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), AttendanceDayStatus.ON_BUSINESS_TRIP,
-                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0, null, null);
+                    in.workType(), null, null, false, false, standard, 0, 0, 0, 0, 0, null, null, in.halfDay());
         }
         LocalDateTime checkIn = minute(in.checkInAt());
         boolean late = in.workday()
-                && checkIn.isAfter(in.date().atTime(schedule.startTime()).plusMinutes(schedule.lateGraceMinutes()));
+                && checkIn.isAfter(in.date().atTime(expectedStart).plusMinutes(schedule.lateGraceMinutes()));
         int approved = in.approvedOvertimeMinutes() == null ? 0 : in.approvedOvertimeMinutes();
         AttendanceDayStatus status = AttendanceDayStatus.valueOf(in.status().name());
         if (in.checkOutAt() == null) {
             return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
-                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved, null, null);
+                    seoul(in.checkInAt()), null, late, false, 0, 0, 0, 0, 0, approved, null, null, in.halfDay());
         }
         LocalDateTime checkOut = minute(in.checkOutAt());
-        boolean earlyLeave = in.workday() && checkOut.isBefore(in.date().atTime(schedule.endTime()));
-        int work = Math.max(0, (int) ChronoUnit.MINUTES.between(checkIn, checkOut) - schedule.breakMinutes());
+        boolean earlyLeave = in.workday() && checkOut.isBefore(in.date().atTime(expectedEnd));
+        int work = Math.max(0, (int) ChronoUnit.MINUTES.between(checkIn, checkOut) - breakMinutes);
         int night = nightMinutes(checkIn, checkOut, schedule.nightStart(), schedule.nightEnd());
         int overtime = 0;
         int holiday = 0;
@@ -229,7 +279,7 @@ public class AttendanceCalculator {
         }
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, in.workType(),
                 seoul(in.checkInAt()), seoul(in.checkOutAt()), late, earlyLeave, work, overtime, night, holiday,
-                holidayOvertime, approved, null, null);
+                holidayOvertime, approved, null, null, in.halfDay());
     }
 
     public static AttendanceSummary summarize(List<AttendanceDay> days) {
@@ -265,7 +315,7 @@ public class AttendanceCalculator {
 
     private static AttendanceDay noRecord(DayInput in, AttendanceDayStatus status) {
         return new AttendanceDay(in.date(), in.workday(), in.holidayName(), status, null, null, null, null, null,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, in.halfDay());
     }
 
     /** 출근~퇴근이 야간 시간대와 겹치는 분. 야간 시간대는 보통 자정을 넘는다(22:00–06:00). 연장근무 신청의 예정 시간에도 쓴다. */

@@ -165,7 +165,7 @@ public class DashboardService {
                 (rs, i) -> new DashboardHome.Vacation(rs.getLong("id"), rs.getLong("employee_id"),
                         rs.getString("employee_name"), rs.getString("org_unit_name"), rs.getString("leave_type_name"),
                         rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class),
-                        rs.getInt("days")),
+                        rs.getBigDecimal("days")),
                 cid, Date.valueOf(month.atEndOfMonth()), Date.valueOf(month.atDay(1)));
         return new DashboardHome.Company(headcount, vacations, leaveUsage(cid, null, month),
                 assignmentQueryService.recent(cid, RECENT_ASSIGNMENTS),
@@ -225,24 +225,40 @@ public class DashboardService {
 
     /** 그 달의 휴가 근태(ON_VACATION) 일수를 종류별로. employeeIds 가 null 이면 회사 전체. */
     private List<DashboardHome.LeaveUsage> leaveUsage(long cid, Collection<Long> employeeIds, YearMonth month) {
-        List<Object> args = new ArrayList<>(List.of(cid, Date.valueOf(month.atDay(1)), Date.valueOf(month.atEndOfMonth())));
-        String employeeFilter = "";
+        Date from = Date.valueOf(month.atDay(1));
+        Date to = Date.valueOf(month.atEndOfMonth());
+        String attendanceFilter = "";
+        String halfFilter = "";
+        List<Object> args = new ArrayList<>(List.of(cid, from, to));
         if (employeeIds != null) {
-            employeeFilter = " AND a.employee_id = ANY(?)";
+            attendanceFilter = " AND a.employee_id = ANY(?)";
             args.add(employeeIds.toArray(Long[]::new));
         }
+        args.addAll(List.of(cid, from, to));
+        if (employeeIds != null) {
+            halfFilter = " AND r.employee_id = ANY(?)";
+            args.add(employeeIds.toArray(Long[]::new));
+        }
+        // 종일 휴가는 그 달 안의 휴가 근태 일수, 반차는 휴가 근태가 없으니 승인된 반차를 0.5일씩(2026-11-15)
         return jdbc.query("""
-                        SELECT t.id, t.name, count(*) AS days
-                        FROM attendance a
-                             JOIN leave_request r ON r.id = a.leave_request_id AND r.company_id = a.company_id
-                             JOIN leave_type t ON t.id = r.leave_type_id AND t.company_id = r.company_id
-                        WHERE a.company_id = ? AND a.status = 'ON_VACATION' AND a.work_date BETWEEN ? AND ?
-                        """ + employeeFilter + """
+                        SELECT t.id, t.name, sum(u.days) AS days
+                        FROM (SELECT r.leave_type_id, 1.0 AS days
+                              FROM attendance a
+                                   JOIN leave_request r ON r.id = a.leave_request_id AND r.company_id = a.company_id
+                              WHERE a.company_id = ? AND a.status = 'ON_VACATION' AND a.work_date BETWEEN ? AND ?"""
+                        + attendanceFilter + """
 
+                              UNION ALL
+                              SELECT r.leave_type_id, r.days
+                              FROM leave_request r
+                              WHERE r.company_id = ? AND r.half_day IS NOT NULL AND r.start_date BETWEEN ? AND ?
+                                AND r.status IN ('APPROVED', 'CANCEL_REQUESTED')""" + halfFilter + """
+                        ) u
+                        JOIN leave_type t ON t.id = u.leave_type_id AND t.company_id = ?
                         GROUP BY t.id, t.name, t.sort_order ORDER BY t.sort_order, t.id
                         """,
-                (rs, i) -> new DashboardHome.LeaveUsage(rs.getLong("id"), rs.getString("name"), rs.getLong("days")),
-                args.toArray());
+                (rs, i) -> new DashboardHome.LeaveUsage(rs.getLong("id"), rs.getString("name"), rs.getBigDecimal("days")),
+                withCompany(args, cid));
     }
 
     // ------------------------------------------------------------------ 내 조직 (조직장)
@@ -294,5 +310,11 @@ public class DashboardService {
             return null;
         }
         return new DashboardHome.Admin(setup, todos.reassignNeeded(), todos.attendanceCorrections());
+    }
+
+    private static Object[] withCompany(List<Object> args, long cid) {
+        List<Object> all = new ArrayList<>(args);
+        all.add(cid);
+        return all.toArray();
     }
 }

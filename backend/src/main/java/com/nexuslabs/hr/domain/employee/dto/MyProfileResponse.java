@@ -3,7 +3,10 @@ package com.nexuslabs.hr.domain.employee.dto;
 import com.nexuslabs.hr.domain.employee.entity.EmpStatus;
 import com.nexuslabs.hr.domain.employee.entity.FieldType;
 import com.nexuslabs.hr.domain.employee.entity.Gender;
+import com.nexuslabs.hr.global.response.DaysJson;
+import tools.jackson.databind.annotation.JsonSerialize;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,6 +25,7 @@ public record MyProfileResponse(long id, String employeeNo, String name, String 
     public record FieldValue(long fieldDefId, String name, FieldType fieldType, int seq, String value) {
     }
 
-    public record LeaveBalance(String leaveTypeName, int remaining) {
+    public record LeaveBalance(String leaveTypeName,
+                               @JsonSerialize(using = DaysJson.class) BigDecimal remaining) {
     }
 }

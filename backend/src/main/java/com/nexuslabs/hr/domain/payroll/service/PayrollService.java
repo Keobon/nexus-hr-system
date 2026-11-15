@@ -323,8 +323,8 @@ public class PayrollService {
             AttendanceSummary s = m.summary();
             int absenceMinutes = 0;
             for (AttendanceDay d : m.days()) {
-                if (d.status() == AttendanceDayStatus.ABSENT) {
-                    absenceMinutes += calendar.scheduleOn(d.date()).dailyStandardMinutes();
+                if (d.status() == AttendanceDayStatus.ABSENT) {   // 반차인 날은 반나절만(2026-11-15)
+                    absenceMinutes += AttendanceCalculator.absenceMinutes(d, calendar.scheduleOn(d.date()));
                 }
             }
             Map<AttendanceBasis, Integer> minutes = new EnumMap<>(AttendanceBasis.class);

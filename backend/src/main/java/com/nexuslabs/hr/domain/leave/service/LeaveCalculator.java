@@ -4,6 +4,7 @@ import com.nexuslabs.hr.domain.leave.dto.LeaveBalance;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Period;
@@ -76,7 +77,7 @@ public class LeaveCalculator {
         return (int) (type.annualDays() * months / 12);
     }
 
-    /** 한 직원·종류·연도의 잔여(차감 여부와 상관없이). 조정·신청 전 확인에 쓴다. */
+    /** 한 직원·종류·연도의 잔여(차감 여부와 상관없이). 조정·신청 전 확인에 쓴다. 반차가 있으면 0.5일 단위(2026-11-15). */
     public LeaveBalance balance(long companyId, long employeeId, long leaveTypeId, int leaveYear) {
         return jdbc.queryForObject("""
                         SELECT t.id, t.name,
@@ -92,7 +93,7 @@ public class LeaveCalculator {
                         FROM leave_type t WHERE t.id = ? AND t.company_id = ?
                         """.formatted(USED_STATUSES),
                 (rs, i) -> LeaveBalance.of(rs.getLong("id"), rs.getString("name"),
-                        rs.getInt("granted"), rs.getInt("used"), rs.getInt("pending")),
+                        rs.getBigDecimal("granted"), rs.getBigDecimal("used"), rs.getBigDecimal("pending")),
                 employeeId, leaveYear, employeeId, leaveYear, employeeId, leaveYear, leaveTypeId, companyId);
     }
 
@@ -122,11 +123,11 @@ public class LeaveCalculator {
                 WHERE e.company_id = ? AND e.id = ANY(?)
                 ORDER BY e.id, t.sort_order, t.id
                 """.formatted(USED_STATUSES), rs -> {
-            int granted = rs.getInt("granted");
-            int used = rs.getInt("used");
-            int pending = rs.getInt("pending");
+            BigDecimal granted = rs.getBigDecimal("granted");
+            BigDecimal used = rs.getBigDecimal("used");
+            BigDecimal pending = rs.getBigDecimal("pending");
             List<LeaveBalance> list = result.computeIfAbsent(rs.getLong("employee_id"), k -> new ArrayList<>());
-            if (rs.getBoolean("is_active") || granted != 0 || used != 0 || pending != 0) {
+            if (rs.getBoolean("is_active") || granted.signum() != 0 || used.signum() != 0 || pending.signum() != 0) {
                 list.add(LeaveBalance.of(rs.getLong("type_id"), rs.getString("name"), granted, used, pending));
             }
         }, companyId, leaveYear, companyId, leaveYear, companyId, employeeIds.toArray(Long[]::new));

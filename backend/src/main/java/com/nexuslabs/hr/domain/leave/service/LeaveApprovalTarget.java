@@ -5,11 +5,14 @@ import com.nexuslabs.hr.domain.approval.service.ApprovalTarget;
 import com.nexuslabs.hr.domain.approval.service.ApprovalWorkType;
 import com.nexuslabs.hr.domain.approval.service.TargetSummary;
 import com.nexuslabs.hr.domain.attendance.service.AttendanceService;
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.leave.entity.LeaveRequest;
+import com.nexuslabs.hr.global.response.DaysJson;
 import com.nexuslabs.hr.domain.leave.repository.LeaveRequestRepository;
 import com.nexuslabs.hr.global.tenant.TenantContext;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -67,16 +70,24 @@ public class LeaveApprovalTarget implements ApprovalTarget {
         details.put("leaveTypeName", leave.getLeaveType().getName());
         details.put("startDate", leave.getStartDate().toString());
         details.put("endDate", leave.getEndDate().toString());
-        details.put("days", (int) leave.getDays());
+        details.put("days", DaysJson.of(leave.getDays()));
+        details.put("halfDay", leave.getHalfDay() == null ? null : leave.getHalfDay().name());
         details.put("reason", leave.getReason());
         details.put("remaining", leave.getLeaveType().isDeductsBalance()
                 ? calculator.balance(TenantContext.require(), leave.getEmployee().getId(), leave.getLeaveType().getId(),
                         leave.getLeaveYear()).remaining()
                 : null);
+        if (details.get("remaining") != null) {
+            details.put("remaining", DaysJson.of((BigDecimal) details.get("remaining")));
+        }
         return details;
     }
 
     static String title(String prefix, LeaveRequest leave) {
+        if (leave.getHalfDay() != null) {   // 반차 — "휴가 연차 03/11 오전 반차"
+            return "%s %s %s %s".formatted(prefix, leave.getLeaveType().getName(), leave.getStartDate().format(TITLE_DATE),
+                    leave.getHalfDay() == HalfDay.AM ? "오전 반차" : "오후 반차");
+        }
         return "%s %s %s–%s".formatted(prefix, leave.getLeaveType().getName(), leave.getStartDate().format(TITLE_DATE),
                 leave.getEndDate().format(TITLE_DATE));
     }

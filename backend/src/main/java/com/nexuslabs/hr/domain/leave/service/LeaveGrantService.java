@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -148,7 +149,7 @@ public class LeaveGrantService {
         if (request.days() < 0) {
             LeaveBalance balance = calculator.balance(user.companyId(), request.employeeId(), request.leaveTypeId(),
                     request.leaveYear());
-            if (balance.remaining() + request.days() < 0) {
+            if (balance.remaining().add(BigDecimal.valueOf(request.days())).signum() < 0) {
                 throw new BusinessException(ErrorCode.LEAVE_INSUFFICIENT_BALANCE,
                         Map.of("remaining", balance.remaining(), "requested", request.days()));
             }

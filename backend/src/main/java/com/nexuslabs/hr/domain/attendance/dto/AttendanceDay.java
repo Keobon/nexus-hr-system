@@ -1,5 +1,6 @@
 package com.nexuslabs.hr.domain.attendance.dto;
 
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.attendance.entity.RequestStatus;
 import com.nexuslabs.hr.domain.attendance.entity.WorkType;
 import com.nexuslabs.hr.domain.attendance.service.AttendanceDayStatus;
@@ -13,16 +14,17 @@ import java.time.OffsetDateTime;
  * 계산값이 모두 null 이고, 근무일이 아닌데 기록도 없는 날은 status 도 null 이다.
  * attendanceId 는 그날 근태 행의 ID(정정 PATCH /api/attendances/{id} 용) — 행이 없는 날은 null 이다.
  * explanationStatus 는 그날 가장 최근 근태 소명(F-ATT-10)의 상태 — 소명이 없으면 null 이다.
+ * halfDay 는 그날 승인된 반차(AM · PM, 2026-11-15) — 출근 · 퇴근 기준을 반나절만큼 옮겨 판정했다는 뜻, 없으면 null 이다.
  */
 public record AttendanceDay(LocalDate date, boolean isWorkday, String holidayName, AttendanceDayStatus status,
                             WorkType workType, OffsetDateTime checkInAt, OffsetDateTime checkOutAt, Boolean late,
                             Boolean earlyLeave, Integer workMinutes, Integer overtimeMinutes, Integer nightMinutes,
                             Integer holidayMinutes, Integer holidayOvertimeMinutes, Integer approvedOvertimeMinutes,
-                            Long attendanceId, RequestStatus explanationStatus) {
+                            Long attendanceId, RequestStatus explanationStatus, HalfDay halfDay) {
 
     public AttendanceDay withRecord(Long id, RequestStatus explanation) {
         return new AttendanceDay(date, isWorkday, holidayName, status, workType, checkInAt, checkOutAt, late, earlyLeave,
                 workMinutes, overtimeMinutes, nightMinutes, holidayMinutes, holidayOvertimeMinutes,
-                approvedOvertimeMinutes, id, explanation);
+                approvedOvertimeMinutes, id, explanation, halfDay);
     }
 }

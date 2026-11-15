@@ -1,5 +1,6 @@
 package com.nexuslabs.hr.domain.leave.controller;
 
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.leave.dto.LeaveCancelRequest;
 import com.nexuslabs.hr.domain.leave.dto.LeavePreview;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestCreate;
@@ -44,8 +45,9 @@ public class LeaveRequestController {
     @GetMapping("/api/me/leave-requests/preview")
     public ApiResponse<LeavePreview> preview(@CurrentUser LoginUser user, @RequestParam long leaveTypeId,
                                              @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ApiResponse.ok(leaveRequestService.preview(user, leaveTypeId, startDate, endDate));
+                                             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+                                             @RequestParam(required = false) HalfDay halfDay) {
+        return ApiResponse.ok(leaveRequestService.preview(user, leaveTypeId, startDate, endDate, halfDay));
     }
 
     @PostMapping("/api/me/leave-requests")
