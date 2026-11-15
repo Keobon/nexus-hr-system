@@ -11,7 +11,7 @@ import { meKey } from '../../../api/auth';
 import { fetchAllPages } from '../../../api/employees';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
-import { labelOf } from '../../../constants/labels';
+import { halfSuffix, labelOf } from '../../../constants/labels';
 import { PageHead } from '../../hr/parts';
 import { Pill, Table } from '../../hr/attendance/shared';
 import '../../hr/attendance/at.css';
@@ -42,7 +42,7 @@ function cells(it) {
   switch (it.workType) {
     case 'LEAVE':
     case 'LEAVE_CANCEL':
-      return { what: d.leaveTypeName, when: range(d.startDate, d.endDate), amount: d.days != null ? `${d.days}일` : '–', why: it.workType === 'LEAVE_CANCEL' ? d.cancelReason || d.reason : d.reason, remain: d.remaining };
+      return { what: d.leaveTypeName, when: range(d.startDate, d.endDate), amount: d.days != null ? `${d.days}일${halfSuffix(d)}` : '–', why: it.workType === 'LEAVE_CANCEL' ? d.cancelReason || d.reason : d.reason, remain: d.remaining };
     case 'OVERTIME':
       return { what: `${hm(d.plannedStart)}–${hm(d.plannedEnd)}`, when: d.workDate, amount: hhmm(it.requestedMinutes), why: d.reason };
     case 'BUSINESS_TRIP':

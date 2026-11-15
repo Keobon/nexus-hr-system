@@ -25,6 +25,7 @@ import { useMe } from '../../../auth/useMe';
 import ApprovalSteps from '../../../components/common/ApprovalSteps';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
+import { halfSuffix } from '../../../constants/labels';
 import iconChevron from '../../../assets/figma/icon-chevron.svg';
 import './leave.css';
 
@@ -48,6 +49,18 @@ function period(start, end) {
 /** 결재선 단계 — 미리보기에 stepLabel(조직장 · 직책명 등)이 오면 "조직장(윤서연)", 없으면 이름만(노션 수정사항 95) */
 const stepName = (s) => (s.stepLabel ? `${s.stepLabel}(${s.approverName})` : s.approverName);
 const fmtDays = (n) => `${Number.isInteger(n) ? n : n.toFixed(1)}일`;
+/** 'HH:mm' + 분 → 'HH:mm' */
+const addMinutes = (hm, min) => {
+  if (!hm) return '--:--';
+  const [h, m] = hm.split(':').map(Number);
+  const t = h * 60 + m + min;
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+};
+const UNITS = [
+  ['', '종일'],
+  ['AM', '오전 반차'],
+  ['PM', '오후 반차'],
+];
 
 function readDraft() {
   try {
@@ -87,8 +100,12 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
   const [startDate, setStartDate] = useState(draft?.startDate ?? '');
   const [endDate, setEndDate] = useState(draft?.endDate ?? '');
   const [reason, setReason] = useState(draft?.reason ?? '');
+  // 반차(오전 · 오후, 0.5일) — 잔여에서 차감하는 종류만, 하루짜리(종료일 = 시작일)
+  const [halfDay, setHalfDay] = useState(draft?.halfDay ?? '');
+  const halfOk = !!types.find((t) => t.id === typeId)?.deductsBalance;
+  const half = halfOk ? halfDay : '';
 
-  const params = useDebounced({ leaveTypeId: typeId, startDate, endDate });
+  const params = useDebounced({ leaveTypeId: typeId, startDate, endDate: half ? startDate : endDate, ...(half ? { halfDay: half } : {}) });
   const ready = params.leaveTypeId && params.startDate && params.endDate;
   const preview = useQuery({
     queryKey: ['leave-preview', params],
@@ -103,7 +120,7 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
   const others = types.slice(3);
 
   const submit = useMutation({
-    mutationFn: () => requestLeave({ leaveTypeId: typeId, startDate, endDate, reason: reason.trim() || null }),
+    mutationFn: () => requestLeave({ leaveTypeId: typeId, startDate, endDate: half ? startDate : endDate, reason: reason.trim() || null, ...(half ? { halfDay: half } : {}) }),
     onSuccess: (data) => {
       notify.success(data?.status === 'APPROVED' ? '휴가가 바로 승인되었습니다' : '결재를 요청했습니다', data);
       try {
@@ -114,6 +131,7 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
       setStartDate('');
       setEndDate('');
       setReason('');
+      setHalfDay('');
       queryClient.invalidateQueries({ queryKey: myLeaveRequestsKey });
       queryClient.invalidateQueries({ queryKey: ['leave-balances'] });
       queryClient.invalidateQueries({ queryKey: dashboardKey });
@@ -125,7 +143,7 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
   // 임시 저장 — 이 브라우저에만 남는 작성 중 내용
   const saveDraft = () => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ typeId, startDate, endDate, reason }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ typeId, startDate, endDate, reason, halfDay: half }));
       notify.success('작성 중인 내용을 이 브라우저에 임시 저장했습니다');
     } catch {
       notify.error({ message: '임시 저장을 할 수 없는 환경입니다' });
@@ -163,9 +181,23 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
           )}
         </div>
 
+        {halfOk && (
+          <div className="lv-field">
+            <span className="lv-label">단위</span>
+            <div className="lv-types" role="radiogroup" aria-label="휴가 단위">
+              {UNITS.map(([v, l]) => (
+                <button key={v || 'full'} type="button" role="radio" aria-checked={half === v} className={`lv-type${half === v ? ' is-active' : ''}`} onClick={() => setHalfDay(v)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            {half && <span className="lv-muted">반차는 하루만 신청합니다(0.5일). 같은 날 오전 · 오후를 모두 쓰려면 종일로 신청하세요.</span>}
+          </div>
+        )}
+
         <div className="lv-split">
           <div className="lv-field">
-            <label htmlFor="lv-start">시작일</label>
+            <label htmlFor="lv-start">{half ? '날짜' : '시작일'}</label>
             <div className="lv-select is-date" onClick={openPicker}>
               <input id="lv-start" type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); if (!endDate || e.target.value > endDate) setEndDate(e.target.value); }} />
               <img src={iconChevron} alt="" />
@@ -174,7 +206,7 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
           <div className="lv-field">
             <label htmlFor="lv-end">종료일</label>
             <div className="lv-select is-date" onClick={openPicker}>
-              <input id="lv-end" type="date" min={startDate || undefined} value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <input id="lv-end" type="date" min={startDate || undefined} value={half ? startDate : endDate} disabled={!!half} onChange={(e) => setEndDate(e.target.value)} />
               <img src={iconChevron} alt="" />
             </div>
           </div>
@@ -183,8 +215,9 @@ function RequestForm({ types, schedule, dailyHours, onDone }) {
         <div className="lv-field">
           <span className="lv-muted" style={{ fontWeight: 600 }}>{`시간 설정 (1일 = ${dailyHours}시간)`}</span>
           <div className="lv-times">
-            <span className="lv-time">{schedule?.startTime ?? '--:--'}</span>
-            <span className="lv-time">{schedule?.endTime ?? '--:--'}</span>
+            {/* 반차는 반나절(1일 소정근로시간의 절반)만 일한다 — 오전 반차는 오후, 오후 반차는 오전 */}
+            <span className="lv-time">{half === 'AM' ? addMinutes(schedule?.startTime, (dailyHours * 60) / 2 + (schedule?.breakMinutes ?? 0)) : schedule?.startTime ?? '--:--'}</span>
+            <span className="lv-time">{half === 'PM' ? addMinutes(schedule?.startTime, (dailyHours * 60) / 2) : schedule?.endTime ?? '--:--'}</span>
             <span className="lv-time is-total">{p ? `${fmtDays(p.days)} / ${hours}시간` : '- / -'}</span>
           </div>
           {p?.balance && type?.deductsBalance && (
@@ -306,7 +339,7 @@ function DetailModal({ id, onClose }) {
       ) : (
         <div className="lv-fields" style={{ gap: '0.75rem' }}>
           <div className="lv-tr" style={{ gridTemplateColumns: '1fr auto' }}>
-            <span>{`${period(d.startDate, d.endDate)} · ${d.leaveTypeName} ${fmtDays(d.days)}`}</span>
+            <span>{`${period(d.startDate, d.endDate)} · ${d.leaveTypeName} ${fmtDays(d.days)}${halfSuffix(d)}`}</span>
             <span className={`lv-status ${d.status}`}>{STATUS_LABEL[d.status]}</span>
           </div>
           <span className="lv-muted">{`사유: ${d.reason || '-'}`}</span>
@@ -390,7 +423,7 @@ function HistoryCard({ requests, onOpen, onApply }) {
         {rows.map((r) => (
           <div key={r.id} className="lv-tr is-click" role="button" tabIndex={0} onClick={() => onOpen(r.id)} onKeyDown={(e) => e.key === 'Enter' && onOpen(r.id)}>
             <span>{period(r.startDate, r.endDate)}</span>
-            <span>{`${r.leaveTypeName} · ${fmtDays(r.days)}`}</span>
+            <span>{`${r.leaveTypeName} · ${fmtDays(r.days)}${halfSuffix(r)}`}</span>
             <span className={`lv-reason${r.status === 'REJECTED' ? ' is-red' : ''}`}>{(r.status === 'REJECTED' && r.rejectReason) || r.reason || '-'}</span>
             <span>
               <span className={`lv-status ${r.status}`}>{STATUS_LABEL[r.status]}</span>
@@ -444,7 +477,7 @@ function StatsCard({ requests, dailyHours, leaveYear }) {
           <div key={r.id} className="lv-mini-tr">
             <span>{period(r.startDate, r.endDate)}</span>
             <span className="lv-reason">{r.leaveTypeName}</span>
-            <span>{fmtDays(r.days)}</span>
+            <span>{`${fmtDays(r.days)}${halfSuffix(r)}`}</span>
           </div>
         ))}
       </div>
@@ -565,7 +598,7 @@ function CalendarCard({ requests, me, full }) {
         {events.length === 0 && <span className="is-team">이 달의 휴가 일정이 없습니다.</span>}
         {events.slice(0, 3).map((e) => (
           <span key={`${e.kind}-${e.id ?? `${e.employeeId}-${e.startDate}`}`} className={`is-${e.kind}`}>
-            {`${e.startDate.slice(5).replace('-', '/')}${e.startDate !== e.endDate ? `–${e.endDate.slice(8)}` : ''}  ${e.who} · ${e.leaveTypeName} (${e.kind === 'team' && e.status === 'PENDING' ? '팀 · 승인 대기' : label[e.kind]})`}
+            {`${e.startDate.slice(5).replace('-', '/')}${e.startDate !== e.endDate ? `–${e.endDate.slice(8)}` : ''}  ${e.who} · ${e.leaveTypeName}${halfSuffix(e)} (${e.kind === 'team' && e.status === 'PENDING' ? '팀 · 승인 대기' : label[e.kind]})`}
           </span>
         ))}
       </div>
@@ -667,7 +700,7 @@ export default function MyLeavePage() {
         <div className="lv-card lv-sum">
           <span className="lv-muted">다가오는 휴가</span>
           <p className="lv-sum-big lv-ellipsis">
-            {upcoming ? `${dayjs(upcoming.startDate).format('M월 D일')} · ${upcoming.leaveTypeName} ${fmtDays(upcoming.days)}` : '예정된 휴가 없음'}
+            {upcoming ? `${dayjs(upcoming.startDate).format('M월 D일')} · ${upcoming.leaveTypeName} ${fmtDays(upcoming.days)}${halfSuffix(upcoming)}` : '예정된 휴가 없음'}
           </p>
           <span className={`lv-muted lv-ellipsis${upcoming?.status === 'PENDING' ? ' lv-pending-text' : ''}`}>
             {upcoming?.status === 'PENDING' && upcoming.currentStep

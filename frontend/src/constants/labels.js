@@ -5,6 +5,7 @@
 const L = (label, color = 'default') => ({ label, color });
 
 export const LABELS = {
+  halfDay: { AM: L('오전 반차'), PM: L('오후 반차') },
   leaveStatus: {
     PENDING: L('승인대기', 'gold'),
     APPROVED: L('승인완료', 'green'),
@@ -253,6 +254,9 @@ export function labelOf(group, code) {
   if (code === null || code === undefined) return '-';
   return LABELS[group]?.[code]?.label ?? '-';
 }
+
+/** 반차면 ' · 오전 반차', 종일이면 '' — 휴가 신청 행(halfDay)에 붙인다 */
+export const halfSuffix = (r) => (r?.halfDay ? ` · ${labelOf('halfDay', r.halfDay)}` : '');
 
 /** Select 의 options — [{ value, label }] */
 export function optionsOf(group) {

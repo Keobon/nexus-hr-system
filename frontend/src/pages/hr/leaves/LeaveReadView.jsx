@@ -8,7 +8,7 @@ import { useMe } from '../../../auth/useMe';
 import { getLeaveBalancePage, getLeaveRequestPage } from '../../../api/leaves';
 import { fetchAllPages } from '../../../api/employees';
 import { errorMessage } from '../../../constants/errors';
-import { labelOf } from '../../../constants/labels';
+import { halfSuffix, labelOf } from '../../../constants/labels';
 import { PageHead } from '../parts';
 import { Field, OrgField, Pill, Table } from '../attendance/shared';
 import { DetailDrawer, STATUS, TONE, period, stepText } from './RequestsTab';
@@ -91,7 +91,7 @@ export default function LeaveReadView() {
                 <td>{r.orgUnitName}</td>
                 <td>{r.leaveTypeName}</td>
                 <td>{period(r.startDate, r.endDate)}</td>
-                <td>{`${r.days}일`}</td>
+                <td>{`${r.days}일${halfSuffix(r)}`}</td>
                 <td>
                   <Pill tone={TONE[r.status]}>{labelOf('leaveStatus', r.status)}</Pill>
                 </td>

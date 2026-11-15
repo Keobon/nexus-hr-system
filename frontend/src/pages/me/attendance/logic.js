@@ -1,6 +1,7 @@
 // 출퇴근 화면 계산 도우미 — 근태 규칙(지각 · 연장 등)은 서버 값 그대로 쓰고,
 // 여기서는 날짜 범위를 고르고 서버가 준 분(minute) 값을 더하기만 한다(프론트 가이드: 계산을 다시 하지 않는다).
 import dayjs from 'dayjs';
+import { labelOf } from '../../../constants/labels';
 
 export const WEEK_LIMIT = 52 * 60; // 주 52시간(연장 포함 법정 한도)
 export const WEEK_OT_LIMIT = 12 * 60; // 주 연장 12시간
@@ -64,6 +65,11 @@ export function dayBadge(day, today) {
 
 /** 하루 근태 → 달력 칸(Figma 색 이름 · 글자) */
 export function dayCell(day, today) {
+  const cell = baseCell(day, today);
+  return day?.halfDay ? { ...cell, label: `${cell.label} · 반차` } : cell;
+}
+
+function baseCell(day, today) {
   if (!day) return { cls: 'off', label: '—' };
   const s = day.status;
   if (!s) return { cls: 'off', label: day.holidayName ?? (day.isWorkday ? '—' : '휴무') };
@@ -105,6 +111,7 @@ export const EXPLANATION_BADGE = {
 export function dayNote(day) {
   if (!day) return '-';
   if (day.holidayName) return day.holidayName;
+  if (day.halfDay) return labelOf('halfDay', day.halfDay);
   if (day.checkOutAt && day.checkOutAt.slice(0, 10) !== day.date) return '자정 넘긴 퇴근';
   if (day.workType === 'REMOTE') return '재택 근무';
   if (day.workType === 'FIELD') return '외근';
