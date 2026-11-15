@@ -128,3 +128,56 @@
   color: #475569;
   font-size: 0.8125rem;
 }
+
+/* 선택 · 전체 승인(2026-11-15) */
+.ap-bulk {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ap-bulk > span {
+  margin-right: auto;
+}
+
+.ap-btn.is-outline {
+  border: 1px solid #10b981;
+  background: #fff;
+  color: #059669;
+}
+
+.ap-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ap-bulk-label {
+  display: block;
+  margin: 0.75rem 0 0.375rem;
+  color: #475569;
+  font-size: 0.8125rem;
+}
+
+.ap-bulk-fail {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ap-bulk-fail li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+.ap-bulk-fail span {
+  color: #dc2626;
+}
