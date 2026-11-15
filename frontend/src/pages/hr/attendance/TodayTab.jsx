@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { getTodayPage } from '../../../api/attendanceAdmin';
+import { useMe } from '../../../auth/useMe';
 import { fetchAllPages } from '../../../api/employees';
 import { errorMessage } from '../../../constants/errors';
 import { labelOf } from '../../../constants/labels';
@@ -14,6 +15,10 @@ const TEXT = { OFFICE: '출근', BEFORE_WORK: '미출근' };
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
 
 export default function TodayTab() {
+  const { me, can } = useMe();
+  // 팀 범위(조직장)는 내 조직만 — 요약 문구를 "전사"가 아니라 "내 조직"으로
+  const whole = can('ATTENDANCE_MANAGE') || (me?.permissions ?? []).some((p) => p.code === 'ATTENDANCE_READ' && p.scope === 'ALL');
+  const scopeName = whole ? '전사' : '내 조직';
   const nos = useEmployeeNos();
   const f = useApplied({ orgUnitId: null, q: '' });
   // 전사 요약은 조건과 무관 — 전체를 한 번 읽어 센다
@@ -41,13 +46,13 @@ export default function TodayTab() {
   return (
     <>
       <div className="at-summary">
-        <p className="at-muted is-strong">{`전사 전체 현황 · ${now.format('YYYY.MM.DD')} (${WEEK[now.day()]}) ${now.format('HH:mm')} 기준`}</p>
+        <p className="at-muted is-strong">{`${scopeName} 전체 현황 · ${now.format('YYYY.MM.DD')} (${WEEK[now.day()]}) ${now.format('HH:mm')} 기준`}</p>
         <div className="at-tiles">
           {tiles.map(([label, n, cls]) => (
             <div key={label} className={`at-tile${cls ? ` ${cls}` : ''}`}>{`${label} ${all.isLoading ? '–' : n}`}</div>
           ))}
         </div>
-        <p className="at-muted">전사 현황은 아래 조직·직원 조회 조건과 무관합니다.</p>
+        <p className="at-muted">{`${scopeName} 현황은 아래 조직·직원 조회 조건과 무관합니다.`}</p>
       </div>
 
       <div className="at-filters">
