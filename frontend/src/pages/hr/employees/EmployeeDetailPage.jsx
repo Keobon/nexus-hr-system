@@ -271,7 +271,8 @@ function EditModal({ employee: e, onClose }) {
 
 /**
  * MODAL_employment_status — 퇴직은 MODAL_confirm 을 한 번 더. 퇴직이면 퇴사 사유(코드)도 필수로 받는다 — 직원 데이터는 지우지 않고
- * 퇴사일(발효일) · 사유를 남겨 퇴사 통계에 쓴다. 발효일 = 퇴사일 = 마지막 근무일 다음 날(그날부터 재직 인원에서 빠진다)
+ * 퇴사일(발효일) · 사유를 남겨 퇴사 통계에 쓴다. 발효일 = 퇴사일 = 마지막 근무일 다음 날(그날부터 재직 인원에서 빠진다).
+ * 퇴직은 헷갈리지 않게 "마지막 근무일"을 받고 다음 날을 발효일로 보낸다(2026-11-15 역할별 점검)
  */
 function StatusModal({ employee: e, target, onClose }) {
   const notify = useNotify();
@@ -279,6 +280,8 @@ function StatusModal({ employee: e, target, onClose }) {
   const [form] = Form.useForm();
   const [pending, setPending] = useState(null);
   const status = Form.useWatch('status', form) ?? target;
+  const lastWorkDay = Form.useWatch('lastWorkDay', form);
+  const resigning = status === 'RESIGNED';
 
   const save = useMutation({
     mutationFn: (body) => changeEmploymentStatus(e.id, body),
@@ -292,7 +295,7 @@ function StatusModal({ employee: e, target, onClose }) {
 
   const toBody = (v) => ({
     status: v.status,
-    effectiveDate: v.effectiveDate.format('YYYY-MM-DD'),
+    effectiveDate: (v.status === 'RESIGNED' ? v.lastWorkDay.add(1, 'day') : v.effectiveDate).format('YYYY-MM-DD'),
     reason: v.reason.trim(),
     ...(v.status === 'RESIGNED' && { resignReason: v.resignReason }),
   });
@@ -306,24 +309,30 @@ function StatusModal({ employee: e, target, onClose }) {
       <Modal open={!pending} title="재직상태 변경" footer={null} onCancel={onClose} width={440} className="hr-modal" destroyOnHidden centered>
         <p className="hr-modal-sub">{[e.name, e.orgUnitName, e.jobGradeName].filter(Boolean).join(' · ')}</p>
         <Form form={form} layout="vertical" requiredMark={false} onFinish={submit}
-          initialValues={{ status: target, effectiveDate: dayjs(), reason: '' }}>
+          initialValues={{ status: target, effectiveDate: dayjs(), lastWorkDay: dayjs().subtract(1, 'day'), reason: '' }}>
           <Form.Item label="현재 상태"><EmpStatusBadge status={e.status} /></Form.Item>
           <Form.Item name="status" label="변경할 상태" rules={[{ required: true, message: '상태를 선택하세요' }]}>
             <Select options={optionsOf('employmentStatus').filter((o) => o.value !== e.status)} />
           </Form.Item>
-          {status === 'RESIGNED' && (
+          {resigning && (
             <Form.Item name="resignReason" label="퇴사 사유" rules={[{ required: true, message: '퇴사 사유를 고르세요' }]}>
               <Select placeholder="사유 선택" options={optionsOf('resignReason')} />
             </Form.Item>
           )}
-          <Form.Item name="reason" label={status === 'RESIGNED' ? '상세 사유' : '사유'} rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
-            <Input.TextArea rows={3} maxLength={255} placeholder={status === 'RESIGNED' ? '예: 타사 이직(개발 직군)' : '예: 육아휴직 신청'} />
+          <Form.Item name="reason" label={resigning ? '상세 사유' : '사유'} rules={[{ required: true, whitespace: true, message: '사유를 입력하세요' }]}>
+            <Input.TextArea rows={3} maxLength={255} placeholder={resigning ? '예: 타사 이직(개발 직군)' : '예: 육아휴직 신청'} />
           </Form.Item>
-          <Form.Item name="effectiveDate" label={status === 'RESIGNED' ? '퇴사일' : '발효일'} rules={[{ required: true, message: '발효일을 선택하세요' }]}
-            extra={status === 'RESIGNED' ? '퇴직은 마지막 근무일 다음 날을 고릅니다.' : undefined}>
-            <DatePicker className="full-width" format="YYYY-MM-DD" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
-          </Form.Item>
-          <ModalFoot onCancel={onClose} okText="확인" busy={save.isPending} danger={status === 'RESIGNED'} />
+          {resigning ? (
+            <Form.Item name="lastWorkDay" label="마지막 근무일" rules={[{ required: true, message: '마지막 근무일을 선택하세요' }]}
+              extra={lastWorkDay ? `퇴사일(발효일)은 다음 날 ${lastWorkDay.add(1, 'day').format('YYYY-MM-DD')}로 기록되고, 그날부터 재직 인원에서 빠집니다.` : undefined}>
+              <DatePicker className="full-width" format="YYYY-MM-DD" disabledDate={(d) => d.isAfter(dayjs().subtract(1, 'day'), 'day')} />
+            </Form.Item>
+          ) : (
+            <Form.Item name="effectiveDate" label="발효일" rules={[{ required: true, message: '발효일을 선택하세요' }]}>
+              <DatePicker className="full-width" format="YYYY-MM-DD" disabledDate={(d) => d.isAfter(dayjs(), 'day')} />
+            </Form.Item>
+          )}
+          <ModalFoot onCancel={onClose} okText="확인" busy={save.isPending} danger={resigning} />
         </Form>
       </Modal>
       <ConfirmModal open={!!pending} danger okText="퇴직 처리"

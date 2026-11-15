@@ -2,6 +2,7 @@
 // 정산 전: 수동 입력 → 미리보기(POST preview, 저장 안 함) → 확정(같은 입력으로 POST, 귀속 월이 끝난 뒤에만)
 // 정산 후: 확정 → 지급완료. 지급 전이면 [확정 취소](사유)로 그 달을 다시 정산하고, 지급완료 뒤 정정은 다음 달 소급 조정으로(서버 규칙)
 import { useState } from 'react';
+import dayjs from 'dayjs';
 import { App, DatePicker, Input, InputNumber, Modal, Select, Spin } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchAllPages } from '../../../api/employees';
@@ -38,7 +39,29 @@ export default function RunTab({ month, setMonth, manage, onUnregistered }) {
   const options = monthOptions(runs.data);
   if (run) return <SettledRun key={run.id} run={run} options={options} setMonth={setMonth} manage={manage} />;
   if (!manage) return <UnsettledReadonly month={month} options={options} setMonth={setMonth} />;
-  return <DraftRun key={month} month={month} options={options} setMonth={setMonth} onUnregistered={onUnregistered} />;
+  return (
+    <>
+      <EarlierUnsettled runs={runs.data} month={month} setMonth={setMonth} />
+      <DraftRun key={month} month={month} options={options} setMonth={setMonth} onUnregistered={onUnregistered} />
+    </>
+  );
+}
+
+/**
+ * 고른 달보다 앞에 아직 정산하지 않은 달이 있으면 안내 — 화면이 이번 달을 먼저 열어 지난달을 건너뛰지 않게(2026-11-15 역할별 점검).
+ * 마지막으로 정산한 달(취소 제외)의 다음 달이 고른 달보다 앞이면 그 달이 미정산이다. 정산 기록이 없으면 안내하지 않는다
+ */
+function EarlierUnsettled({ runs, month, setMonth }) {
+  const settled = runs.filter((r) => r.status !== 'CANCELLED').map((r) => r.payMonth).sort();
+  if (settled.length === 0) return null;
+  const next = dayjs(`${settled[settled.length - 1]}-01`).add(1, 'month').format('YYYY-MM');
+  if (next >= month) return null;
+  return (
+    <div className="pr-alert" role="status" style={{ marginBottom: '1rem' }}>
+      <span>{`${ym(next)} 급여가 아직 정산되지 않았습니다. 급여는 달 순서대로 정산하세요.`}</span>
+      <button type="button" className="hr-btn is-secondary is-14" onClick={() => setMonth(next)}>{`${ym(next)}로 가기`}</button>
+    </div>
+  );
 }
 
 /* ───── 위 카드 — 귀속 월 · 지급일 · 상태 · 급여 대장 ───── */
