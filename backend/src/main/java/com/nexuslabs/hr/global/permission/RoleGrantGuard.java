@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -41,12 +42,41 @@ public class RoleGrantGuard {
 
     /** 만들거나 바꿀 역할의 권한이 모두 내 권한 안에 있어야 한다 — 아니면 FORBIDDEN. */
     public void requireWithin(LoginUser user, Map<PermissionCode, PermissionScope> grants) {
+        if (!covers(permissionReader.permissionsOf(user), grants)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "내 권한보다 넓은 역할은 만들거나 주거나 관리할 수 없습니다");
+        }
+    }
+
+    /** 회사의 역할마다 내 권한 안인지 — 계정 · 역할 목록이 버튼 · 선택지를 미리 거르게(2026-11-15). */
+    public Map<Long, Boolean> withinByRole(LoginUser user) {
+        Map<Long, Map<PermissionCode, PermissionScope>> grants = new HashMap<>();
+        jdbc.query("""
+                        SELECT r.id AS role_id, p.permission_code::text AS code, p.scope::text AS scope
+                        FROM role r LEFT JOIN role_permission p ON p.role_id = r.id AND p.company_id = r.company_id
+                        WHERE r.company_id = ?
+                        """,
+                rs -> {
+                    Map<PermissionCode, PermissionScope> g = grants.computeIfAbsent(rs.getLong("role_id"),
+                            k -> new EnumMap<>(PermissionCode.class));
+                    if (rs.getString("code") != null) {
+                        g.put(PermissionCode.valueOf(rs.getString("code")), PermissionScope.valueOf(rs.getString("scope")));
+                    }
+                },
+                user.companyId());
         Map<PermissionCode, PermissionScope> mine = permissionReader.permissionsOf(user);
+        Map<Long, Boolean> result = new HashMap<>();
+        grants.forEach((roleId, g) -> result.put(roleId, covers(mine, g)));
+        return result;
+    }
+
+    /** grants 의 권한이 모두 mine 에 있고, mine 이 팀 범위면 grants 도 팀 범위. */
+    private static boolean covers(Map<PermissionCode, PermissionScope> mine, Map<PermissionCode, PermissionScope> grants) {
         for (Map.Entry<PermissionCode, PermissionScope> grant : grants.entrySet()) {
             PermissionScope have = mine.get(grant.getKey());
             if (have == null || (have == PermissionScope.TEAM && grant.getValue() == PermissionScope.ALL)) {
-                throw new BusinessException(ErrorCode.FORBIDDEN, "내 권한보다 넓은 역할은 만들거나 주거나 관리할 수 없습니다");
+                return false;
             }
         }
+        return true;
     }
 }

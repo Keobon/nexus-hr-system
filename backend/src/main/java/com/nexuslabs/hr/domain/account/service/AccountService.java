@@ -54,13 +54,14 @@ public class AccountService {
     private static final String SELECT = """
             SELECT e.id, e.employee_no, e.name, e.email, o.name AS org_unit_name, r.id AS role_id,
                    r.name AS role_name, a.is_active, a.locked_until, a.last_login_at,
-                   COALESCE(a.locked_until > ?, FALSE) AS locked
+                   COALESCE(a.locked_until > ?, FALSE) AS locked, e.status::text = 'RESIGNED' AS resigned
             """ + FROM;
 
     private static final RowMapper<AccountRow> ROW_MAPPER = (rs, i) -> new AccountRow(rs.getLong("id"),
             rs.getString("employee_no"), rs.getString("name"), rs.getString("email"), rs.getString("org_unit_name"),
             rs.getLong("role_id"), rs.getString("role_name"), rs.getBoolean("is_active"), rs.getBoolean("locked"),
-            rs.getObject("locked_until", OffsetDateTime.class), rs.getObject("last_login_at", OffsetDateTime.class));
+            rs.getObject("locked_until", OffsetDateTime.class), rs.getObject("last_login_at", OffsetDateTime.class),
+            rs.getBoolean("resigned"), false);
 
     private static final Set<String> PATCH_FIELDS = Set.of("roleId", "active");
 
@@ -137,7 +138,9 @@ public class AccountService {
         pageArgs.add(pageable.getOffset());
         List<AccountRow> rows = jdbc.query(SELECT + where + orderBy(pageable.getSort()) + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, pageArgs.toArray());
-        return new PageImpl<>(rows, pageable, total);
+        Map<Long, Boolean> within = roleGrantGuard.withinByRole(user);
+        return new PageImpl<>(rows.stream().map(r -> r.withManageable(within.getOrDefault(r.roleId(), false))).toList(),
+                pageable, total);
     }
 
     /**
@@ -240,9 +243,10 @@ public class AccountService {
     }
 
     private AccountRow row(LoginUser user, long employeeId) {
-        return jdbc.query(SELECT + " WHERE a.company_id = ? AND a.employee_id = ?", ROW_MAPPER,
+        AccountRow row = jdbc.query(SELECT + " WHERE a.company_id = ? AND a.employee_id = ?", ROW_MAPPER,
                         OffsetDateTime.now(clock), user.companyId(), employeeId).stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+        return row.withManageable(roleGrantGuard.withinByRole(user).getOrDefault(row.roleId(), false));
     }
 
     /** 대상 계정을 잠그고 읽는다. 다른 회사 직원이면 404. */

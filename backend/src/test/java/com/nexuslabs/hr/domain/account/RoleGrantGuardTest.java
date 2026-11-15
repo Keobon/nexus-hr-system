@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -121,6 +122,47 @@ class RoleGrantGuardTest {
         changeRole(admin, kim, role("감사")).andExpect(status().isOk());
         as(hr, post("/api/accounts/" + kim.id() + "/reset-password")).andExpect(status().isForbidden());
         changeRole(hr, kim, role("직원")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 목록은_내가_다룰_수_있는_계정과_줄_수_있는_역할을_알려_준다() throws Exception {
+        TestFixture.Employee gone = fixture.employee(company.id(), company.rootOrgUnitId(), "직원", false);
+        jdbc.update("UPDATE employee SET status = 'RESIGNED', resign_date = '2026-01-01', resign_reason = 'ETC' WHERE id = ?",
+                gone.id());
+        String row = "$.data.content[?(@.employeeId == %d)].%s";
+        as(hr, get("/api/accounts").param("size", "50")).andExpect(status().isOk())
+                .andExpect(jsonPath(row.formatted(admin.id(), "manageable")).value(contains(false)))
+                .andExpect(jsonPath(row.formatted(kim.id(), "manageable")).value(contains(true)))
+                .andExpect(jsonPath(row.formatted(hr.id(), "manageable")).value(contains(true)))
+                .andExpect(jsonPath(row.formatted(kim.id(), "resigned")).value(contains(false)))
+                .andExpect(jsonPath(row.formatted(gone.id(), "resigned")).value(contains(true)));
+        as(admin, get("/api/accounts").param("size", "50"))
+                .andExpect(jsonPath(row.formatted(admin.id(), "manageable")).value(contains(true)));
+        // 계정을 바꾼 응답에도 같은 값
+        changeRole(hr, kim, role("경영진")).andExpect(jsonPath("$.data.manageable").value(true))
+                .andExpect(jsonPath("$.data.resigned").value(false));
+
+        String grantable = "$.data[?(@.name == '%s')].grantable";
+        as(hr, get("/api/roles")).andExpect(status().isOk())
+                .andExpect(jsonPath(grantable.formatted("최고 관리자")).value(contains(false)))
+                .andExpect(jsonPath(grantable.formatted("인사 담당")).value(contains(true)))
+                .andExpect(jsonPath(grantable.formatted("경영진")).value(contains(true)))
+                .andExpect(jsonPath(grantable.formatted("직원")).value(contains(true)));
+        as(admin, get("/api/roles"))
+                .andExpect(jsonPath(grantable.formatted("최고 관리자")).value(contains(true)));
+        // ROLE_MANAGE 없이 EMPLOYEE_MANAGE 만 있으면(직원 등록) 기본 역할만 줄 수 있다
+        long registrar = jdbc.queryForObject(
+                "INSERT INTO role (company_id, name, description, is_system) VALUES (?, '등록 담당', '', FALSE) RETURNING id",
+                Long.class, company.id());
+        jdbc.update("""
+                INSERT INTO role_permission (company_id, role_id, permission_code, scope)
+                VALUES (?, ?, 'EMPLOYEE_MANAGE', 'ALL'), (?, ?, 'EMPLOYEE_READ', 'ALL')""",
+                company.id(), registrar, company.id(), registrar);
+        TestFixture.Employee clerk = fixture.employee(company.id(), company.rootOrgUnitId(), "등록 담당", false);
+        as(clerk, get("/api/roles")).andExpect(status().isOk())
+                .andExpect(jsonPath(grantable.formatted("직원")).value(contains(true)))
+                .andExpect(jsonPath(grantable.formatted("등록 담당")).value(contains(false)))
+                .andExpect(jsonPath(grantable.formatted("경영진")).value(contains(false)));
     }
 
     @Test

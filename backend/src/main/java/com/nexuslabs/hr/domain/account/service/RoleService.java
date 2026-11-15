@@ -8,9 +8,11 @@ import com.nexuslabs.hr.domain.account.dto.RoleRequest;
 import com.nexuslabs.hr.global.audit.AuditAction;
 import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
+import com.nexuslabs.hr.domain.company.service.CompanyBootstrapService;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
 import com.nexuslabs.hr.global.permission.PermissionCode;
+import com.nexuslabs.hr.global.permission.PermissionReader;
 import com.nexuslabs.hr.global.permission.PermissionScope;
 import com.nexuslabs.hr.global.permission.RoleGrantGuard;
 import com.nexuslabs.hr.global.response.DeleteResult;
@@ -36,11 +38,14 @@ public class RoleService {
     private final JdbcTemplate jdbc;
     private final AuditLogger auditLogger;
     private final RoleGrantGuard roleGrantGuard;
+    private final PermissionReader permissionReader;
 
-    public RoleService(JdbcTemplate jdbc, AuditLogger auditLogger, RoleGrantGuard roleGrantGuard) {
+    public RoleService(JdbcTemplate jdbc, AuditLogger auditLogger, RoleGrantGuard roleGrantGuard,
+                       PermissionReader permissionReader) {
         this.jdbc = jdbc;
         this.auditLogger = auditLogger;
         this.roleGrantGuard = roleGrantGuard;
+        this.permissionReader = permissionReader;
     }
 
     public List<PermissionInfo> permissions() {
@@ -50,8 +55,14 @@ public class RoleService {
                 .toList();
     }
 
+    /**
+     * grantable: ROLE_MANAGE 가 있으면 내 권한 안의 역할, 없으면(EMPLOYEE_MANAGE 로 직원 등록만) 기본 역할("직원")만 —
+     * 계정 역할 변경 · 직원 등록이 실제로 받아 주는 규칙과 같다(2026-11-15).
+     */
     @Transactional(readOnly = true)
     public List<RoleListItem> list(LoginUser user) {
+        boolean roleManage = permissionReader.permissionsOf(user).containsKey(PermissionCode.ROLE_MANAGE);
+        Map<Long, Boolean> within = roleManage ? roleGrantGuard.withinByRole(user) : Map.of();
         return jdbc.query("""
                         SELECT r.id, r.name, r.description, r.is_system,
                                (SELECT count(*) FROM account a WHERE a.role_id = r.id AND a.company_id = r.company_id) AS account_count
@@ -59,7 +70,9 @@ public class RoleService {
                         ORDER BY r.is_system DESC, r.id
                         """,
                 (rs, i) -> new RoleListItem(rs.getLong("id"), rs.getString("name"), rs.getString("description"),
-                        rs.getBoolean("is_system"), rs.getLong("account_count")),
+                        rs.getBoolean("is_system"), rs.getLong("account_count"),
+                        roleManage ? within.getOrDefault(rs.getLong("id"), false)
+                                : CompanyBootstrapService.EMPLOYEE_ROLE.equals(rs.getString("name"))),
                 user.companyId());
     }
 
@@ -132,7 +145,7 @@ public class RoleService {
                         FROM role r WHERE r.id = ? AND r.company_id = ?
                         """,
                 (rs, i) -> new RoleListItem(rs.getLong("id"), rs.getString("name"), rs.getString("description"),
-                        rs.getBoolean("is_system"), rs.getLong("account_count")),
+                        rs.getBoolean("is_system"), rs.getLong("account_count"), false),   // 상세 · 수정용 — grantable 은 쓰지 않는다
                 roleId, companyId).stream().findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
