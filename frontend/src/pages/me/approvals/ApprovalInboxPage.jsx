@@ -116,7 +116,7 @@ export default function ApprovalInboxPage() {
                 { key: 'kind', label: '구분', width: '6.5rem' },
                 { key: 'what', label: '유형 · 내용', width: '9rem' },
                 { key: 'when', label: '기간', width: '12rem' },
-                { key: 'amount', label: '일수 · 시간', width: '6rem' },
+                { key: 'amount', label: '일수 · 시간', width: '8rem' },
                 { key: 'why', label: '사유' },
                 { key: 'remain', label: '잔여휴가', width: '5.5rem' },
                 { key: 'step', label: '단계', width: '4.5rem' },
@@ -140,7 +140,7 @@ export default function ApprovalInboxPage() {
                     </td>
                     <td className="at-ellipsis" title={c.what}>{c.what}</td>
                     <td>{c.when}</td>
-                    <td>{c.amount}</td>
+                    <td className="at-ellipsis" title={c.amount}>{c.amount}</td>
                     <td className="at-ellipsis" title={c.why}>{c.why || '–'}</td>
                     <td className="ap-remain">{c.remain != null ? `${c.remain}일` : '–'}</td>
                     <td>{`${it.stepOrder}/${it.totalSteps}`}</td>
