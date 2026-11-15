@@ -1,5 +1,5 @@
 // 수당·공제 항목 탭(Figma 451:8943) + 항목 추가 / 수정 창(453:9063 고정액 · 453:9360 근태 연동 · 453:9651 직접 입력 · 453:10360 기본급 대비 %)
-// Figma 의 "적용 시작일"은 서버에 없어 뺐다 — 바꾸면 다음 급여 정산부터 반영된다. 고정액 항목은 수정 창 › 적용 대상에서 부서 · 직급 규칙(적용 시작일 있음)
+// Figma 의 "적용 시작일"은 서버에 없어 뺐다 — 바꾸면 다음 급여 정산부터 반영된다. 고정액 항목은 수정 창 › 부서 · 직급 규칙 탭(적용 시작일 있음), 추가하면 바로 그 탭으로
 import { useState } from 'react';
 import { App, Checkbox, Form, Input, InputNumber, Modal, Segmented, Select, Spin, Switch } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -53,7 +53,7 @@ export default function ItemsTab({ modal, setModal, onTab }) {
 
       <div className="hr-table pay-table">
         <div className="hr-tr is-head">
-          {['항목명', '구분', '계산 방식', '금액·요율', '과세', '적용 대상', '통상임금', '사용'].map((t, i) => (
+          {['항목명', '구분', '계산 방식', '금액·요율', '과세', '받는 사람', '통상임금', '사용'].map((t, i) => (
             <span key={t} style={{ flex: `${COLS[i]} 0 ${COLS[i]}rem` }}>
               {t}
             </span>
@@ -78,7 +78,7 @@ export default function ItemsTab({ modal, setModal, onTab }) {
                   {it.nonTaxableLimit != null && <em>{`월 ${won(it.nonTaxableLimit).replace('원', '')}원 한도`}</em>}
                 </span>
               ),
-              it.applyTo === 'SELECTED' ? '선택 직원' : '전체',
+              it.applyTo === 'SELECTED' ? '지정한 직원' : '전체 직원',
               it.itemKind === 'DEDUCTION' ? '–' : it.inOrdinaryWage ? '포함' : '제외',
               it.isActive ? '사용' : '사용 안 함',
             ]}
@@ -88,19 +88,30 @@ export default function ItemsTab({ modal, setModal, onTab }) {
           <Row
             onClick={() => onTab('insurance')}
             title="4대보험 탭에서 관리합니다"
-            cells={[insurance.map((i) => i.name).join(' / '), <KindBadge key="k" kind="DEDUCTION" />, '4대보험', '4대보험 탭에서 관리', '–', '전체', '–', <span key="u" className="pay-use">사용 <Lock /></span>]}
+            cells={[insurance.map((i) => i.name).join(' / '), <KindBadge key="k" kind="DEDUCTION" />, '4대보험', '4대보험 탭에서 관리', '–', '전체 직원', '–', <span key="u" className="pay-use">사용 <Lock /></span>]}
           />
         )}
         {showDeduction && (
           <Row
             onClick={() => onTab('tax')}
             title="소득세 탭에서 관리합니다"
-            cells={['소득세 / 지방소득세', <KindBadge key="k" kind="DEDUCTION" />, '소득세 구간', '소득세 탭에서 관리', '–', '전체', '–', <span key="u" className="pay-use">사용 <Lock /></span>]}
+            cells={['소득세 / 지방소득세', <KindBadge key="k" kind="DEDUCTION" />, '소득세 구간', '소득세 탭에서 관리', '–', '전체 직원', '–', <span key="u" className="pay-use">사용 <Lock /></span>]}
           />
         )}
       </div>
 
-      {modal && <ItemModal mode={modal.mode} item={modal.item} items={all.filter((i) => i.calcMethod !== 'TAXABLE_RATE')} onClose={() => setModal(null)} />}
+      {modal && (
+        <ItemModal
+          key={modal.item?.id ?? 'new'}
+          mode={modal.mode}
+          item={modal.item}
+          initialSection={modal.section}
+          items={all.filter((i) => i.calcMethod !== 'TAXABLE_RATE')}
+          onClose={() => setModal(null)}
+          // 고정액 항목을 추가하면 창을 닫지 않고 그 항목의 규칙 탭으로 — 받을 대상을 바로 정하게(2026-11-15)
+          onCreated={(created) => setModal({ mode: 'edit', item: created, section: 'rules' })}
+        />
+      )}
     </>
   );
 }
@@ -135,16 +146,16 @@ const toForm = (it, copy) => ({
 const EMPTY = { itemKind: 'EARNING', calcMethod: 'FIXED', isTaxable: true, applyTo: 'ALL', inOrdinaryWage: false, isActive: true };
 const money = { formatter: (v) => (v ? `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''), parser: (v) => v.replace(/,/g, '') };
 
-function ItemModal({ mode, item, items, onClose }) {
+function ItemModal({ mode, item, items, initialSection, onClose, onCreated }) {
   const notify = useNotify();
   const { modal } = App.useApp();
   const queryClient = useQueryClient();
   const [form] = Form.useForm();
   const editing = mode === 'edit';
-  // 고정액 항목은 "적용 대상"(부서 · 직급 규칙) 탭이 있다
-  const [section, setSection] = useState('info');
+  // 고정액 항목은 "부서 · 직급 규칙" 탭이 있다
+  const [section, setSection] = useState(initialSection ?? 'info');
   const ruleTab = editing && item.calcMethod === 'FIXED';
-  const locked = editing && item.inUse; // 쓰인 항목 — 구분 · 계산 방식 · 적용 대상은 못 바꾼다
+  const locked = editing && item.inUse; // 쓰인 항목 — 구분 · 계산 방식 · 받는 사람은 못 바꾼다
   const kind = Form.useWatch('itemKind', form) ?? (editing ? item.itemKind : EMPTY.itemKind);
   const calc = Form.useWatch('calcMethod', form) ?? (editing ? item.calcMethod : EMPTY.calcMethod);
   const taxable = Form.useWatch('isTaxable', form);
@@ -158,7 +169,17 @@ function ItemModal({ mode, item, items, onClose }) {
   };
   const save = useMutation({
     mutationFn: (body) => (editing ? updatePayItem(item.id, body) : createPayItem(body)),
-    onSuccess: (data) => done(editing ? `${data.name} 항목을 저장했습니다` : `${data.name} 항목을 추가했습니다`),
+    onSuccess: (data) => {
+      if (!editing && data.calcMethod === 'FIXED') {
+        queryClient.invalidateQueries({ queryKey: payItemsKey });
+        notify.success(data.applyTo === 'SELECTED'
+          ? `${data.name} 항목을 추가했습니다. 받을 대상을 정하세요`
+          : `${data.name} 항목을 추가했습니다. 부서 · 직급마다 다른 금액이 있으면 규칙을 추가하세요`);
+        onCreated(data);
+        return;
+      }
+      done(editing ? `${data.name} 항목을 저장했습니다` : `${data.name} 항목을 추가했습니다`);
+    },
     onError: (err) => {
       if (!applyFieldErrors(form, err)) notify.error(err);
     },
@@ -190,7 +211,7 @@ function ItemModal({ mode, item, items, onClose }) {
       isTaxable: earning ? v.isTaxable : true,
       nonTaxableLimit: earning && !v.isTaxable ? (v.nonTaxableLimit ?? null) : null,
       inOrdinaryWage: earning ? !!v.inOrdinaryWage : false,
-      defaultAmount: v.calcMethod === 'FIXED' ? (v.defaultAmount ?? null) : null,
+      defaultAmount: v.calcMethod === 'FIXED' && v.applyTo === 'ALL' ? (v.defaultAmount ?? null) : null,   // 지정한 직원 항목은 기본 금액이 없다(서버도 버린다)
       baseRate: v.calcMethod === 'BASE_RATE' ? v.baseRate : null,
       attendanceBasis: v.calcMethod === 'ATTENDANCE' ? v.attendanceBasis : null,
       multiplier: v.calcMethod === 'ATTENDANCE' ? v.multiplier : null,
@@ -209,7 +230,7 @@ function ItemModal({ mode, item, items, onClose }) {
           onChange={setSection}
           options={[
             { value: 'info', label: '기본 정보' },
-            { value: 'rules', label: '적용 대상(부서 · 직급)' },
+            { value: 'rules', label: '부서 · 직급 규칙' },
           ]}
         />
       )}
@@ -242,8 +263,8 @@ function ItemModal({ mode, item, items, onClose }) {
           <Select disabled={locked} options={CALC_BY_KIND[kind].filter((c) => c !== 'TAXABLE_RATE').map((c) => ({ value: c, label: CALC_LABEL[c] }))} />
         </Form.Item>
 
-        {calc === 'FIXED' && (
-          <Form.Item name="defaultAmount" label="금액(원)" extra={applyTo === 'SELECTED' ? '비우면 직원별 금액만 씁니다' : undefined} rules={applyTo === 'SELECTED' ? [] : req('금액을 입력하세요')}>
+        {calc === 'FIXED' && applyTo !== 'SELECTED' && (
+          <Form.Item name="defaultAmount" label="기본 금액(원)" rules={req('금액을 입력하세요')}>
             <InputNumber className="full-width" min={0} step={10000} {...money} />
           </Form.Item>
         )}
@@ -284,20 +305,20 @@ function ItemModal({ mode, item, items, onClose }) {
             )}
           </div>
         )}
-        <Form.Item name="applyTo" label="적용 대상">
+        <Form.Item name="applyTo" label="받는 사람">
           <Select
             disabled={locked}
             options={[
-              { value: 'ALL', label: '전체 직원' },
-              { value: 'SELECTED', label: '선택 직원' },
+              { value: 'ALL', label: '전체 직원 — 기본 금액을 받음' },
+              { value: 'SELECTED', label: '지정한 직원만 — 규칙 · 개별 금액' },
             ]}
           />
         </Form.Item>
         {calc === 'FIXED' && (
           <p className="pay-warn">
             {applyTo === 'SELECTED'
-              ? '받을 직원은 적용 대상(부서 · 직급 규칙)이나 급여 › 직원 급여(개별 금액)로 정합니다.'
-              : '부서 · 직급마다 다른 금액은 적용 대상 탭, 직원 한 명의 금액은 급여 › 직원 급여에서 정합니다.'}
+              ? '받을 직원과 금액은 저장 뒤 "부서 · 직급 규칙" 탭이나 급여 › 직원 급여(개별 금액)에서 정합니다. 규칙도 개별 금액도 없으면 아무도 받지 않습니다.'
+              : '규칙이나 개별 금액이 없는 직원은 기본 금액을 받습니다. 부서 · 직급마다 다른 금액은 "부서 · 직급 규칙" 탭, 직원 한 명의 금액은 급여 › 직원 급여에서 정합니다.'}
           </p>
         )}
         <div className="pay-checks">
@@ -312,7 +333,7 @@ function ItemModal({ mode, item, items, onClose }) {
             </Form.Item>
           )}
         </div>
-        {locked && <p className="pay-hint">이미 급여에 쓰인 항목이라 구분 · 계산 방식 · 적용 대상은 바꿀 수 없습니다.</p>}
+        {locked && <p className="pay-hint">이미 급여에 쓰인 항목이라 구분 · 계산 방식 · 받는 사람은 바꿀 수 없습니다.</p>}
         <p className="hr-notice">변경 내용은 다음 급여 정산부터 반영됩니다. 확정된 급여는 바뀌지 않습니다.</p>
         <div className="pay-modal-foot">
           {editing ? (

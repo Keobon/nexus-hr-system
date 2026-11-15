@@ -30,7 +30,7 @@ export default function ItemRulesPanel({ item }) {
   return (
     <>
       <p className="pay-hint">
-        {`금액은 직원 개별 금액 → 직급 규칙 → 부서 규칙 → 기본 금액(${item.applyTo === 'ALL' ? won(item.defaultAmount) : '선택 직원 항목이라 없음'}) 순서로 처음 맞는 하나만 씁니다. 직급은 "그 직급만"이 먼저, 부서는 가까운 부서가 먼저입니다. 개별 금액은 급여 › 직원 급여에서 정합니다.`}
+        {`금액은 직원 개별 금액 → 직급 규칙 → 부서 규칙 → 기본 금액(${item.applyTo === 'ALL' ? won(item.defaultAmount) : '지정한 직원 항목이라 없음'}) 순서로 처음 맞는 하나만 씁니다. 직급은 "그 직급만"이 먼저, 부서는 가까운 부서가 먼저입니다. 개별 금액은 급여 › 직원 급여에서 정합니다.`}
       </p>
       <div className="hr-table is-sm">
         <div className="hr-tr is-head">
@@ -40,7 +40,13 @@ export default function ItemRulesPanel({ item }) {
           <span style={{ width: '8rem' }}>예정</span>
           <span>관리</span>
         </div>
-        {list.length === 0 && <div className="hr-tr is-empty">부서 · 직급 규칙이 없습니다</div>}
+        {list.length === 0 && (
+          <div className="hr-tr is-empty">
+            {item.applyTo === 'SELECTED'
+              ? '부서 · 직급 규칙이 없습니다 — 지금은 급여 › 직원 급여에서 개별 금액을 넣은 직원만 받습니다'
+              : '부서 · 직급 규칙이 없습니다 — 모두 기본 금액을 받습니다'}
+          </div>
+        )}
         {list.map((r) => {
           const next = r.upcoming?.[0];
           return (
@@ -146,7 +152,7 @@ function RuleModal({ item, rule, onClose }) {
           </Form.Item>
         )}
         {!release && (
-          <Form.Item name="amount" label="금액" extra="0원이면 이 대상은 받지 않습니다" rules={[{ required: true, message: '금액을 입력하세요' }]}>
+          <Form.Item name="amount" label="금액" extra="기본 금액에 더하지 않고 이 금액을 대신 받습니다. 0원이면 이 대상은 받지 않습니다" rules={[{ required: true, message: '금액을 입력하세요' }]}>
             <InputNumber className="full-width" min={0} step={10000} suffix="원" {...money} />
           </Form.Item>
         )}

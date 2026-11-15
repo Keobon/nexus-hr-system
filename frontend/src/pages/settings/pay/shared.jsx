@@ -27,7 +27,7 @@ export const won = (n) => (n == null ? '–' : formatMoney(n));
 export function amountText(it) {
   switch (it.calcMethod) {
     case 'FIXED':
-      return it.defaultAmount != null ? formatMoney(it.defaultAmount) : '직원별 금액';
+      return it.applyTo === 'SELECTED' || it.defaultAmount == null ? '규칙 · 직원별 금액' : formatMoney(it.defaultAmount);
     case 'BASE_RATE':
       return `기본급 × ${pct(it.baseRate)}`;
     case 'ATTENDANCE':
