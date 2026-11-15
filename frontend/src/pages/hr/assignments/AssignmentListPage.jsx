@@ -30,10 +30,10 @@ export default function AssignmentListPage() {
       onChange={(v) => setSp(v === 'promotion' ? { tab: v } : {})}
     />
   ) : null;
-  return tab === 'promotion' ? <PromotionTab tabs={tabs} /> : <HistoryTab tabs={tabs} />;
+  return tab === 'promotion' ? <PromotionTab tabs={tabs} /> : <HistoryTab tabs={tabs} whole={whole} />;
 }
 
-function HistoryTab({ tabs }) {
+function HistoryTab({ tabs, whole }) {
   const navigate = useNavigate();
   const { can } = useMe();
   const [sp, setSp] = useSearchParams();
@@ -63,7 +63,16 @@ function HistoryTab({ tabs }) {
 
   return (
     <div className="hr">
-      <PageHead title="전사 인사발령 관리" desc="전 직원의 인사발령 이력을 조회하고 발령을 등록·정정합니다.">
+      <PageHead
+        title={manage ? '전사 인사발령 관리' : whole ? '전사 인사발령' : '인사발령 조회'}
+        desc={
+          manage
+            ? '전 직원의 인사발령 이력을 조회하고 발령을 등록·정정합니다.'
+            : whole
+              ? '전 직원의 인사발령 이력을 조회합니다.'
+              : '내 조직(하위 조직 포함) 직원의 인사발령 이력을 조회합니다.'
+        }
+      >
         {manage && (
           <>
             <button type="button" className="hr-btn is-secondary is-14" disabled={!canCorrect}
