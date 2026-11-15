@@ -1,5 +1,7 @@
 package com.nexuslabs.hr.domain.leave.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.leave.entity.LeaveStatus;
 
 import java.time.LocalDate;
@@ -9,5 +11,5 @@ import java.time.LocalDate;
  * id 는 화면 목록 키 — 상세(GET /leave-requests/{id})는 따로 권한을 본다.
  */
 public record TeamLeaveRow(long id, long employeeId, String employeeName, String leaveTypeName, LocalDate startDate,
-                           LocalDate endDate, LeaveStatus status) {
+                           LocalDate endDate, LeaveStatus status, @JsonInclude(JsonInclude.Include.NON_NULL) HalfDay halfDay) {
 }

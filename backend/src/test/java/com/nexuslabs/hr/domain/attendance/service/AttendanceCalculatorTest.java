@@ -1,6 +1,7 @@
 package com.nexuslabs.hr.domain.attendance.service;
 
 import com.nexuslabs.hr.domain.attendance.dto.AttendanceDay;
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.attendance.dto.AttendanceSummary;
 import com.nexuslabs.hr.domain.attendance.entity.AttendanceStatus;
 import com.nexuslabs.hr.domain.attendance.entity.WorkType;
@@ -281,5 +282,36 @@ class AttendanceCalculatorTest {
 
         assertThat(summary).isEqualTo(new AttendanceSummary(1, 1, 1, 1, 1, 1,
                 765 + 473 + 450 + 600 + 480, 90, 40, 480, 120));
+    }
+
+    // ---------------------------------------------------------------- 반차(2026-11-15)
+
+    @Test
+    void 반차인_날_결근은_반나절만_급여_결근_시간으로_센다() {
+        LocalDate past = TODAY.minusDays(7);
+        AttendanceDay half = AttendanceCalculator.day(new DayInput(past, true, null, APPROVAL_REQUIRED, null, null, null,
+                null, null, Employment.ACTIVE, TODAY, HalfDay.PM));
+        AttendanceDay full = noRecord(past, true, Employment.ACTIVE);
+        assertThat(half.status()).isEqualTo(AttendanceDayStatus.ABSENT);
+        assertThat(half.halfDay()).isEqualTo(HalfDay.PM);
+        assertThat(AttendanceCalculator.absenceMinutes(half, APPROVAL_REQUIRED)).isEqualTo(240);
+        assertThat(AttendanceCalculator.absenceMinutes(full, APPROVAL_REQUIRED)).isEqualTo(480);
+    }
+
+    @Test
+    void 오전_반차는_오후에_오후_반차는_오전에_일하고_휴게는_빼지_않는다() {
+        AttendanceDay am = AttendanceCalculator.day(new DayInput(THURSDAY, true, null, APPROVAL_REQUIRED,
+                AttendanceStatus.CHECKED_OUT, WorkType.OFFICE, at(THURSDAY, "14:00"), at(THURSDAY, "19:00"), 60,
+                Employment.ACTIVE, TODAY, HalfDay.AM));
+        assertThat(am.late()).isFalse();
+        assertThat(am.earlyLeave()).isFalse();
+        assertThat(am.workMinutes()).isEqualTo(300);
+        assertThat(am.overtimeMinutes()).isEqualTo(60);   // 반나절(240분)을 넘긴 만큼, 승인된 60분까지
+        AttendanceDay pm = AttendanceCalculator.day(new DayInput(THURSDAY, true, null, APPROVAL_REQUIRED,
+                AttendanceStatus.CHECKED_OUT, WorkType.OFFICE, at(THURSDAY, "09:01"), at(THURSDAY, "12:59"), null,
+                Employment.ACTIVE, TODAY, HalfDay.PM));
+        assertThat(pm.late()).isTrue();
+        assertThat(pm.earlyLeave()).isTrue();
+        assertThat(pm.workMinutes()).isEqualTo(238);
     }
 }

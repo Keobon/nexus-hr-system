@@ -54,6 +54,7 @@ CREATE TYPE company_doc_type     AS ENUM ('BUSINESS_REGISTRATION','CORP_REGISTRA
 CREATE TYPE employee_doc_type    AS ENUM ('LABOR_CONTRACT','BANKBOOK_COPY','RESUME','FAMILY_CERT','HEALTH_CHECK','OTHER');
 CREATE TYPE holiday_type         AS ENUM ('PUBLIC','COMPANY','SUBSTITUTE');
 CREATE TYPE emp_status           AS ENUM ('ACTIVE','ON_LEAVE','RESIGNED');
+CREATE TYPE half_day             AS ENUM ('AM','PM');   -- 반차: 오전 · 오후(2026-11-15)
 CREATE TYPE resign_reason        AS ENUM ('JOB_CHANGE','PERSONAL','CONTRACT_END','RETIREMENT','DISMISSAL','ETC');  -- 퇴사 사유(2026-11-15)
 CREATE TYPE gender               AS ENUM ('MALE','FEMALE');
 CREATE TYPE field_type           AS ENUM ('TEXT','LONG_TEXT','NUMBER','DATE','SELECT');
@@ -493,14 +494,16 @@ CREATE TABLE leave_request (
   leave_year    SMALLINT NOT NULL,
   start_date    DATE NOT NULL,
   end_date      DATE NOT NULL,
-  days          SMALLINT NOT NULL CHECK (days > 0),
+  days          NUMERIC(4,1) NOT NULL CHECK (days > 0),          -- 근무일 수, 반차는 0.5(2026-11-15)
+  half_day      half_day,                                       -- 반차면 AM · PM, 종일이면 NULL
   reason        VARCHAR(255),
   status        leave_status NOT NULL DEFAULT 'PENDING',
   cancel_reason VARCHAR(255),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (start_date <= end_date),
-  -- 같은 직원의 진행 중 휴가끼리 기간 겹침 금지(BR-LEAVE-008)
+  CHECK (half_day IS NULL OR (start_date = end_date AND days = 0.5)),
+  -- 같은 직원의 진행 중 휴가끼리 기간 겹침 금지(BR-LEAVE-008) — 같은 날 오전 · 오후 반차도 겹침(하루는 종일로)
   EXCLUDE USING gist (employee_id WITH =, daterange(start_date, end_date, '[]') WITH &&)
     WHERE (status IN ('PENDING','APPROVED','CANCEL_REQUESTED'))
 );

@@ -1373,6 +1373,26 @@ INSERT INTO paystub_line (id, company_id, paystub_id, pay_item_id, item_name_sna
  (367, 1, 68, 3, '장기요양보험', 'DEDUCTION', 'TAXABLE_RATE', 13773, 0, 0, 13773, NULL, NULL, NULL, 103),
  (368, 1, 68, 4, '고용보험', 'DEDUCTION', 'TAXABLE_RATE', 27000, 0, 0, 34500, NULL, NULL, NULL, 104);
 
+-- 반차 데모(2026-11-15) — 임태현 10/23 오전 반차(승인완료, 그날 오후 출근), 서지안 11/20 오후 반차(승인대기 — 윤서연 승인함)
+--   반차는 휴가 근태를 만들지 않고 그날 출퇴근을 찍는다(근태 계산이 출근 · 퇴근 기준을 반나절만큼 옮긴다)
+INSERT INTO leave_request (company_id, employee_id, leave_type_id, leave_year, start_date, end_date, days, half_day,
+                           reason, status, created_at, updated_at) VALUES
+ (1, 8,  1, 2026, '2026-10-23', '2026-10-23', 0.5, 'AM', '병원 진료', 'APPROVED', '2026-10-19 10:00:00+09', '2026-10-20 10:00:00+09'),
+ (1, 30, 1, 2026, '2026-11-20', '2026-11-20', 0.5, 'PM', '개인 일정', 'PENDING',  '2026-11-13 10:00:00+09', '2026-11-13 10:00:00+09');
+INSERT INTO approval_step (company_id, work_type, target_id, approval_line_id, round, step_order, approver_id, status,
+                           comment, acted_at, needs_reassign, created_at)
+SELECT 1, 'LEAVE', r.id, 1, 1, v.step, v.approver, v.status::approval_step_status, v.comment, v.acted::timestamptz, false, r.created_at
+FROM leave_request r
+JOIN (VALUES (8, 1, 7, 'APPROVED', '진료 잘 받으세요', '2026-10-19 14:00:00+09'),
+             (8, 2, 6, 'APPROVED', NULL, '2026-10-20 10:00:00+09'),
+             (30, 1, 7, 'PENDING', NULL, NULL),
+             (30, 2, 6, 'WAITING', NULL, NULL)) AS v(emp, step, approver, status, comment, acted)
+  ON v.emp = r.employee_id
+WHERE r.company_id = 1 AND r.half_day IS NOT NULL;
+-- 오전 반차 날은 오후에 출근 — 10/21 이후 근태 채우기가 만든 그날 행을 오후 근무로 바꾼다
+UPDATE attendance SET check_in_at = '2026-10-23 13:52:00+09', check_out_at = '2026-10-23 18:07:00+09'
+WHERE company_id = 1 AND employee_id = 8 AND work_date = '2026-10-23';
+
 -- 직접 번호를 준 조직 · 직원 · 명세서 시퀀스를 다시 맞춘다
 SELECT setval(pg_get_serial_sequence('org_unit', 'id'), (SELECT max(id) FROM org_unit));
 SELECT setval(pg_get_serial_sequence('employee', 'id'), (SELECT max(id) FROM employee));

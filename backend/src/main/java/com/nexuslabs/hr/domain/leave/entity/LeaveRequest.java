@@ -18,9 +18,10 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** 휴가 신청. days 는 신청 시점 값을 저장한다(BR-LEAVE-008). */
+/** 휴가 신청. days 는 신청 시점 값을 저장한다(BR-LEAVE-008). 반차면 halfDay(AM · PM) · days 0.5(2026-11-15). */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -41,7 +42,13 @@ public class LeaveRequest extends BaseTimeEntity {
     private short leaveYear;
     private LocalDate startDate;
     private LocalDate endDate;
-    private short days;
+    private BigDecimal days;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(columnDefinition = "half_day")
+    private HalfDay halfDay;
+
     private String reason;
 
     @Enumerated(EnumType.STRING)
@@ -52,13 +59,14 @@ public class LeaveRequest extends BaseTimeEntity {
     private String cancelReason;
 
     public LeaveRequest(Employee employee, LeaveType leaveType, short leaveYear, LocalDate startDate, LocalDate endDate,
-                        short days, String reason) {
+                        BigDecimal days, HalfDay halfDay, String reason) {
         this.employee = employee;
         this.leaveType = leaveType;
         this.leaveYear = leaveYear;
         this.startDate = startDate;
         this.endDate = endDate;
         this.days = days;
+        this.halfDay = halfDay;
         this.reason = reason;
     }
 

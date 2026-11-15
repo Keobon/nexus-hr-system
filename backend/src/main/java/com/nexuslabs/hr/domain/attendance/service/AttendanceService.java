@@ -154,13 +154,20 @@ public class AttendanceService {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void createLeaveDays(long companyId, long leaveRequestId) {
-        LeavePeriod leave = jdbc.query("""
-                        SELECT employee_id, start_date, end_date FROM leave_request WHERE id = ? AND company_id = ?
+        List<LeavePeriod> found = jdbc.query("""
+                        SELECT employee_id, start_date, end_date, half_day IS NOT NULL AS half
+                        FROM leave_request WHERE id = ? AND company_id = ?
                         """,
-                (rs, i) -> new LeavePeriod(rs.getLong("employee_id"), rs.getObject("start_date", LocalDate.class),
-                        rs.getObject("end_date", LocalDate.class)),
-                leaveRequestId, companyId).stream().findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+                (rs, i) -> rs.getBoolean("half") ? null : new LeavePeriod(rs.getLong("employee_id"),
+                        rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class)),
+                leaveRequestId, companyId);
+        if (found.isEmpty()) {
+            throw new BusinessException(ErrorCode.NOT_FOUND);
+        }
+        LeavePeriod leave = found.getFirst();
+        if (leave == null) {
+            return;   // 반차 — 그날 출퇴근을 하므로 휴가 근태를 만들지 않는다(근태 계산이 기준 시각을 옮긴다, 2026-11-15)
+        }
         WorkCalendar.Snapshot calendar = workCalendar.snapshot(companyId);
         List<Object[]> rows = new ArrayList<>();
         for (LocalDate date = leave.startDate(); !date.isAfter(leave.endDate()); date = date.plusDays(1)) {

@@ -13,6 +13,7 @@ import com.nexuslabs.hr.domain.leave.dto.LeaveRequestResponse;
 import com.nexuslabs.hr.domain.leave.dto.LeaveRequestRow;
 import com.nexuslabs.hr.domain.leave.dto.TeamLeaveRow;
 import com.nexuslabs.hr.domain.leave.entity.LeaveRequest;
+import com.nexuslabs.hr.domain.leave.entity.HalfDay;
 import com.nexuslabs.hr.domain.leave.entity.LeaveStatus;
 import com.nexuslabs.hr.domain.leave.entity.LeaveType;
 import com.nexuslabs.hr.domain.leave.repository.LeaveRequestRepository;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -78,11 +80,12 @@ public class LeaveRequestService {
 
     /** 신청 전 미리보기 — 실제 신청과 같은 {@link #evaluate}를 쓰고 저장하지 않는다(API 설계서 8장). */
     @Transactional(readOnly = true)
-    public LeavePreview preview(LoginUser user, long leaveTypeId, LocalDate startDate, LocalDate endDate) {
-        Evaluation ev = evaluate(user.companyId(), user.employeeId(), leaveTypeId, startDate, endDate);
+    public LeavePreview preview(LoginUser user, long leaveTypeId, LocalDate startDate, LocalDate endDate,
+                                HalfDay halfDay) {
+        Evaluation ev = evaluate(user.companyId(), user.employeeId(), leaveTypeId, startDate, endDate, halfDay);
         LeavePreview.Balance balance = ev.balance() == null ? null : new LeavePreview.Balance(
                 ev.balance().leaveTypeName(), ev.balance().granted(), ev.balance().used(), ev.balance().pending(),
-                ev.balance().remaining(), ev.balance().remaining() - ev.days());
+                ev.balance().remaining(), ev.balance().remaining().subtract(ev.days()));
         ApprovalPlan plan = ev.plan();
         return new LeavePreview(ev.days(), ev.leaveYear(), balance,
                 plan == null ? null : new LeavePreview.ApprovalLine(plan.approvalLineId(), plan.approvalLineName()),
@@ -102,13 +105,14 @@ public class LeaveRequestService {
         long cid = user.companyId();
         jdbc.queryForList("SELECT id FROM employee WHERE id = ? AND company_id = ? FOR UPDATE",
                 Long.class, user.employeeId(), cid);
-        Evaluation ev = evaluate(cid, user.employeeId(), request.leaveTypeId(), request.startDate(), request.endDate());
+        Evaluation ev = evaluate(cid, user.employeeId(), request.leaveTypeId(), request.startDate(), request.endDate(),
+                request.halfDay());
         if (!ev.errors().isEmpty()) {
             throw ev.errors().getFirst();
         }
         LeaveRequest leave = repository.save(new LeaveRequest(em.getReference(Employee.class, user.employeeId()),
                 em.getReference(LeaveType.class, request.leaveTypeId()), (short) ev.leaveYear(), request.startDate(),
-                request.endDate(), (short) ev.days(), blankToNull(request.reason())));
+                request.endDate(), ev.days(), request.halfDay(), blankToNull(request.reason())));
         approvalService.open(cid, ApprovalWorkType.LEAVE, leave.getId(), user.employeeId());
         repository.flush();
         return detail(cid, leave.getId(), user.employeeId());
@@ -208,7 +212,7 @@ public class LeaveRequestService {
         boolean leaveReader = scopeResolver.usable(user, PermissionCode.LEAVE_READ);
         return jdbc.query("""
                         SELECT r.id, e.id AS employee_id, e.name AS employee_name, t.name AS type_name,
-                               r.start_date, r.end_date, r.status::text AS status
+                               r.start_date, r.end_date, r.status::text AS status, r.half_day::text AS half_day
                         FROM leave_request r
                         JOIN employee e ON e.id = r.employee_id AND e.company_id = r.company_id
                         JOIN leave_type t ON t.id = r.leave_type_id AND t.company_id = r.company_id
@@ -226,7 +230,8 @@ public class LeaveRequestService {
                     return new TeamLeaveRow(rs.getLong("id"), rs.getLong("employee_id"), rs.getString("employee_name"),
                             full ? rs.getString("type_name") : "휴가", rs.getObject("start_date", LocalDate.class),
                             rs.getObject("end_date", LocalDate.class),
-                            full || status != LeaveStatus.CANCEL_REQUESTED ? status : LeaveStatus.APPROVED);
+                            full || status != LeaveStatus.CANCEL_REQUESTED ? status : LeaveStatus.APPROVED,
+                            halfDay(rs.getString("half_day")));
                 },
                 user.companyId(), user.employeeId(), user.companyId(), leaveReader, user.employeeId(),
                 Date.valueOf(to), Date.valueOf(from));
@@ -268,10 +273,15 @@ public class LeaveRequestService {
     /**
      * 신청 검사 한 벌 — 미리보기와 신청이 같이 쓴다. 잘못된 입력(시작일 > 종료일 · 없는 종류 · 비활성 종류)은 바로 던지고,
      * 신청을 막는 업무 오류는 모아서 돌려준다. 순서: 재직 · 연도 · 0일 · 겹침 · 잔여 · 승인자.
+     * 반차(2026-11-15)는 하루짜리(시작일 = 종료일) · 잔여에서 차감하는 종류만이고 근무일이면 0.5일 — 아니면 VALIDATION_ERROR(halfDay).
      */
-    private Evaluation evaluate(long cid, long employeeId, long leaveTypeId, LocalDate start, LocalDate end) {
+    private Evaluation evaluate(long cid, long employeeId, long leaveTypeId, LocalDate start, LocalDate end,
+                                HalfDay halfDay) {
         if (start.isAfter(end)) {
             throw BusinessException.invalidFields(Map.of("endDate", "종료일은 시작일 이후여야 합니다"));
+        }
+        if (halfDay != null && !start.equals(end)) {
+            throw BusinessException.invalidFields(Map.of("halfDay", "반차는 하루만 신청할 수 있습니다"));
         }
         TypeInfo type = jdbc.query("SELECT deducts_balance, is_active FROM leave_type WHERE id = ? AND company_id = ?",
                         (rs, i) -> new TypeInfo(rs.getBoolean("deducts_balance"), rs.getBoolean("is_active")),
@@ -279,6 +289,9 @@ public class LeaveRequestService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "휴가 종류를 찾을 수 없습니다"));
         if (!type.active()) {
             throw new BusinessException(ErrorCode.INACTIVE_REFERENCE, "사용 중지된 휴가 종류입니다");
+        }
+        if (halfDay != null && !type.deductsBalance()) {
+            throw BusinessException.invalidFields(Map.of("halfDay", "이 휴가 종류는 반차로 쓸 수 없습니다"));
         }
 
         List<BusinessException> errors = new ArrayList<>();
@@ -291,15 +304,16 @@ public class LeaveRequestService {
         if (calculator.leaveYearContaining(cid, end).year() != leaveYear) {
             errors.add(new BusinessException(ErrorCode.LEAVE_CROSS_YEAR));
         }
-        int days = workCalendar.workdaysBetween(cid, start, end);
-        if (days == 0) {
+        int workdays = workCalendar.workdaysBetween(cid, start, end);
+        BigDecimal days = halfDay != null && workdays > 0 ? HALF : BigDecimal.valueOf(workdays);
+        if (workdays == 0) {
             errors.add(new BusinessException(ErrorCode.LEAVE_ZERO_DAYS));
         }
         overlap(cid, employeeId, start, end).ifPresent(errors::add);
         LeaveBalance balance = null;
         if (type.deductsBalance()) {
             balance = calculator.balance(cid, employeeId, leaveTypeId, leaveYear);
-            if (balance.remaining() < days) {
+            if (balance.remaining().compareTo(days) < 0) {
                 errors.add(new BusinessException(ErrorCode.LEAVE_INSUFFICIENT_BALANCE,
                         Map.of("remaining", balance.remaining(), "requested", days)));
             }
@@ -361,7 +375,8 @@ public class LeaveRequestService {
                                 rs.getString("employee_name"), rs.getString("org_unit_name"),
                                 rs.getLong("leave_type_id"), rs.getString("leave_type_name"), rs.getInt("leave_year"),
                                 rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class),
-                                rs.getInt("days"), LeaveStatus.valueOf(rs.getString("status")), rs.getString("reason"),
+                                rs.getBigDecimal("days"), halfDay(rs.getString("half_day")),
+                                LeaveStatus.valueOf(rs.getString("status")), rs.getString("reason"),
                                 rs.getString("cancel_reason"), seoul(rs.getObject("created_at", OffsetDateTime.class)),
                                 steps),
                         id, cid)
@@ -413,7 +428,8 @@ public class LeaveRequestService {
                         rs.getString("employee_name"), rs.getString("org_unit_name"), rs.getLong("leave_type_id"),
                         rs.getString("leave_type_name"), rs.getInt("leave_year"),
                         rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class),
-                        rs.getInt("days"), LeaveStatus.valueOf(rs.getString("status")), rs.getString("reason"),
+                        rs.getBigDecimal("days"), halfDay(rs.getString("half_day")),
+                        LeaveStatus.valueOf(rs.getString("status")), rs.getString("reason"),
                         seoul(rs.getObject("created_at", OffsetDateTime.class)), null, null),
                 args.toArray());
         Map<Long, CurrentStep> steps = approvalService.currentSteps(cid, ApprovalWorkType.LEAVE,
@@ -428,13 +444,18 @@ public class LeaveRequestService {
         return t == null ? null : t.atZoneSameInstant(ClockConfig.ZONE).toOffsetDateTime();
     }
 
+    private static HalfDay halfDay(String value) {
+        return value == null ? null : HalfDay.valueOf(value);
+    }
+
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.strip();
     }
 
     private static final String SELECT = """
             SELECT r.id, r.employee_id, e.name AS employee_name, u.name AS org_unit_name, r.leave_type_id,
-                   t.name AS leave_type_name, r.leave_year, r.start_date, r.end_date, r.days, r.status::text AS status,
+                   t.name AS leave_type_name, r.leave_year, r.start_date, r.end_date, r.days,
+                   r.half_day::text AS half_day, r.status::text AS status,
                    r.reason, r.created_at
             """;
 
@@ -452,7 +473,9 @@ public class LeaveRequestService {
                           Integer leaveYear) {
     }
 
-    private record Evaluation(int days, int leaveYear, LeaveBalance balance, ApprovalPlan plan,
+    private static final BigDecimal HALF = new BigDecimal("0.5");
+
+    private record Evaluation(BigDecimal days, int leaveYear, LeaveBalance balance, ApprovalPlan plan,
                               List<BusinessException> errors) {
     }
 }

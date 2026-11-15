@@ -5,6 +5,8 @@ import com.nexuslabs.hr.domain.assignment.dto.AssignmentItem;
 import com.nexuslabs.hr.domain.attendance.dto.TodayAttendance;
 import com.nexuslabs.hr.domain.leave.dto.LeaveBalance;
 import com.nexuslabs.hr.domain.payroll.dto.LatestPayslip;
+import com.nexuslabs.hr.global.response.DaysJson;
+import tools.jackson.databind.annotation.JsonSerialize;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -63,11 +65,12 @@ public record DashboardHome(Me me, Todos todos, Company company, MyOrg myOrg, Ad
 
     /** 이번 달과 겹치는 승인된 휴가(취소 요청 중 포함), 퇴직자 제외. 시작일 순. */
     public record Vacation(long leaveRequestId, long employeeId, String employeeName, String orgUnitName,
-                           String leaveTypeName, LocalDate startDate, LocalDate endDate, int days) {
+                           String leaveTypeName, LocalDate startDate, LocalDate endDate,
+                           @JsonSerialize(using = DaysJson.class) BigDecimal days) {
     }
 
     /** 이번 달 안에서 쓴 휴가 일수(그 달의 휴가 근태 일수), 종류별. */
-    public record LeaveUsage(long leaveTypeId, String leaveTypeName, long days) {
+    public record LeaveUsage(long leaveTypeId, String leaveTypeName, @JsonSerialize(using = DaysJson.class) BigDecimal days) {
     }
 
     /**

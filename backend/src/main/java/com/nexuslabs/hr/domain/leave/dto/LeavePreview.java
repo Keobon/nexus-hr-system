@@ -1,5 +1,9 @@
 package com.nexuslabs.hr.domain.leave.dto;
 
+import com.nexuslabs.hr.global.response.DaysJson;
+import tools.jackson.databind.annotation.JsonSerialize;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -8,10 +12,14 @@ import java.util.List;
  * errors 는 실제 신청하면 걸릴 오류 코드 — 하나라도 있으면 화면이 신청 버튼을 막는다.
  * steps[].stepLabel 은 승인선 단계 이름("조직장" · "N단계 위 조직장" · 직책명 · 지정 직원 이름).
  */
-public record LeavePreview(int days, int leaveYear, Balance balance, ApprovalLine approvalLine, List<Step> steps,
+public record LeavePreview(@JsonSerialize(using = DaysJson.class) BigDecimal days, int leaveYear, Balance balance, ApprovalLine approvalLine, List<Step> steps,
                            List<String> errors) {
 
-    public record Balance(String leaveTypeName, int granted, int used, int pending, int remaining, int remainingAfter) {
+    public record Balance(String leaveTypeName, @JsonSerialize(using = DaysJson.class) BigDecimal granted,
+                          @JsonSerialize(using = DaysJson.class) BigDecimal used,
+                          @JsonSerialize(using = DaysJson.class) BigDecimal pending,
+                          @JsonSerialize(using = DaysJson.class) BigDecimal remaining,
+                          @JsonSerialize(using = DaysJson.class) BigDecimal remainingAfter) {
     }
 
     public record ApprovalLine(long id, String name) {
