@@ -1,26 +1,129 @@
-/* AI 비서 대화창 · 확인 카드 · 알림 말풍선(C2 · B2) */
+/* AI 비서 대화창 · 확인 카드 · 알림 말풍선(C2 · B2) — 확정 디자인(파스텔 라벤더, 캐릭터 '별이')
+ * 크기는 디자인 px ÷ 16 = rem(앱 전체 크기 --ui-scale 을 같이 따른다). 폰트는 앱 기본 그대로 */
 
-.as-drawer .ant-drawer-body {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  background: #f8fafc;
+:root {
+  --as-accent: #6c5bd4;
+  --as-accent-hover: #574ac0;
+  --as-ink: #3b3550;
+  --as-sub: #716b88;
+  --as-bot-bubble: #f4effa;
+  --as-panel: rgba(255, 255, 255, 0.94);
+  --as-line: #efe6f8;
+  --as-field: #faf7fe;
+  --as-avatar-bg: linear-gradient(160deg, #f1e7fa, #e4d4f3);
 }
 
-.as-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
+/* ───── 떠 있는 패널 ───── */
+.as-panel {
+  position: fixed;
+  right: 2.25rem;
+  bottom: 6rem;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
+  width: min(24.5rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 8.75rem);
+  overflow: hidden;
+  border: 1px solid var(--as-line);
+  border-radius: 1.5rem;
+  background: var(--as-panel);
+  box-shadow: 0 1.75rem 4rem rgba(108, 91, 212, 0.22);
+  color: var(--as-ink);
+  backdrop-filter: blur(12px);
+}
+
+.as-panel[hidden] {
+  display: none;
+}
+
+/* 헤더 */
+.as-head {
+  display: flex;
+  flex: none;
   gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--as-line);
+}
+
+.as-avatar {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 2.875rem;
+  height: 2.875rem;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--as-avatar-bg);
+}
+
+.as-avatar img {
+  width: 100%;
+  height: auto;
+  margin-top: 0.125rem;
+  object-fit: cover;
+  object-position: top;
+}
+
+.as-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.as-head-text strong {
+  color: var(--as-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.as-head-text strong span {
+  color: var(--as-sub);
+}
+
+.as-head-text > span {
+  color: var(--as-sub);
+  font-size: 0.75rem;
+}
+
+.as-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #3b3550;
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.as-close:hover {
+  background: #2a2540;
+}
+
+/* 대화 영역 */
+.as-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-height: 0;
+  padding: 0.875rem 1rem;
+  overflow-y: auto;
 }
 
 .as-msg {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-  max-width: 88%;
+  max-width: 86%;
 }
 
 .as-msg.is-bot {
@@ -33,102 +136,261 @@
   align-items: flex-end;
 }
 
+.as-msg.is-card {
+  align-self: stretch;
+  max-width: 100%;
+}
+
 .as-bubble {
-  margin: 0;
-  padding: 0.625rem 0.875rem;
-  border-radius: 0.875rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.84375rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .as-msg.is-bot .as-bubble {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-top-left-radius: 0.25rem;
-  color: #0f172a;
+  border-radius: 0.25rem 1.125rem 1.125rem 1.125rem;
+  background: var(--as-bot-bubble);
+  color: var(--as-ink);
 }
 
 .as-msg.is-user .as-bubble {
-  background: #0ea5e9;
+  border-radius: 1.125rem 0.25rem 1.125rem 1.125rem;
+  background: var(--as-accent);
   color: #fff;
-  border-top-right-radius: 0.25rem;
-}
-
-.as-msg.is-alert .as-bubble {
-  background: #fffbeb;
-  border-color: #fcd34d;
-}
-
-/* 이미 처리된 결재 알림 — 회색 */
-.as-msg.is-alert.is-done .as-bubble {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #94a3b8;
-}
-
-.as-msg.is-alert.is-done .as-bubble-sub {
-  color: #94a3b8;
-}
-
-.as-bubble-sub {
-  color: #475569;
-  font-size: 0.875rem;
 }
 
 .as-typing {
-  color: #64748b;
+  color: var(--as-sub) !important;
 }
 
 .as-link {
-  font-size: 0.875rem;
+  color: var(--as-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
-/* 확인 카드 */
+.as-link:hover {
+  color: var(--as-accent-hover);
+}
+
+/* 알림 말풍선 — 흰 미니 카드 + pill 버튼 */
+.as-notice {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #ebe2f7;
+  border-radius: 0.875rem;
+  background: #fff;
+  white-space: normal;
+}
+
+.as-notice-initial {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--as-avatar-bg);
+  color: var(--as-accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.as-notice-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.as-notice-text b {
+  color: var(--as-ink);
+  font-size: 0.8125rem;
+}
+
+.as-notice-text span {
+  color: var(--as-sub);
+  font-size: 0.75rem;
+}
+
+.as-pill {
+  align-self: flex-start;
+  height: 2rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--as-accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.as-pill:hover {
+  background: var(--as-accent-hover);
+}
+
+/* 이미 처리된 결재 알림 — 회색, 이동 버튼 없음 */
+.as-msg.is-alert.is-done .as-bubble {
+  background: #f3f2f6;
+  color: #8f8a9f;
+}
+
+.as-msg.is-alert.is-done .as-notice {
+  border-color: #e9e7ee;
+  opacity: 0.75;
+}
+
+/* ───── 확인 카드(LeaveDraftCard) ───── */
 .as-card {
   width: 100%;
-  min-width: 16rem;
-  padding: 0.875rem 1rem;
+  overflow: hidden;
+  border: 1.5px solid #e3d6f6;
+  border-radius: 1.25rem;
   background: #fff;
-  border: 1px solid #bae6fd;
-  border-radius: 0.875rem;
+  box-shadow: 0 0.625rem 1.625rem rgba(108, 91, 212, 0.1);
 }
 
 .as-card.is-done {
   opacity: 0.6;
 }
 
+.as-card-head {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #f1e9fb, #fbeff3);
+}
+
+.as-card-star {
+  color: var(--as-accent);
+  font-size: 0.875rem;
+}
+
 .as-card-title {
-  margin: 0 0 0.5rem;
-  font-weight: 600;
+  flex: 1;
+  margin: 0;
+  color: var(--as-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.as-state {
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.as-state.is-ok {
+  background: #e9f5ec;
+  color: #2f7a45;
+}
+
+.as-state.is-bad {
+  background: #fdecef;
+  color: #b3485e;
+}
+
+.as-card-body {
+  padding: 0.25rem 1rem 1rem;
 }
 
 .as-card-kv {
   margin: 0;
-  display: grid;
-  gap: 0.25rem;
 }
 
 .as-card-kv > div {
   display: grid;
-  grid-template-columns: 6rem 1fr;
+  grid-template-columns: 5.5rem 1fr;
   gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.5625rem 0;
+}
+
+.as-card-kv > div + div {
+  border-top: 1px solid #f5f0fb;
 }
 
 .as-card-kv dt {
-  color: #64748b;
+  color: var(--as-sub);
+  font-size: 0.8125rem;
 }
 
 .as-card-kv dd {
   margin: 0;
+  color: var(--as-ink);
+  font-size: 0.84375rem;
+  font-weight: 700;
   word-break: break-word;
 }
 
+.as-card-kv > div.is-steps {
+  align-items: center;
+}
+
+/* 승인선 pill 칩 */
+.as-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.as-chip {
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: #f6f2fb;
+  color: var(--as-sub);
+  font-size: 0.78125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.as-chip.is-on {
+  background: #ede4fa;
+  color: var(--as-accent);
+}
+
+.as-chip.is-skip {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.as-chip-arrow {
+  color: #c4b6e4;
+  font-size: 0.6875rem;
+}
+
+.as-card-none {
+  color: var(--as-sub);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* INVALID 이유 */
 .as-card-alert {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.75rem;
+  background: #fdf0f2;
+  color: #b3485e;
+  font-size: 0.8125rem;
+}
+
+.as-card-alert strong {
+  display: block;
+  margin-bottom: 0.25rem;
 }
 
 .as-card-errors {
@@ -136,28 +398,205 @@
   padding-left: 1.125rem;
 }
 
-.as-card-steps {
-  margin-top: 0.75rem;
-}
-
-.as-card-sub {
-  margin: 0 0 0.375rem;
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
+/* 버튼 행 */
 .as-card-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: 0.375rem;
+  margin-top: 0.875rem;
 }
 
-/* 입력창 */
+.as-btn {
+  height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 0.875rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.as-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.as-btn.is-primary {
+  flex: 1;
+  background: var(--as-accent);
+  color: #fff;
+}
+
+.as-btn.is-primary:hover:not(:disabled) {
+  background: var(--as-accent-hover);
+}
+
+.as-btn.is-ghost {
+  border: 1px solid var(--as-accent);
+  background: #fff;
+  color: var(--as-accent);
+}
+
+.as-btn.is-ghost:hover:not(:disabled) {
+  background: #f7f3fd;
+}
+
+.as-btn.is-danger {
+  background: #fdf0f2;
+  color: #b3485e;
+}
+
+.as-btn.is-danger:hover:not(:disabled) {
+  background: #fae3e8;
+}
+
+.as-card-hint {
+  margin: 0.375rem 0.25rem 0;
+  color: var(--as-sub);
+  font-size: 0.71875rem;
+}
+
+/* ───── 입력바 ───── */
 .as-composer {
   display: flex;
+  flex: none;
   gap: 0.5rem;
   align-items: flex-end;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--as-line);
+}
+
+.as-round {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.as-round.is-new {
+  border: 1px solid var(--as-accent);
+  background: #fff;
+  color: var(--as-accent);
+}
+
+.as-round.is-new:hover {
+  background: #f7f3fd;
+}
+
+.as-round.is-send {
+  border: 0;
+  background: var(--as-accent);
+  color: #fff;
+}
+
+.as-round.is-send:hover:not(:disabled) {
+  background: var(--as-accent-hover);
+}
+
+.as-round.is-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* 1줄이면 pill(반지름 = 높이의 절반), 여러 줄이면 둥근 상자 */
+.as-composer textarea.as-input {
+  min-height: 2.75rem;
+  padding: 0.6875rem 1.125rem;
+  border: 1px solid #e7ddf6;
+  border-radius: 1.375rem;
+  background: var(--as-field);
+  color: var(--as-ink);
+  font-size: 0.84375rem;
+  line-height: 1.4;
+  resize: none;
+}
+
+.as-composer textarea.as-input:hover {
+  border-color: #d6c7f0;
+}
+
+.as-composer textarea.as-input:focus {
+  border-color: var(--as-accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(108, 91, 212, 0.12);
+}
+
+.as-composer textarea.as-input::placeholder {
+  color: #a49fb8;
+}
+
+/* ───── 오른쪽 아래 버튼(별이) ───── */
+.as-fab {
+  position: fixed;
+  right: 2.25rem;
+  bottom: 1.75rem;
+  z-index: 1001;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--as-avatar-bg);
+  box-shadow: 0 0.625rem 1.5rem rgba(108, 91, 212, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.as-fab:hover {
+  box-shadow: 0 0.875rem 1.75rem rgba(108, 91, 212, 0.45);
+  transform: translateY(-2px);
+}
+
+.as-fab:focus-visible,
+.as-round:focus-visible,
+.as-close:focus-visible,
+.as-btn:focus-visible,
+.as-pill:focus-visible {
+  outline: 2px solid var(--as-accent);
+  outline-offset: 2px;
+}
+
+/* 얼굴이 보이게 — 세로로 긴 그림(눈이 위에서 62% 쯤)을 꽉 채우고 얼굴 쪽으로 맞춘다. 원은 그림에서 자른다(뱃지는 원 밖으로 나와야 해서) */
+.as-fab-badge {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.as-fab-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 72%;
+}
+
+.as-fab .ant-badge-count {
+  top: 0.125rem;
+  right: 0.125rem;
+  background: var(--as-accent);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+@media (max-width: 767px) {
+  .as-panel {
+    right: 1rem;
+  }
+
+  .as-fab {
+    right: 1rem;
+  }
 }
 
 /* 알림 토스트는 눌러서 이동 */
