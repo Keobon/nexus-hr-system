@@ -18,9 +18,6 @@ import AssistantPanel from './AssistantPanel';
 import { useNotificationStream } from './useNotificationStream';
 import './assistant.css';
 
-const GREETING =
-  '안녕하세요! 휴가 신청을 도와드릴게요. 예) "내일 오후 반차 쓸게요", "11/25 병원 진료 때문에 연차". 내용을 확인한 뒤 [올리기]를 눌러야 실제로 신청돼요.';
-
 export default function AssistantDock() {
   const { notification } = App.useApp();
   const navigate = useNavigate();
@@ -101,7 +98,7 @@ export default function AssistantDock() {
     seq.current = 0;
     shown.current = new Set();
     setMessages([]);
-    push({ role: 'bot', kind: 'text', text: GREETING });
+    push({ role: 'bot', kind: 'greeting' }); // 첫 화면 — 인사 + 빠른 선택 칩(대화창이 그린다)
     openRef.current = true;
     setOpen(true);
 

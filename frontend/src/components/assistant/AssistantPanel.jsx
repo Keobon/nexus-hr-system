@@ -1,19 +1,22 @@
 // AI 비서 대화창(C2) — 문장으로 휴가 결재 초안을 만들고, 확인 카드에서 [올리기]를 눌러야 실제로 신청된다.
 // 대화는 이 화면 메모리에만 둔다(저장하지 않음). 열 때마다 새 대화, 입력바 [+]로도 새 대화(session 이 바뀐다).
 // 오른쪽 아래에 떠 있는 패널(캐릭터 '별이') — 닫혀도 내용은 남기고 숨기기만 한다(Drawer 때와 같게). Esc 로 닫는다.
+// 첫 화면: 인사 + 빠른 선택 칩(휴가 · 연장근무 · 출장). 백엔드 AI 는 휴가만 하므로 연장근무 · 출장은 "준비 중" 안내만.
 // 직원이 쓴 글 · 서버가 준 글은 React 기본 이스케이프로만 그린다(dangerouslySetInnerHTML 쓰지 않음).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Input } from 'antd';
-import { CloseOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { confirmLeaveDraft, createLeaveDraft, discardLeaveDraft } from '../../api/assistant';
 import { meKey } from '../../api/auth';
 import byeori from '../../assets/byeori.png';
+import { useMe } from '../../auth/useMe';
 import { errorMessage } from '../../constants/errors';
+import { CalendarIcon, ClockIcon, CloseIcon, PlaneIcon, PlusIcon, SendIcon } from './icons';
 import LeaveDraftCard from './LeaveDraftCard';
 
 const LEAVE_PAGE = { to: '/me/leaves', label: '휴가 신청 및 조회로 가기' };
+const NOT_YET = '아직 준비 중이에요. 지금은 휴가 결재부터 도와드릴게요!';
 
 /** API 오류 → 챗봇 말풍선. reset 이면 지금 초안을 버리고 새 대화로 */
 function botReply(err) {
@@ -45,6 +48,9 @@ function noticeParts(item) {
   };
 }
 
+/** 알림 제목 "휴가 결재가 올라왔습니다" → 말풍선 말투 "휴가 결재가 올라왔어요." */
+const noticeTitle = (item) => (item.title ?? '결재가 올라왔습니다').replace(/올라왔습니다\.?$/, '올라왔어요.');
+
 function NoticeCard({ item }) {
   const n = noticeParts(item);
   return (
@@ -60,14 +66,43 @@ function NoticeCard({ item }) {
   );
 }
 
+/** 봇 말풍선 행 — 왼쪽 별이 아바타(이름은 헤더에 있어 aria-hidden) */
+function BotRow({ className = '', wide = false, children }) {
+  return (
+    <div className={`as-row is-bot${wide ? ' is-wide' : ''}`}>
+      <span className="as-ava" aria-hidden="true">
+        <img src={byeori} alt="" />
+      </span>
+      <div className={`as-msg is-bot ${className}`}>{children}</div>
+    </div>
+  );
+}
+
+/** 사용자 말풍선 행 — 오른쪽 이니셜 원 */
+function UserRow({ initial, children }) {
+  return (
+    <div className="as-row is-user">
+      <div className="as-msg is-user">{children}</div>
+      <span className="as-ava is-me" aria-hidden="true">
+        {initial}
+      </span>
+    </div>
+  );
+}
+
 export default function AssistantPanel({ open, session, onClose, onNewChat, messages, push, onGo }) {
   const queryClient = useQueryClient();
+  const { me } = useMe();
+  const myName = me?.employee?.name ?? '';
+  const myInitial = myName.slice(0, 1) || '나';
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [draftId, setDraftId] = useState(null);
   const [activeCard, setActiveCard] = useState(null); // 버튼이 살아 있는 카드(마지막 초안)의 말풍선 ID
   const inputRef = useRef(null);
   const listRef = useRef(null);
+  // 칩은 첫 인사 상태에서만 — 직원이 한 번이라도 말하면(칩 · 입력) 숨긴다
+  const started = messages.some((m) => m.role === 'user');
 
   // 열 때마다(그리고 [+] 새 대화마다) 새 대화
   useEffect(() => {
@@ -169,28 +204,59 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
     }
   };
 
+  // 첫 화면 칩 — 휴가는 묻기만 하고 다음 입력부터 기존 초안 흐름(POST /me/ai/leave-drafts), 나머지는 준비 중 안내
+  const askLeave = () => {
+    push({ role: 'user', kind: 'text', text: '휴가 신청할게요' });
+    push({ role: 'bot', kind: 'text', text: '언제, 어떤 휴가가 필요하세요?' });
+    inputRef.current?.focus();
+  };
+  const notYet = () => push({ role: 'bot', kind: 'text', text: NOT_YET });
+
   return (
-    <section className="as-panel" role="dialog" aria-label="AI 비서" hidden={!open}>
+    <section className="as-panel" role="dialog" aria-label="AI 비서 별이" hidden={!open}>
       <header className="as-head">
         <span className="as-avatar" aria-hidden="true">
           <img src={byeori} alt="" />
         </span>
-        <div className="as-head-text">
-          <strong>
-            별이 <span>· AI 비서</span>
-          </strong>
-          <span>휴가 결재를 도와드려요</span>
-        </div>
+        <strong className="as-name">별이</strong>
         <button type="button" className="as-close" onClick={onClose} aria-label="AI 비서 닫기">
-          <CloseOutlined />
+          <CloseIcon />
         </button>
       </header>
 
       <div className="as-list" ref={listRef} aria-live="polite">
         {messages.map((m) => {
+          if (m.kind === 'greeting') {
+            return (
+              <div key={m.id} className="as-greeting">
+                <BotRow>
+                  <p className="as-bubble">
+                    {`안녕하세요${myName ? `, ${myName}님` : ''}! 무엇을 도와드릴까요?\n아래에서 고르거나, 그냥 말로 하셔도 돼요.`}
+                    <span className="as-bubble-ex">예) “내일 오후 반차 쓸게요” · “11/25 병원 진료 때문에 연차”</span>
+                  </p>
+                </BotRow>
+                {!started && !busy && (
+                  <div className="as-chips-quick" role="group" aria-label="빠른 선택">
+                    <button type="button" className="as-quick" onClick={askLeave}>
+                      <CalendarIcon />
+                      휴가 신청
+                    </button>
+                    <button type="button" className="as-quick" onClick={notYet}>
+                      <ClockIcon />
+                      연장근무 신청
+                    </button>
+                    <button type="button" className="as-quick" onClick={notYet}>
+                      <PlaneIcon />
+                      출장 신청
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          }
           if (m.kind === 'card') {
             return (
-              <div key={m.id} className="as-msg is-bot is-card">
+              <BotRow key={m.id} className="is-card" wide>
                 <LeaveDraftCard
                   data={m.data}
                   active={m.id === activeCard}
@@ -199,55 +265,61 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
                   onEdit={edit}
                   onDiscard={discard}
                 />
-              </div>
+              </BotRow>
             );
           }
           if (m.kind === 'notification' && m.done) {
             // 이미 처리된 결재(승인함에서 바로 승인 · 반려 등) — 회색, 이동 버튼 없음
             return (
-              <div key={m.id} className="as-msg is-bot is-alert is-done">
+              <BotRow key={m.id} className="is-alert is-done">
                 <div className="as-bubble">
-                  <strong>{m.item.title}</strong>
+                  <span>{`${noticeTitle(m.item)} 이미 처리된 결재예요.`}</span>
                   {m.item.body && <NoticeCard item={m.item} />}
-                  <span>이미 처리된 결재예요.</span>
                 </div>
-              </div>
+              </BotRow>
             );
           }
           if (m.kind === 'notification') {
             return (
-              <div key={m.id} className="as-msg is-bot is-alert">
+              <BotRow key={m.id} className="is-alert">
                 <div className="as-bubble">
-                  <strong>{m.item.title}</strong>
+                  <span>{`${noticeTitle(m.item)} 확인해 보고 승인함으로 이동하세요.`}</span>
                   {m.item.body && <NoticeCard item={m.item} />}
                   <button type="button" className="as-pill" onClick={() => onGo(m.item)}>
                     승인함으로 이동
                   </button>
                 </div>
-              </div>
+              </BotRow>
             );
           }
-          return (
-            <div key={m.id} className={`as-msg is-${m.role}`}>
+          const body = (
+            <>
               <p className="as-bubble">{m.text}</p>
               {m.link && (
                 <Link to={m.link.to} className="as-link" onClick={onClose}>
                   {m.link.label}
                 </Link>
               )}
-            </div>
+            </>
+          );
+          return m.role === 'user' ? (
+            <UserRow key={m.id} initial={myInitial}>
+              {body}
+            </UserRow>
+          ) : (
+            <BotRow key={m.id}>{body}</BotRow>
           );
         })}
         {busy && (
-          <div className="as-msg is-bot">
+          <BotRow>
             <p className="as-bubble as-typing">생각하는 중…</p>
-          </div>
+          </BotRow>
         )}
       </div>
 
       <div className="as-composer">
         <button type="button" className="as-round is-new" onClick={onNewChat} aria-label="새 대화">
-          <PlusOutlined />
+          <PlusIcon />
         </button>
         <Input.TextArea
           ref={inputRef}
@@ -266,7 +338,7 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
           className="as-input"
         />
         <button type="button" className="as-round is-send" onClick={send} disabled={!input.trim() || busy} aria-busy={busy} aria-label="보내기">
-          <SendOutlined />
+          <SendIcon />
         </button>
       </div>
     </section>
