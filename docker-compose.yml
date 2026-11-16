@@ -31,6 +31,10 @@ services:
       DB_USER: postgres
       SPRING_JPA_SHOW_SQL: "false"
       FILE_DIR: /app/uploads
+      # AI 비서(휴가 결재 초안). 기본은 규칙 기반 가짜 AI(fake) — 키 없이 프론트 개발 · 시연.
+      # 실제 Claude API: AI_CLIENT=anthropic 과 ANTHROPIC_API_KEY 를 환경변수로 주고 up (키는 파일에 적지 않는다)
+      AI_CLIENT: ${AI_CLIENT:-fake}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "127.0.0.1:8080:8080"
 
