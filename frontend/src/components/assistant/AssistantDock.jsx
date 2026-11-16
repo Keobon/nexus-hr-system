@@ -1,6 +1,7 @@
 // AI 비서(C2) + 결재 알림(B2) — AppLayout 에 한 번만 둔다. 로그인한 직원 누구나.
 // 오른쪽 아래 버튼: 안 읽은 알림 개수 뱃지, 누르면 AI 비서 대화창.
 // 새 알림: ① 뱃지 ② 토스트(누르면 그 화면으로) ③ 대화창이 열려 있으면 알림 말풍선.
+// 대화창을 열면 그때까지 안 읽은 알림도 말풍선으로 먼저 보여 준다(뱃지 숫자와 대화창 내용이 맞게).
 // 알림을 누르면 읽음 처리 → 승인함 배지 · 목록을 새로 받고 → linkPath(/approvals?stepId=…)로 이동.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +9,7 @@ import { App, FloatButton } from 'antd';
 import { CommentOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { meKey } from '../../api/auth';
-import { notificationsKey } from '../../api/notifications';
+import { getNotifications, notificationsKey } from '../../api/notifications';
 import AssistantPanel from './AssistantPanel';
 import { useNotificationStream } from './useNotificationStream';
 import './assistant.css';
@@ -25,6 +26,7 @@ export default function AssistantDock() {
   const openRef = useRef(false);
   const seq = useRef(0);
   const markReadRef = useRef(null);
+  const shown = useRef(new Set()); // 이번 대화에 이미 말풍선으로 띄운 알림 ID — 목록 · 스트림이 겹쳐도 한 번만
 
   /** 말풍선 추가 → 그 말풍선 ID */
   const push = useCallback((m) => {
@@ -67,7 +69,10 @@ export default function AssistantDock() {
           go(item);
         },
       });
-      if (openRef.current) push({ role: 'bot', kind: 'notification', item });
+      if (openRef.current && !shown.current.has(item.id)) {
+        shown.current.add(item.id);
+        push({ role: 'bot', kind: 'notification', item });
+      }
     },
     [notification, go, push, refreshApprovals],
   );
@@ -77,12 +82,27 @@ export default function AssistantDock() {
     markReadRef.current = markRead;
   }, [markRead]);
 
-  const openPanel = () => {
+  const openPanel = async () => {
     seq.current = 0;
+    shown.current = new Set();
     setMessages([]);
     push({ role: 'bot', kind: 'text', text: GREETING });
     openRef.current = true;
     setOpen(true);
+
+    // 열기 전에 와 있던 안 읽은 알림 — 오래된 것부터
+    try {
+      const page = await getNotifications({ unreadOnly: true, size: 20 });
+      const items = (page?.content ?? []).filter((it) => !shown.current.has(it.id));
+      if (!openRef.current || items.length === 0) return;
+      push({ role: 'bot', kind: 'text', text: `읽지 않은 결재 알림이 ${items.length}건 있어요.` });
+      [...items].reverse().forEach((item) => {
+        shown.current.add(item.id);
+        push({ role: 'bot', kind: 'notification', item });
+      });
+    } catch {
+      // 목록을 못 받아도 대화는 쓸 수 있다
+    }
   };
 
   const closePanel = () => {
