@@ -10,6 +10,7 @@
   --as-panel: rgba(255, 255, 255, 0.94);
   --as-line: #efe6f8;
   --as-field: #faf7fe;
+  --as-card-line: #e3d6f6;
   --as-avatar-bg: linear-gradient(160deg, #f1e7fa, #e4d4f3);
 }
 
@@ -25,7 +26,7 @@
   max-height: calc(100vh - 8.75rem);
   overflow: hidden;
   border: 1px solid var(--as-line);
-  border-radius: 1.5rem;
+  border-radius: 1.75rem;
   background: var(--as-panel);
   box-shadow: 0 1.75rem 4rem rgba(108, 91, 212, 0.22);
   color: var(--as-ink);
@@ -36,7 +37,7 @@
   display: none;
 }
 
-/* 헤더 */
+/* 헤더 — 아바타 · "별이" · 닫기 */
 .as-head {
   display: flex;
   flex: none;
@@ -58,34 +59,16 @@
 }
 
 .as-avatar img {
-  width: 100%;
+  width: 2.375rem;
   height: auto;
-  margin-top: 0.125rem;
-  object-fit: cover;
-  object-position: top;
+  margin-top: 0.1875rem;
 }
 
-.as-head-text {
-  display: flex;
+.as-name {
   flex: 1;
-  flex-direction: column;
-  gap: 0.125rem;
-  min-width: 0;
-}
-
-.as-head-text strong {
   color: var(--as-ink);
   font-size: 0.9375rem;
   font-weight: 700;
-}
-
-.as-head-text strong span {
-  color: var(--as-sub);
-}
-
-.as-head-text > span {
-  color: var(--as-sub);
-  font-size: 0.75rem;
 }
 
 .as-close {
@@ -100,7 +83,6 @@
   border-radius: 50%;
   background: #3b3550;
   color: #fff;
-  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -108,7 +90,12 @@
   background: #2a2540;
 }
 
-/* 대화 영역 */
+.as-close svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ───── 대화 영역 — 모든 말풍선은 아바타 + 버블 한 줄 ───── */
 .as-list {
   display: flex;
   flex: 1;
@@ -119,26 +106,65 @@
   overflow-y: auto;
 }
 
+.as-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  max-width: 92%;
+}
+
+.as-row.is-bot {
+  align-self: flex-start;
+}
+
+.as-row.is-user {
+  align-self: flex-end;
+}
+
+.as-row.is-wide {
+  align-self: stretch;
+  max-width: 100%;
+}
+
+.as-ava {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--as-avatar-bg);
+}
+
+.as-ava img {
+  width: 1.5rem;
+  height: auto;
+  margin-top: 0.125rem;
+}
+
+.as-ava.is-me {
+  align-items: center;
+  background: #f3d7ee;
+  color: #8a4e7c;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .as-msg {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.375rem;
-  max-width: 86%;
+  min-width: 0;
 }
 
 .as-msg.is-bot {
-  align-self: flex-start;
   align-items: flex-start;
 }
 
 .as-msg.is-user {
-  align-self: flex-end;
   align-items: flex-end;
-}
-
-.as-msg.is-card {
-  align-self: stretch;
-  max-width: 100%;
 }
 
 .as-bubble {
@@ -165,6 +191,11 @@
   color: #fff;
 }
 
+.as-bubble-ex {
+  color: var(--as-sub);
+  font-size: 0.78125rem;
+}
+
 .as-typing {
   color: var(--as-sub) !important;
 }
@@ -177,6 +208,50 @@
 
 .as-link:hover {
   color: var(--as-accent-hover);
+}
+
+/* 첫 화면 빠른 선택 칩 — 인사 바로 아래 한 줄 */
+.as-greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.as-chips-quick {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.as-quick {
+  display: inline-flex;
+  flex: none;
+  gap: 0.375rem;
+  align-items: center;
+  height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 1.5px solid var(--as-card-line);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0.375rem 1rem rgba(108, 91, 212, 0.1);
+  color: var(--as-ink);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.as-quick svg {
+  flex: none;
+  width: 1.0625rem;
+  height: 1.0625rem;
+  color: var(--as-accent);
+}
+
+.as-quick:hover {
+  border-color: #cdb9ef;
+  background: #fcfaff;
 }
 
 /* 알림 말풍선 — 흰 미니 카드 + pill 버튼 */
@@ -199,8 +274,8 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--as-avatar-bg);
-  color: var(--as-accent);
+  background: #f3d7ee;
+  color: #8a4e7c;
   font-size: 0.8125rem;
   font-weight: 700;
 }
@@ -254,7 +329,7 @@
 .as-card {
   width: 100%;
   overflow: hidden;
-  border: 1.5px solid #e3d6f6;
+  border: 1.5px solid var(--as-card-line);
   border-radius: 1.25rem;
   background: #fff;
   box-shadow: 0 0.625rem 1.625rem rgba(108, 91, 212, 0.1);
@@ -273,8 +348,10 @@
 }
 
 .as-card-star {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
   color: var(--as-accent);
-  font-size: 0.875rem;
 }
 
 .as-card-title {
@@ -290,6 +367,7 @@
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .as-state.is-ok {
@@ -312,7 +390,7 @@
 
 .as-card-kv > div {
   display: grid;
-  grid-template-columns: 5.5rem 1fr;
+  grid-template-columns: 6.25rem 1fr;
   gap: 0.5rem;
   align-items: baseline;
   padding: 0.5625rem 0;
@@ -325,6 +403,7 @@
 .as-card-kv dt {
   color: var(--as-sub);
   font-size: 0.8125rem;
+  white-space: nowrap;
 }
 
 .as-card-kv dd {
@@ -337,6 +416,11 @@
 
 .as-card-kv > div.is-steps {
   align-items: center;
+}
+
+.as-remain {
+  color: var(--as-accent);
+  font-style: normal;
 }
 
 /* 승인선 pill 칩 */
@@ -353,13 +437,14 @@
   background: #f6f2fb;
   color: var(--as-sub);
   font-size: 0.78125rem;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .as-chip.is-on {
   background: #ede4fa;
   color: var(--as-accent);
+  font-weight: 700;
 }
 
 .as-chip.is-skip {
@@ -368,8 +453,10 @@
 }
 
 .as-chip-arrow {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
   color: #c4b6e4;
-  font-size: 0.6875rem;
 }
 
 .as-card-none {
@@ -476,12 +563,16 @@
   height: 2.75rem;
   padding: 0;
   border-radius: 50%;
-  font-size: 1rem;
   cursor: pointer;
 }
 
+.as-round svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
 .as-round.is-new {
-  border: 1px solid var(--as-accent);
+  border: 1px solid #e7ddf6;
   background: #fff;
   color: var(--as-accent);
 }
@@ -561,12 +652,13 @@
 .as-round:focus-visible,
 .as-close:focus-visible,
 .as-btn:focus-visible,
-.as-pill:focus-visible {
+.as-pill:focus-visible,
+.as-quick:focus-visible {
   outline: 2px solid var(--as-accent);
   outline-offset: 2px;
 }
 
-/* 얼굴이 보이게 — 세로로 긴 그림(눈이 위에서 62% 쯤)을 꽉 채우고 얼굴 쪽으로 맞춘다. 원은 그림에서 자른다(뱃지는 원 밖으로 나와야 해서) */
+/* 얼굴이 보이게 위 정렬 크롭. 원은 그림에서 자른다(뱃지는 원 밖으로 나와야 해서 버튼은 자르지 않는다) */
 .as-fab-badge {
   display: block;
   width: 100%;
@@ -579,13 +671,14 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  object-position: 50% 72%;
+  object-position: top;
 }
 
 .as-fab .ant-badge-count {
   top: 0.125rem;
   right: 0.125rem;
   background: var(--as-accent);
+  color: #fff;
   box-shadow: 0 0 0 2px #fff;
 }
 
