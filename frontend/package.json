@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@tanstack/react-query": "^5.104.1",
     "antd": "^6.6.5",
     "dayjs": "^1.11.23",
