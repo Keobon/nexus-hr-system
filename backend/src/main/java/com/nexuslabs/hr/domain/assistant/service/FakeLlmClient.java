@@ -21,9 +21,9 @@ import java.util.regex.Pattern;
 public class FakeLlmClient implements LlmClient {
 
     private static final Pattern DATE = Pattern.compile(
-            "(\d{4})-(\d{1,2})-(\d{1,2})|(?<!\d)(\d{1,2})/(\d{1,2})(?!\d)|(\d{1,2})월\s*(\d{1,2})일|오늘|내일|모레");
-    private static final Pattern REASON = Pattern.compile("(.+?)\s*(?:때문에|으로 인해|로 인해)");
-    private static final Pattern REASON_EDGE = Pattern.compile("^[\s일에부터까지~,\-]+|[\s,]+$");
+            "(\\d{4})-(\\d{1,2})-(\\d{1,2})|(?<!\\d)(\\d{1,2})/(\\d{1,2})(?!\\d)|(\\d{1,2})월\\s*(\\d{1,2})일|오늘|내일|모레");
+    private static final Pattern REASON = Pattern.compile("(.+?)\\s*(?:때문에|으로 인해|로 인해)");
+    private static final Pattern REASON_EDGE = Pattern.compile("^[\\s일에부터까지~,\\-]+|[\\s,]+$");
 
     @Override
     public LeaveExtraction extractLeave(LeaveExtractionPrompt prompt) {
