@@ -71,21 +71,21 @@ public class AnthropicLlmClient implements LlmClient {
 
     @Override
     public LeaveExtraction extractLeave(LeaveExtractionPrompt prompt) {
-        MessageCreateParams params = MessageCreateParams.builder()
-                .model(model)
-                .maxTokens(4096L)
-                .system(SYSTEM.formatted(prompt.today(),
-                        prompt.today().getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN),
-                        String.join(", ", prompt.leaveTypeNames())))
-                .outputConfig(OutputConfig.builder()
-                        .effort(OutputConfig.Effort.LOW)
-                        .format(JsonOutputFormat.builder().schema(SCHEMA).build())
-                        .build())
-                .addUserMessage(userContent(prompt))
-                .build();
-
         long started = System.nanoTime();
+        // 요청 만들기(지금 초안 직렬화 포함)도 try 안 — 실패해도 500 이 아니라 AI_UNAVAILABLE
         try {
+            MessageCreateParams params = MessageCreateParams.builder()
+                    .model(model)
+                    .maxTokens(4096L)
+                    .system(SYSTEM.formatted(prompt.today(),
+                            prompt.today().getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.KOREAN),
+                            String.join(", ", prompt.leaveTypeNames())))
+                    .outputConfig(OutputConfig.builder()
+                            .effort(OutputConfig.Effort.LOW)
+                            .format(JsonOutputFormat.builder().schema(SCHEMA).build())
+                            .build())
+                    .addUserMessage(userContent(prompt))
+                    .build();
             Message response = client.messages().create(params);
             if (response.stopReason().filter(StopReason.END_TURN::equals).isEmpty()) {
                 // 거절(refusal) · 길이 초과 등 — 초안을 만들 수 없다

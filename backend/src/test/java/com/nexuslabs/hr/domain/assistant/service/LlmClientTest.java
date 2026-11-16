@@ -29,6 +29,13 @@ class LlmClientTest {
                 .isInstanceOf(FakeLlmClient.class);
     }
 
+    @Test
+    void 어긋난_응답의_missing은_빈_목록_null_제외로() {
+        assertThat(new LeaveExtraction(null, null, null, null, null, null, null).missing()).isEmpty();
+        assertThat(new LeaveExtraction(null, null, null, null, null,
+                java.util.Arrays.asList("halfDay", null), null).missing()).containsExactly("halfDay");
+    }
+
     private static LeaveExtraction fake(String message) {
         return new FakeLlmClient().extractLeave(new LeaveExtractionPrompt(TODAY, TYPES, message, null));
     }
