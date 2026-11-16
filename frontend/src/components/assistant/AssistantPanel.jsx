@@ -175,6 +175,18 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
               </div>
             );
           }
+          if (m.kind === 'notification' && m.done) {
+            // 이미 처리된 결재(승인함에서 바로 승인 · 반려 등) — 회색, 이동 버튼 없음
+            return (
+              <div key={m.id} className="as-msg is-bot is-alert is-done">
+                <p className="as-bubble">
+                  <strong>{m.item.title}</strong>
+                  {m.item.body && <span className="as-bubble-sub">{m.item.body}</span>}
+                  <span>이미 처리된 결재예요.</span>
+                </p>
+              </div>
+            );
+          }
           if (m.kind === 'notification') {
             return (
               <div key={m.id} className="as-msg is-bot is-alert">

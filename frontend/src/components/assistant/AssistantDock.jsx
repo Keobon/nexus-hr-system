@@ -1,15 +1,19 @@
 // AI 비서(C2) + 결재 알림(B2) — AppLayout 에 한 번만 둔다. 로그인한 직원 누구나.
-// 오른쪽 아래 버튼: 안 읽은 알림 개수 뱃지, 누르면 AI 비서 대화창.
+// 오른쪽 아래 버튼: 안 읽은 알림 개수 뱃지(서버의 안 읽은 알림 목록 기준), 누르면 AI 비서 대화창.
 // 새 알림: ① 뱃지 ② 토스트(누르면 그 화면으로) ③ 대화창이 열려 있으면 알림 말풍선.
 // 대화창을 열면 그때까지 안 읽은 알림도 말풍선으로 먼저 보여 준다(뱃지 숫자와 대화창 내용이 맞게).
+// 그중 이미 처리된 결재(승인함에서 바로 승인 · 반려, 신청 철회 등으로 내 승인 대기에 없는 건)는
+// 읽음으로 정리하고 회색 말풍선("이미 처리된 결재예요", 이동 버튼 없음)으로 보여 준다.
 // 알림을 누르면 읽음 처리 → 승인함 배지 · 목록을 새로 받고 → linkPath(/approvals?stepId=…)로 이동.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { App, FloatButton } from 'antd';
 import { CommentOutlined } from '@ant-design/icons';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getInboxPage } from '../../api/approvals';
 import { meKey } from '../../api/auth';
-import { getNotifications, notificationsKey } from '../../api/notifications';
+import { fetchAllPages } from '../../api/employees';
+import { getUnreadNotifications, notificationsKey, readNotification, unreadNotificationsKey } from '../../api/notifications';
 import AssistantPanel from './AssistantPanel';
 import { useNotificationStream } from './useNotificationStream';
 import './assistant.css';
@@ -25,8 +29,10 @@ export default function AssistantDock() {
   const [messages, setMessages] = useState([]);
   const openRef = useRef(false);
   const seq = useRef(0);
-  const markReadRef = useRef(null);
   const shown = useRef(new Set()); // 이번 대화에 이미 말풍선으로 띄운 알림 ID — 목록 · 스트림이 겹쳐도 한 번만
+
+  const unread = useQuery({ queryKey: unreadNotificationsKey, queryFn: getUnreadNotifications });
+  const unreadCount = unread.data?.totalElements ?? 0;
 
   /** 말풍선 추가 → 그 말풍선 ID */
   const push = useCallback((m) => {
@@ -36,16 +42,26 @@ export default function AssistantDock() {
     return id;
   }, []);
 
+  const refreshUnread = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: notificationsKey });
+  }, [queryClient]);
+
   const refreshApprovals = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: meKey }); // 사이드바 승인함 배지(todos.approvalsPending)
     queryClient.invalidateQueries({ queryKey: ['approvals'] });
-    queryClient.invalidateQueries({ queryKey: notificationsKey });
-  }, [queryClient]);
+    refreshUnread();
+  }, [queryClient, refreshUnread]);
 
   /** 알림을 눌렀을 때 — 읽음 처리 후 이동. 서버가 만든 앱 안 주소(/로 시작)만 따라간다 */
   const go = useCallback(
     async (item) => {
-      await markReadRef.current?.(item);
+      if (!item.read) {
+        try {
+          await readNotification(item.id);
+        } catch {
+          // 읽음 처리에 실패해도 이동은 한다
+        }
+      }
       refreshApprovals();
       if (typeof item.linkPath === 'string' && item.linkPath.startsWith('/') && !item.linkPath.startsWith('//')) {
         navigate(item.linkPath);
@@ -77,10 +93,7 @@ export default function AssistantDock() {
     [notification, go, push, refreshApprovals],
   );
 
-  const { unreadCount, markRead } = useNotificationStream(onNotification);
-  useEffect(() => {
-    markReadRef.current = markRead;
-  }, [markRead]);
+  useNotificationStream(onNotification, refreshUnread);
 
   const openPanel = async () => {
     seq.current = 0;
@@ -90,16 +103,34 @@ export default function AssistantDock() {
     openRef.current = true;
     setOpen(true);
 
-    // 열기 전에 와 있던 안 읽은 알림 — 오래된 것부터
+    // 열기 전에 와 있던 안 읽은 알림 — 지금도 내 승인 대기에 있는지 승인함과 맞춰 본다
     try {
-      const page = await getNotifications({ unreadOnly: true, size: 20 });
+      const [page, inbox] = await Promise.all([getUnreadNotifications(), fetchAllPages(getInboxPage, {})]);
+      const pending = new Set((inbox ?? []).map((it) => it.stepId));
       const items = (page?.content ?? []).filter((it) => !shown.current.has(it.id));
       if (!openRef.current || items.length === 0) return;
-      push({ role: 'bot', kind: 'text', text: `읽지 않은 결재 알림이 ${items.length}건 있어요.` });
+      const isDone = (it) => it.approvalStepId != null && !pending.has(it.approvalStepId);
+      const done = items.filter(isDone);
+      const waiting = items.length - done.length;
+
+      push({
+        role: 'bot',
+        kind: 'text',
+        text:
+          waiting > 0
+            ? `확인할 결재 알림이 ${waiting}건 있어요.${done.length ? ` (이미 처리된 ${done.length}건은 회색으로 표시했어요)` : ''}`
+            : `새 결재 알림 ${done.length}건은 모두 이미 처리된 결재예요.`,
+      });
       [...items].reverse().forEach((item) => {
         shown.current.add(item.id);
-        push({ role: 'bot', kind: 'notification', item });
+        push({ role: 'bot', kind: 'notification', item, done: isDone(item) });
       });
+
+      // 이미 처리된 결재의 알림은 읽음으로 정리 → 뱃지에서 빠진다. 열려 있는 승인함 목록 · 배지도 새로 받는다
+      if (done.length) {
+        await Promise.all(done.map((it) => readNotification(it.id).catch(() => null)));
+        refreshApprovals();
+      }
     } catch {
       // 목록을 못 받아도 대화는 쓸 수 있다
     }

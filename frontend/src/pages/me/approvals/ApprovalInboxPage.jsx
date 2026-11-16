@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { approveStep, getHistoryPage, getInboxPage, historyKey, inboxKey, rejectStep } from '../../../api/approvals';
 import { meKey } from '../../../api/auth';
+import { notificationsKey, readNotificationsForSteps } from '../../../api/notifications';
 import { fetchAllPages } from '../../../api/employees';
 import { useNotify } from '../../../components/common/useNotify';
 import { errorMessage } from '../../../constants/errors';
@@ -298,6 +299,8 @@ function DecisionModal({ action, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });
       queryClient.invalidateQueries({ queryKey: meKey });
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
+      // 알림을 누르지 않고 바로 처리했어도 그 건의 결재 알림은 읽음으로 → AI 비서 뱃지에서 빠진다
+      readNotificationsForSteps([item.stepId]).then(() => queryClient.invalidateQueries({ queryKey: notificationsKey }));
       const what = KIND[item.workType]?.[0] ?? '신청';
       notify.success(`${item.applicantName}님의 ${what}${eulReul(what)} ${approve ? '승인' : '반려'}했습니다`);
       onClose();
@@ -372,14 +375,20 @@ function BulkApproveModal({ items, onClose, onDone }) {
     setBusy(true);
     let ok = 0;
     const failed = [];
+    const approved = [];
     // 차례로 — 같은 신청자의 잔여 휴가 · 다음 단계가 앞 건 결과에 따라 달라질 수 있다
     for (const it of items) {
       try {
         await approveStep(it.stepId, { comment: comment.trim() || null });
         ok += 1;
+        approved.push(it.stepId);
       } catch (err) {
         failed.push({ item: it, message: errorMessage(err) });
       }
+    }
+    if (approved.length) {
+      await readNotificationsForSteps(approved);
+      queryClient.invalidateQueries({ queryKey: notificationsKey });
     }
     queryClient.invalidateQueries({ queryKey: ['approvals'] });
     queryClient.invalidateQueries({ queryKey: meKey });

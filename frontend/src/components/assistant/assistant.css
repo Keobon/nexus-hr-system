@@ -63,6 +63,17 @@
   border-color: #fcd34d;
 }
 
+/* 이미 처리된 결재 알림 — 회색 */
+.as-msg.is-alert.is-done .as-bubble {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.as-msg.is-alert.is-done .as-bubble-sub {
+  color: #94a3b8;
+}
+
 .as-bubble-sub {
   color: #475569;
   font-size: 0.875rem;
