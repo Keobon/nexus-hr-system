@@ -25,6 +25,14 @@ export const SendIcon = (p) => (
   </Svg>
 );
 
+/** 처음으로(되돌리기) */
+export const HomeIcon = (p) => (
+  <Svg size={14} {...p}>
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <path d="M3 4v5h5" />
+  </Svg>
+);
+
 export const StarIcon = (p) => (
   <Svg size={14} fill="currentColor" strokeWidth="1.5" {...p}>
     <path d="M12 2.8l2.8 5.7 6.3.9-4.6 4.4 1.1 6.2L12 17l-5.6 3 1.1-6.2L2.9 9.4l6.3-.9L12 2.8z" />

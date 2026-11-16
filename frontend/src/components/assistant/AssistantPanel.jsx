@@ -2,6 +2,7 @@
 // 대화는 이 화면 메모리에만 둔다(저장하지 않음). 열 때마다 새 대화, 입력바 [+]로도 새 대화(session 이 바뀐다).
 // 오른쪽 아래에 떠 있는 패널(캐릭터 '별이') — 닫혀도 내용은 남기고 숨기기만 한다(Drawer 때와 같게). Esc 로 닫는다.
 // 첫 화면: 인사 + 빠른 선택 칩(휴가 · 연장근무 · 출장). 백엔드 AI 는 휴가만 하므로 연장근무 · 출장은 "준비 중" 안내만.
+// 신청을 올리거나 그만두면 "또 도와드릴 일이 있을까요?" + 칩으로 돌아오고, 진행 중에는 입력바 위 [처음으로]로 언제든 돌아간다(만들던 초안은 버림).
 // 직원이 쓴 글 · 서버가 준 글은 React 기본 이스케이프로만 그린다(dangerouslySetInnerHTML 쓰지 않음).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,11 +13,12 @@ import { meKey } from '../../api/auth';
 import byeori from '../../assets/byeori.png';
 import { useMe } from '../../auth/useMe';
 import { errorMessage } from '../../constants/errors';
-import { CalendarIcon, ClockIcon, CloseIcon, PlaneIcon, PlusIcon, SendIcon } from './icons';
+import { CalendarIcon, ClockIcon, CloseIcon, HomeIcon, PlaneIcon, PlusIcon, SendIcon } from './icons';
 import LeaveDraftCard from './LeaveDraftCard';
 
 const LEAVE_PAGE = { to: '/me/leaves', label: '휴가 신청 및 조회로 가기' };
 const NOT_YET = '아직 준비 중이에요. 지금은 휴가 결재부터 도와드릴게요!';
+const MENU_AGAIN = '또 도와드릴 일이 있을까요?';
 
 /** API 오류 → 챗봇 말풍선. reset 이면 지금 초안을 버리고 새 대화로 */
 function botReply(err) {
@@ -78,6 +80,26 @@ function BotRow({ className = '', wide = false, children }) {
   );
 }
 
+/** 빠른 선택 칩 — 첫 인사 · "또 도와드릴 일이 있을까요?" 아래 */
+function QuickChips({ onLeave, onNotYet }) {
+  return (
+    <div className="as-chips-quick" role="group" aria-label="빠른 선택">
+      <button type="button" className="as-quick" onClick={onLeave}>
+        <CalendarIcon />
+        휴가 신청
+      </button>
+      <button type="button" className="as-quick" onClick={onNotYet}>
+        <ClockIcon />
+        연장근무 신청
+      </button>
+      <button type="button" className="as-quick" onClick={onNotYet}>
+        <PlaneIcon />
+        출장 신청
+      </button>
+    </div>
+  );
+}
+
 /** 사용자 말풍선 행 — 오른쪽 이니셜 원 */
 function UserRow({ initial, children }) {
   return (
@@ -101,8 +123,10 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
   const [activeCard, setActiveCard] = useState(null); // 버튼이 살아 있는 카드(마지막 초안)의 말풍선 ID
   const inputRef = useRef(null);
   const listRef = useRef(null);
-  // 칩은 첫 인사 상태에서만 — 직원이 한 번이라도 말하면(칩 · 입력) 숨긴다
-  const started = messages.some((m) => m.role === 'user');
+  // 칩은 마지막 "무엇이 필요하세요?"(첫 인사 · 메뉴) 말풍선 아래에만 — 그 뒤로 직원이 말하면(칩 · 입력) 숨기고 [처음으로]를 보인다
+  const menuIdx = messages.reduce((at, m, i) => (m.kind === 'greeting' || m.kind === 'menu' ? i : at), -1);
+  const atMenu = menuIdx >= 0 && !messages.slice(menuIdx + 1).some((m) => m.role === 'user');
+  const showChips = (m) => atMenu && !busy && m.id === messages[menuIdx]?.id;
 
   // 열 때마다(그리고 [+] 새 대화마다) 새 대화
   useEffect(() => {
@@ -178,6 +202,7 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
         text: '휴가 결재를 올렸습니다. 진행 상황은 휴가 신청 및 조회에서 볼 수 있어요.',
         link: LEAVE_PAGE,
       });
+      push({ role: 'bot', kind: 'menu', text: MENU_AGAIN });
     } catch (err) {
       fail(err);
     } finally {
@@ -200,8 +225,17 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
     } finally {
       resetDraft();
       setBusy(false);
-      push({ role: 'bot', kind: 'text', text: '초안을 지웠어요. 다른 휴가가 필요하면 다시 말씀해 주세요.' });
+      push({ role: 'bot', kind: 'text', text: '초안을 지웠어요.' });
+      push({ role: 'bot', kind: 'menu', text: MENU_AGAIN });
     }
+  };
+
+  /** [처음으로] — 만들던 초안은 서버에서도 버리고(실패해도 무시, 30분 뒤 만료) 메뉴로 */
+  const goHome = () => {
+    if (busy) return;
+    if (draftId) discardLeaveDraft(draftId).catch(() => {});
+    resetDraft();
+    push({ role: 'bot', kind: 'menu', text: '처음으로 돌아왔어요. 무엇이 필요하세요?' });
   };
 
   // 첫 화면 칩 — 휴가는 묻기만 하고 다음 입력부터 기존 초안 흐름(POST /me/ai/leave-drafts), 나머지는 준비 중 안내
@@ -235,22 +269,17 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
                     <span className="as-bubble-ex">예) “내일 오후 반차 쓸게요” · “11/25 병원 진료 때문에 연차”</span>
                   </p>
                 </BotRow>
-                {!started && !busy && (
-                  <div className="as-chips-quick" role="group" aria-label="빠른 선택">
-                    <button type="button" className="as-quick" onClick={askLeave}>
-                      <CalendarIcon />
-                      휴가 신청
-                    </button>
-                    <button type="button" className="as-quick" onClick={notYet}>
-                      <ClockIcon />
-                      연장근무 신청
-                    </button>
-                    <button type="button" className="as-quick" onClick={notYet}>
-                      <PlaneIcon />
-                      출장 신청
-                    </button>
-                  </div>
-                )}
+                {showChips(m) && <QuickChips onLeave={askLeave} onNotYet={notYet} />}
+              </div>
+            );
+          }
+          if (m.kind === 'menu') {
+            return (
+              <div key={m.id} className="as-greeting">
+                <BotRow>
+                  <p className="as-bubble">{m.text}</p>
+                </BotRow>
+                {showChips(m) && <QuickChips onLeave={askLeave} onNotYet={notYet} />}
               </div>
             );
           }
@@ -316,6 +345,15 @@ export default function AssistantPanel({ open, session, onClose, onNewChat, mess
           </BotRow>
         )}
       </div>
+
+      {!atMenu && (
+        <div className="as-home-row">
+          <button type="button" className="as-home" onClick={goHome} disabled={busy}>
+            <HomeIcon />
+            처음으로
+          </button>
+        </div>
+      )}
 
       <div className="as-composer">
         <button type="button" className="as-round is-new" onClick={onNewChat} aria-label="새 대화">
