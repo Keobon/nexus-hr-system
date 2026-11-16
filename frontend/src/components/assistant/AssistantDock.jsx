@@ -14,7 +14,7 @@ import { useNotificationStream } from './useNotificationStream';
 import './assistant.css';
 
 const GREETING =
-  '안녕하세요! 휴가 신청을 도와드릴게요. 예) "3/12 병원 진료 때문에 연차 쓸게요". 내용을 확인한 뒤 [올리기]를 눌러야 실제로 신청돼요.';
+  '안녕하세요! 휴가 신청을 도와드릴게요. 예) "내일 오후 반차 쓸게요", "11/25 병원 진료 때문에 연차". 내용을 확인한 뒤 [올리기]를 눌러야 실제로 신청돼요.';
 
 export default function AssistantDock() {
   const { notification } = App.useApp();

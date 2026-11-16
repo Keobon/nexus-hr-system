@@ -153,3 +153,8 @@
 .as-toast {
   cursor: pointer;
 }
+
+/* 오른쪽 아래 AI 비서 버튼이 본문 맨 아래 버튼(대시보드 [휴가 신청] 등)을 가리지 않게 — 끝까지 내리면 버튼 위로 올라오도록 아래 여백 */
+.app-shell .app-main {
+  padding-bottom: 6rem;
+}

@@ -152,7 +152,7 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
             }}
             maxLength={500}
             autoSize={{ minRows: 1, maxRows: 4 }}
-            placeholder='예) "3/12 병원 진료 때문에 연차 쓸게요"'
+            placeholder='예) "내일 오후 반차 쓸게요"'
             aria-label="AI 비서에게 보낼 문장"
           />
           <Button type="primary" icon={<SendOutlined />} onClick={send} loading={busy} disabled={!input.trim()} aria-label="보내기" />
