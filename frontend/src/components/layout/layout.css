@@ -33,18 +33,35 @@
   padding: 2.1875rem 0.75rem 0;
 }
 
+/* 서비스 로고(로그인 화면과 같은 그림) — 500 × 500 원본의 가운데 띠만. auth.css 를 안 거치고 들어와도 잘리게 여기에도 둔다 */
+.nav-top .brand-logo,
+.app-topbar .brand-logo {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+
+.nav-top .brand-logo img,
+.app-topbar .brand-logo img {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  max-width: none;
+}
+
 .nav-top .brand-logo {
   width: 12.875rem;
   height: 2.4375rem;
   margin-left: 0.3125rem;
 }
 
-.nav-top .brand-logo img {
+.nav-top .brand-logo img,
+.app-topbar .brand-logo img {
   top: -212.84%;
   height: 528.26%;
 }
 
-/* 회사 로고(F-COMP-02) — 서비스 로고와 같은 자리 · 높이. 올린 이미지는 비율 그대로, 없으면 회사명 글자 */
+/* 회사 로고(F-COMP-02) — 서비스 로고와 같은 자리 · 높이. 올린 이미지는 비율 그대로(없으면 서비스 로고) */
 .company-logo {
   display: flex;
   align-items: center;
@@ -65,15 +82,6 @@
   object-position: left center;
 }
 
-.company-logo.is-text span {
-  overflow: hidden;
-  color: #fff;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
 
 .nav-line {
   display: block;
@@ -333,9 +341,6 @@
     height: 1.875rem;
   }
 
-  .app-topbar .company-logo.is-text span {
-    font-size: 1rem;
-  }
 
   .app-main {
     padding: 1.25rem 1rem 2rem;
