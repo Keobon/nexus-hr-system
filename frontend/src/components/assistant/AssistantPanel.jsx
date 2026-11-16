@@ -1,13 +1,15 @@
 // AI 비서 대화창(C2) — 문장으로 휴가 결재 초안을 만들고, 확인 카드에서 [올리기]를 눌러야 실제로 신청된다.
-// 대화는 이 화면 메모리에만 둔다(저장하지 않음). 열 때마다 새 대화.
+// 대화는 이 화면 메모리에만 둔다(저장하지 않음). 열 때마다 새 대화, 입력바 [+]로도 새 대화(session 이 바뀐다).
+// 오른쪽 아래에 떠 있는 패널(캐릭터 '별이') — 닫혀도 내용은 남기고 숨기기만 한다(Drawer 때와 같게). Esc 로 닫는다.
 // 직원이 쓴 글 · 서버가 준 글은 React 기본 이스케이프로만 그린다(dangerouslySetInnerHTML 쓰지 않음).
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Drawer, Input } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import { Input } from 'antd';
+import { CloseOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { confirmLeaveDraft, createLeaveDraft, discardLeaveDraft } from '../../api/assistant';
 import { meKey } from '../../api/auth';
+import byeori from '../../assets/byeori.png';
 import { errorMessage } from '../../constants/errors';
 import LeaveDraftCard from './LeaveDraftCard';
 
@@ -32,7 +34,33 @@ function botReply(err) {
   }
 }
 
-export default function AssistantPanel({ open, onClose, messages, push, onGo }) {
+/** 알림 본문 "조현우 · 연차 · 11/25(수) 1일" → 미니 카드 { initial, who, when }. 모양이 다르면 본문 그대로 */
+function noticeParts(item) {
+  const parts = (item.body ?? '').split(' · ');
+  if (parts.length < 2) return { initial: (item.body ?? '?').slice(0, 1), who: item.body ?? '', when: null };
+  return {
+    initial: parts[0].slice(0, 1),
+    who: `${parts[0]} · ${parts[1]}`,
+    when: parts.length > 2 ? parts.slice(2).join(' · ').replace(/\s(\S+일)$/, ' · $1') : null,
+  };
+}
+
+function NoticeCard({ item }) {
+  const n = noticeParts(item);
+  return (
+    <span className="as-notice">
+      <span className="as-notice-initial" aria-hidden="true">
+        {n.initial}
+      </span>
+      <span className="as-notice-text">
+        <b>{n.who}</b>
+        {n.when && <span>{n.when}</span>}
+      </span>
+    </span>
+  );
+}
+
+export default function AssistantPanel({ open, session, onClose, onNewChat, messages, push, onGo }) {
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -41,14 +69,25 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
-  // 열 때마다 새 대화
+  // 열 때마다(그리고 [+] 새 대화마다) 새 대화
   useEffect(() => {
     if (open) {
       setDraftId(null);
       setActiveCard(null);
       setInput('');
+      inputRef.current?.focus();
     }
-  }, [open]);
+  }, [open, session]);
+
+  // Esc 로 닫기(Drawer 때와 같게)
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   // 새 말풍선이 오면 맨 아래로
   useEffect(() => {
@@ -131,39 +170,27 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
   };
 
   return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      placement="right"
-      size={400}
-      title="AI 비서"
-      className="as-drawer"
-      footer={
-        <div className="as-composer">
-          <Input.TextArea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onPressEnter={(e) => {
-              if (!e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            maxLength={500}
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            placeholder='예) "내일 오후 반차 쓸게요"'
-            aria-label="AI 비서에게 보낼 문장"
-          />
-          <Button type="primary" icon={<SendOutlined />} onClick={send} loading={busy} disabled={!input.trim()} aria-label="보내기" />
+    <section className="as-panel" role="dialog" aria-label="AI 비서" hidden={!open}>
+      <header className="as-head">
+        <span className="as-avatar" aria-hidden="true">
+          <img src={byeori} alt="" />
+        </span>
+        <div className="as-head-text">
+          <strong>
+            별이 <span>· AI 비서</span>
+          </strong>
+          <span>휴가 결재를 도와드려요</span>
         </div>
-      }
-    >
+        <button type="button" className="as-close" onClick={onClose} aria-label="AI 비서 닫기">
+          <CloseOutlined />
+        </button>
+      </header>
+
       <div className="as-list" ref={listRef} aria-live="polite">
         {messages.map((m) => {
           if (m.kind === 'card') {
             return (
-              <div key={m.id} className="as-msg is-bot">
+              <div key={m.id} className="as-msg is-bot is-card">
                 <LeaveDraftCard
                   data={m.data}
                   active={m.id === activeCard}
@@ -179,25 +206,24 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
             // 이미 처리된 결재(승인함에서 바로 승인 · 반려 등) — 회색, 이동 버튼 없음
             return (
               <div key={m.id} className="as-msg is-bot is-alert is-done">
-                <p className="as-bubble">
+                <div className="as-bubble">
                   <strong>{m.item.title}</strong>
-                  {m.item.body && <span className="as-bubble-sub">{m.item.body}</span>}
+                  {m.item.body && <NoticeCard item={m.item} />}
                   <span>이미 처리된 결재예요.</span>
-                </p>
+                </div>
               </div>
             );
           }
           if (m.kind === 'notification') {
             return (
               <div key={m.id} className="as-msg is-bot is-alert">
-                <p className="as-bubble">
+                <div className="as-bubble">
                   <strong>{m.item.title}</strong>
-                  {m.item.body && <span className="as-bubble-sub">{m.item.body}</span>}
-                  <span>확인해 보고 승인함으로 이동하세요.</span>
-                </p>
-                <Button size="small" type="primary" ghost onClick={() => onGo(m.item)}>
-                  승인함으로 이동
-                </Button>
+                  {m.item.body && <NoticeCard item={m.item} />}
+                  <button type="button" className="as-pill" onClick={() => onGo(m.item)}>
+                    승인함으로 이동
+                  </button>
+                </div>
               </div>
             );
           }
@@ -218,6 +244,31 @@ export default function AssistantPanel({ open, onClose, messages, push, onGo }) 
           </div>
         )}
       </div>
-    </Drawer>
+
+      <div className="as-composer">
+        <button type="button" className="as-round is-new" onClick={onNewChat} aria-label="새 대화">
+          <PlusOutlined />
+        </button>
+        <Input.TextArea
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onPressEnter={(e) => {
+            if (!e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          maxLength={500}
+          autoSize={{ minRows: 1, maxRows: 4 }}
+          placeholder="무엇을 도와드릴까요?"
+          aria-label="AI 비서에게 보낼 문장"
+          className="as-input"
+        />
+        <button type="button" className="as-round is-send" onClick={send} disabled={!input.trim() || busy} aria-busy={busy} aria-label="보내기">
+          <SendOutlined />
+        </button>
+      </div>
+    </section>
   );
 }

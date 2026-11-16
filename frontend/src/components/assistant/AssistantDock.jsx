@@ -1,5 +1,5 @@
 // AI 비서(C2) + 결재 알림(B2) — AppLayout 에 한 번만 둔다. 로그인한 직원 누구나.
-// 오른쪽 아래 버튼: 안 읽은 알림 개수 뱃지(서버의 안 읽은 알림 목록 기준), 누르면 AI 비서 대화창.
+// 오른쪽 아래 버튼(캐릭터 '별이'): 안 읽은 알림 개수 뱃지(서버의 안 읽은 알림 목록 기준), 누르면 AI 비서 대화창(떠 있는 패널) — 열려 있으면 닫는다.
 // 새 알림: ① 뱃지 ② 토스트(누르면 그 화면으로) ③ 대화창이 열려 있으면 알림 말풍선.
 // 대화창을 열면 그때까지 안 읽은 알림도 말풍선으로 먼저 보여 준다(뱃지 숫자와 대화창 내용이 맞게).
 // 그중 이미 처리된 결재(승인함에서 바로 승인 · 반려, 신청 철회 등으로 내 승인 대기에 없는 건)는
@@ -7,13 +7,13 @@
 // 알림을 누르면 읽음 처리 → 승인함 배지 · 목록을 새로 받고 → linkPath(/approvals?stepId=…)로 이동.
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, FloatButton } from 'antd';
-import { CommentOutlined } from '@ant-design/icons';
+import { App, Badge } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getInboxPage } from '../../api/approvals';
 import { meKey } from '../../api/auth';
 import { fetchAllPages } from '../../api/employees';
 import { getUnreadNotifications, notificationsKey, readNotification, unreadNotificationsKey } from '../../api/notifications';
+import byeori from '../../assets/byeori.png';
 import AssistantPanel from './AssistantPanel';
 import { useNotificationStream } from './useNotificationStream';
 import './assistant.css';
@@ -27,6 +27,7 @@ export default function AssistantDock() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [session, setSession] = useState(0); // 새 대화마다 +1 — 대화창이 초안 · 입력을 비운다(열 때 · [+] 새 대화)
   const openRef = useRef(false);
   const seq = useRef(0);
   const shown = useRef(new Set()); // 이번 대화에 이미 말풍선으로 띄운 알림 ID — 목록 · 스트림이 겹쳐도 한 번만
@@ -96,6 +97,7 @@ export default function AssistantDock() {
   useNotificationStream(onNotification, refreshUnread);
 
   const openPanel = async () => {
+    setSession((n) => n + 1);
     seq.current = 0;
     shown.current = new Set();
     setMessages([]);
@@ -143,18 +145,23 @@ export default function AssistantDock() {
 
   return (
     <>
-      <FloatButton
-        type="primary"
-        icon={<CommentOutlined />}
-        badge={{ count: unreadCount, overflowCount: 99 }}
-        tooltip={unreadCount ? `AI 비서 · 안 읽은 알림 ${unreadCount}건` : 'AI 비서'}
-        aria-label={unreadCount ? `AI 비서 열기, 안 읽은 알림 ${unreadCount}건` : 'AI 비서 열기'}
-        onClick={openPanel}
-        className="as-fab"
-      />
+      <button
+        type="button"
+        className={`as-fab${open ? ' is-open' : ''}`}
+        title={unreadCount ? `AI 비서 · 안 읽은 알림 ${unreadCount}건` : 'AI 비서'}
+        aria-label={open ? 'AI 비서 닫기' : unreadCount ? `AI 비서 열기, 안 읽은 알림 ${unreadCount}건` : 'AI 비서 열기'}
+        aria-expanded={open}
+        onClick={open ? closePanel : openPanel}
+      >
+        <Badge count={unreadCount} overflowCount={99} className="as-fab-badge">
+          <img src={byeori} alt="" className="as-fab-img" />
+        </Badge>
+      </button>
       <AssistantPanel
         open={open}
+        session={session}
         onClose={closePanel}
+        onNewChat={openPanel}
         messages={messages}
         push={push}
         onGo={(item) => {
