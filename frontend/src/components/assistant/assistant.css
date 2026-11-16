@@ -254,6 +254,51 @@
   background: #fcfaff;
 }
 
+/* [처음으로] — 진행 중(칩이 숨은 동안) 입력바 위 */
+.as-home-row {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  padding: 0.375rem 1rem 0;
+}
+
+.as-home {
+  display: inline-flex;
+  gap: 0.3125rem;
+  align-items: center;
+  height: 1.875rem;
+  padding: 0 0.875rem;
+  border: 1px solid #e7ddf6;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--as-sub);
+  font: inherit;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.as-home svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--as-accent);
+}
+
+.as-home:hover:not(:disabled) {
+  border-color: #cdb9ef;
+  color: var(--as-ink);
+}
+
+.as-home:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.as-home:focus-visible {
+  outline: 2px solid var(--as-accent);
+  outline-offset: 2px;
+}
+
 /* 알림 말풍선 — 흰 미니 카드 + pill 버튼 */
 .as-notice {
   display: flex;
