@@ -695,6 +695,26 @@ CREATE TABLE approval_step (
 CREATE INDEX ix_approval_step_inbox  ON approval_step (approver_id, status);
 CREATE INDEX ix_approval_step_target ON approval_step (work_type, target_id);
 
+-- 결재 알림(2026-11-16). 단계가 승인 차례(PENDING)가 되면 승인자에게 한 건. 결재와 같은 트랜잭션에 저장된다.
+-- type 은 1차로 'APPROVAL_REQUESTED' 만. 제목 · 본문은 서버가 만든 고정 문구(신청 사유 원문은 넣지 않는다).
+CREATE TABLE notification (
+  id               BIGSERIAL PRIMARY KEY,
+  company_id       BIGINT NOT NULL REFERENCES company(id),
+  recipient_id     BIGINT NOT NULL REFERENCES employee(id),
+  type             VARCHAR(40) NOT NULL,
+  work_type        approval_work_type,
+  target_id        BIGINT,                                          -- 다형 참조(FK 없음)
+  approval_step_id BIGINT REFERENCES approval_step(id),
+  title            VARCHAR(100) NOT NULL,
+  body             VARCHAR(300),
+  link_path        VARCHAR(200),                                    -- 예) /approvals?stepId=12
+  read_at          TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_notification_recipient ON notification (recipient_id, created_at DESC);
+-- 안 읽은 알림(개수 · unreadOnly 목록)
+CREATE INDEX ix_notification_unread ON notification (recipient_id, created_at DESC) WHERE read_at IS NULL;
+
 -- ---------------------------------------------------------------------
 -- 9. 급여
 -- ---------------------------------------------------------------------
