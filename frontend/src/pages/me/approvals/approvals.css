@@ -181,3 +181,11 @@
 .ap-bulk-fail span {
   color: #dc2626;
 }
+
+/* 결재 알림에서 온 건(?stepId=) 강조 */
+.ap tr.ap-focus td {
+  background: #e0f2fe;
+}
+.ap tr.ap-focus td:first-child {
+  box-shadow: inset 3px 0 0 #0ea5e9;
+}

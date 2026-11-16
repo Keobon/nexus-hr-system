@@ -7,6 +7,7 @@ import { logout } from '../../api/auth';
 import { clearToken } from '../../auth/token';
 import { isSetupLocked } from '../../auth/permissions';
 import { useMe } from '../../auth/useMe';
+import AssistantDock from '../assistant/AssistantDock';
 import CompanyLogo from '../brand/CompanyLogo';
 import { useFileUrl } from '../common/useFileUrl';
 import navLine from '../../assets/figma/nav-line.svg';
@@ -173,6 +174,8 @@ export default function AppLayout() {
       <main className="app-main">
         <Outlet />
       </main>
+      {/* AI 비서 · 결재 알림 — 로그인한 직원 누구나. 로그아웃하면 이 레이아웃이 사라지며 알림 연결도 끊긴다 */}
+      <AssistantDock />
     </div>
   );
 }
