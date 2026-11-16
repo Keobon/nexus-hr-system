@@ -25,6 +25,8 @@ const DEMO_ACCOUNTS = [
   { value: 'taehyun.lim@nexuslabs.example', label: '임태현 — 신청자(직원)' },
   { value: 'seoyeon.yoon@nexuslabs.example', label: '윤서연 — 1단계 승인(팀장)' },
   { value: 'haneul.kang@nexuslabs.example', label: '강하늘 — 2단계 승인(본부장)' },
+  { value: 'hyunwoo.cho@nexuslabs.example', label: '조현우 — 신청자(직원 · 프론트엔드팀)' },
+  { value: 'yerin.seo@nexuslabs.example', label: '서예린 — 1단계 승인(과장 · 프론트엔드팀장)' },
   { value: 'sua.jung@nexuslabs.example', label: '정수아 — 인사 담당' },
   { value: 'admin@nexuslabs.example', label: '이지원 — 최고 관리자' },
   { value: 'ceo@nexuslabs.example', label: '박서준 — 대표(경영진)' },
