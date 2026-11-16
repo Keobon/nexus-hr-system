@@ -9,6 +9,7 @@ import com.nexuslabs.hr.global.audit.AuditLogger;
 import com.nexuslabs.hr.global.auth.LoginUser;
 import com.nexuslabs.hr.global.error.BusinessException;
 import com.nexuslabs.hr.global.error.ErrorCode;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -43,14 +44,16 @@ public class ApprovalService {
     private final ApprovalTargetRegistry targets;
     private final AuditLogger auditLogger;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     public ApprovalService(JdbcTemplate jdbc, ApproverCalculator calculator, ApprovalTargetRegistry targets,
-                           AuditLogger auditLogger, Clock clock) {
+                           AuditLogger auditLogger, Clock clock, ApplicationEventPublisher events) {
         this.jdbc = jdbc;
         this.calculator = calculator;
         this.targets = targets;
         this.auditLogger = auditLogger;
         this.clock = clock;
+        this.events = events;
     }
 
     // ------------------------------------------------------------------
@@ -72,7 +75,7 @@ public class ApprovalService {
     @Transactional(propagation = Propagation.MANDATORY)
     public boolean open(long companyId, ApprovalWorkType workType, long targetId, long applicantId) {
         ApprovalPlan plan = calculator.plan(companyId, workType, applicantId);
-        saveSteps(companyId, workType, targetId, plan);
+        saveSteps(companyId, workType, targetId, plan, applicantId);
         if (plan.immediatelyApproved()) {
             targets.get(workType).onFinalApproved(targetId, null);
             return true;
@@ -102,8 +105,12 @@ public class ApprovalService {
             targets.get(ApprovalWorkType.LEAVE_CANCEL).onFinalApproved(leaveRequestId, null);
             return true;
         }
-        insertStep(companyId, ApprovalWorkType.LEAVE_CANCEL, leaveRequestId, null, round, 1, lastApprover,
-                ApprovalStepStatus.PENDING, !calculator.isCandidate(companyId, lastApprover));
+        boolean needsReassign = !calculator.isCandidate(companyId, lastApprover);
+        long stepId = insertStep(companyId, ApprovalWorkType.LEAVE_CANCEL, leaveRequestId, null, round, 1,
+                lastApprover, ApprovalStepStatus.PENDING, needsReassign);
+        if (!needsReassign) {
+            activated(companyId, stepId, lastApprover, ApprovalWorkType.LEAVE_CANCEL, leaveRequestId, applicantId);
+        }
         return false;
     }
 
@@ -235,17 +242,23 @@ public class ApprovalService {
                         """,
                 blankToNull(request.comment()), approvedMinutes, now, stepId, user.companyId());
 
-        Optional<Long> next = jdbc.query("""
-                        SELECT id FROM approval_step
+        Optional<NextStep> next = jdbc.query("""
+                        SELECT id, approver_id, needs_reassign FROM approval_step
                         WHERE company_id = ? AND work_type = ?::approval_work_type AND target_id = ? AND round = ?
                           AND status = 'WAITING'
                         ORDER BY step_order LIMIT 1
                         """,
-                (rs, i) -> rs.getLong("id"),
+                (rs, i) -> new NextStep(rs.getLong("id"), rs.getObject("approver_id", Long.class),
+                        rs.getBoolean("needs_reassign")),
                 user.companyId(), step.workType().name(), step.targetId(), step.round()).stream().findFirst();
         if (next.isPresent()) {
+            NextStep n = next.get();
             jdbc.update("UPDATE approval_step SET status = 'PENDING' WHERE id = ? AND company_id = ?",
-                    next.get(), user.companyId());
+                    n.id(), user.companyId());
+            if (n.approverId() != null && !n.needsReassign()) {
+                activated(user.companyId(), n.id(), n.approverId(), step.workType(), step.targetId(),
+                        targets.get(step.workType()).summary(step.targetId()).applicantId());
+            }
         } else {
             targets.get(step.workType()).onFinalApproved(step.targetId(), view(user, stepId));
         }
@@ -381,12 +394,17 @@ public class ApprovalService {
         auditLogger.log(user, AuditAction.UPDATE, "APPROVAL_STEP", stepId,
                 Map.of("approverId", step.approverId() == null ? "" : step.approverId()),
                 Map.of("approverId", approverId));
+        // 지금 차례인 단계면 새 승인자에게 차례가 넘어간 것. 대기(WAITING) 단계는 앞 단계 승인 때 알린다.
+        if (step.status() == ApprovalStepStatus.PENDING) {
+            activated(user.companyId(), stepId, approverId, step.workType(), step.targetId(), applicantId);
+        }
         return view(user, stepId);
     }
 
     // ------------------------------------------------------------------
 
-    private void saveSteps(long companyId, ApprovalWorkType workType, long targetId, ApprovalPlan plan) {
+    private void saveSteps(long companyId, ApprovalWorkType workType, long targetId, ApprovalPlan plan,
+                           long applicantId) {
         int round = nextRound(companyId, workType, targetId);
         boolean pendingAssigned = false;
         for (ApprovalPlan.PlannedStep p : plan.steps()) {
@@ -399,19 +417,30 @@ public class ApprovalService {
             } else {
                 status = ApprovalStepStatus.WAITING;
             }
-            insertStep(companyId, workType, targetId, plan.approvalLineId(), round, p.stepOrder(), p.approverId(),
-                    status, false);
+            long stepId = insertStep(companyId, workType, targetId, plan.approvalLineId(), round, p.stepOrder(),
+                    p.approverId(), status, false);
+            if (status == ApprovalStepStatus.PENDING && p.approverId() != null) {
+                activated(companyId, stepId, p.approverId(), workType, targetId, applicantId);
+            }
         }
     }
 
-    private void insertStep(long companyId, ApprovalWorkType workType, long targetId, Long lineId, int round,
+    private long insertStep(long companyId, ApprovalWorkType workType, long targetId, Long lineId, int round,
                             int stepOrder, Long approverId, ApprovalStepStatus status, boolean needsReassign) {
-        jdbc.update("""
+        return jdbc.queryForObject("""
                         INSERT INTO approval_step (company_id, work_type, target_id, approval_line_id, round, step_order,
                                                    approver_id, status, needs_reassign)
                         VALUES (?, ?::approval_work_type, ?, ?, ?, ?, ?, ?::approval_step_status, ?)
+                        RETURNING id
                         """,
+                Long.class,
                 companyId, workType.name(), targetId, lineId, round, stepOrder, approverId, status.name(), needsReassign);
+    }
+
+    /** 단계가 승인 차례가 됐다 — 결재 알림이 같은 트랜잭션에서 받는다({@link ApprovalStepActivated}). */
+    private void activated(long companyId, long stepId, long approverId, ApprovalWorkType workType, long targetId,
+                           long applicantId) {
+        events.publishEvent(new ApprovalStepActivated(companyId, stepId, approverId, workType, targetId, applicantId));
     }
 
     private int nextRound(long companyId, ApprovalWorkType workType, long targetId) {
@@ -603,6 +632,9 @@ public class ApprovalService {
     }
 
     private record Applicant(long id, String name, String orgUnitName) {
+    }
+
+    private record NextStep(long id, Long approverId, boolean needsReassign) {
     }
 
     private record RoundKey(ApprovalWorkType workType, long targetId, int round) {
