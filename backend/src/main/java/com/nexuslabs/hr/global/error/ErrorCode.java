@@ -77,7 +77,13 @@ public enum ErrorCode {
 
     // 파일
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "10MB 이하 파일만 올릴 수 있습니다"),
-    FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "jpg, png, pdf만 올릴 수 있습니다");
+    FILE_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "jpg, png, pdf만 올릴 수 있습니다"),
+
+    // AI 비서
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 비서를 지금 쓸 수 없습니다. 휴가 신청 화면에서 직접 신청해 주세요"),
+    AI_DRAFT_NOT_FOUND(HttpStatus.NOT_FOUND, "초안을 찾을 수 없습니다"),
+    AI_DRAFT_EXPIRED(HttpStatus.CONFLICT, "초안이 만료되었습니다. 다시 요청해 주세요"),
+    AI_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요");
 
     private final HttpStatus status;
     private final String defaultMessage;

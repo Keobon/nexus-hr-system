@@ -81,6 +81,7 @@ CREATE TYPE assignment_type      AS ENUM ('TRANSFER','PROMOTION','TITLE_CHANGE')
 CREATE TYPE eval_cycle_status    AS ENUM ('SCHEDULED','IN_PROGRESS','CLOSED');
 CREATE TYPE eval_cycle_kind      AS ENUM ('REGULAR','PROMOTION');
 CREATE TYPE evaluation_status    AS ENUM ('NOT_STARTED','IN_PROGRESS','SUBMITTED','CONFIRMED','REOPENED');
+CREATE TYPE ai_draft_status      AS ENUM ('DRAFT','CONFIRMED','DISCARDED','EXPIRED');  -- AI 휴가 결재 초안(2026-11-16)
 
 -- ---------------------------------------------------------------------
 -- 2. 회사 · 공통
@@ -614,6 +615,28 @@ CREATE TABLE leave_grant (
 -- 정기·입사 부여는 직원·종류·연도마다 합쳐서 1건(BR-LEAVE-007)
 CREATE UNIQUE INDEX ux_leave_grant_once ON leave_grant (employee_id, leave_type_id, leave_year)
   WHERE grant_type IN ('REGULAR','HIRE');
+
+-- AI 휴가 결재 초안(2026-11-16). AI 는 초안만 만들고, 직원이 확인(confirm)해야 leave_request 가 생긴다.
+-- 빈 칸(종류 · 날짜)은 AI 가 아직 못 알아낸 것 — 되묻는 중인 초안이다.
+CREATE TABLE ai_leave_draft (
+  id               BIGSERIAL PRIMARY KEY,
+  company_id       BIGINT NOT NULL REFERENCES company(id),
+  employee_id      BIGINT NOT NULL REFERENCES employee(id),
+  user_message     VARCHAR(500) NOT NULL,                        -- 마지막으로 보낸 문장
+  leave_type_id    BIGINT REFERENCES leave_type(id),
+  start_date       DATE,
+  end_date         DATE,
+  half_day         half_day,
+  reason           VARCHAR(255),
+  status           ai_draft_status NOT NULL DEFAULT 'DRAFT',
+  leave_request_id BIGINT REFERENCES leave_request(id),          -- 확인해서 만든 휴가 신청
+  expires_at       TIMESTAMPTZ NOT NULL,                         -- 만들거나 고친 뒤 30분
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (start_date IS NULL OR end_date IS NULL OR start_date <= end_date),
+  CHECK ((status = 'CONFIRMED') = (leave_request_id IS NOT NULL))
+);
+CREATE INDEX ix_ai_leave_draft_employee ON ai_leave_draft (employee_id, created_at);
 
 -- ---------------------------------------------------------------------
 -- 8. 승인

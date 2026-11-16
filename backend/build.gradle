@@ -26,6 +26,9 @@ dependencies {
 	// --- BCrypt (비밀번호 해싱). Security 필터체인 없이 암호화 모듈만 사용 ---
 	implementation 'org.springframework.security:spring-security-crypto'
 
+	// --- Claude API (AI 휴가 결재 초안). 키(ANTHROPIC_API_KEY)가 없으면 호출하지 않는다 ---
+	implementation 'com.anthropic:anthropic-java:3.3.0'
+
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
