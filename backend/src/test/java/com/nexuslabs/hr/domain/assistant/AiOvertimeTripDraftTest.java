@@ -76,7 +76,7 @@ class AiOvertimeTripDraftTest {
         return jdbc.queryForObject("SELECT name FROM employee WHERE id = ?", String.class, e.id());
     }
 
-    private String status(String table, long id) {
+    private String rowStatus(String table, long id) {
         return jdbc.queryForObject("SELECT status::text FROM " + table + " WHERE id = ?", String.class, id);
     }
 
@@ -190,7 +190,7 @@ class AiOvertimeTripDraftTest {
                 .andExpect(jsonPath("$.data.reason").value("배포 작업"))
                 .andReturn().getResponse().getContentAsString();
         long overtimeId = ((Number) JsonPath.read(body, "$.data.id")).longValue();
-        assertThat(status("ai_overtime_draft", id)).isEqualTo("CONFIRMED");
+        assertThat(rowStatus("ai_overtime_draft", id)).isEqualTo("CONFIRMED");
         assertThat(jdbc.queryForObject("SELECT overtime_request_id FROM ai_overtime_draft WHERE id = ?", Long.class, id))
                 .isEqualTo(overtimeId);
         assertThat(jdbc.queryForObject("""
@@ -214,7 +214,7 @@ class AiOvertimeTripDraftTest {
         clock.set(MONDAY.atTime(9, 31));
         as(org.cho, post("/api/me/ai/overtime-drafts/" + id + "/confirm")).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("AI_DRAFT_EXPIRED"));
-        assertThat(status("ai_overtime_draft", id)).isEqualTo("EXPIRED");
+        assertThat(rowStatus("ai_overtime_draft", id)).isEqualTo("EXPIRED");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM overtime_request WHERE company_id = ?", Long.class, cid))
                 .isZero();
     }
@@ -277,7 +277,7 @@ class AiOvertimeTripDraftTest {
                 .andExpect(jsonPath("$.data.tripType").value("DOMESTIC"))
                 .andReturn().getResponse().getContentAsString();
         long tripId = ((Number) JsonPath.read(body, "$.data.id")).longValue();
-        assertThat(status("ai_trip_draft", id)).isEqualTo("CONFIRMED");
+        assertThat(rowStatus("ai_trip_draft", id)).isEqualTo("CONFIRMED");
         assertThat(jdbc.queryForObject("SELECT business_trip_id FROM ai_trip_draft WHERE id = ?", Long.class, id))
                 .isEqualTo(tripId);
         assertThat(jdbc.queryForObject("""
@@ -295,7 +295,7 @@ class AiOvertimeTripDraftTest {
         clock.set(MONDAY.atTime(9, 31));
         as(org.cho, post("/api/me/ai/trip-drafts/" + id + "/confirm")).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("AI_DRAFT_EXPIRED"));
-        assertThat(status("ai_trip_draft", id)).isEqualTo("EXPIRED");
+        assertThat(rowStatus("ai_trip_draft", id)).isEqualTo("EXPIRED");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM business_trip WHERE company_id = ?", Long.class, cid))
                 .isZero();
     }
