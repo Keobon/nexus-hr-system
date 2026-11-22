@@ -256,6 +256,21 @@ class AiOvertimeTripDraftTest {
     }
 
     @Test
+    void 출장_시작일만_바꾸면_기존_종료일은_유지하고_늦어지면_되묻는다() throws Exception {
+        long id = draftId(trip(org.cho, "3/20~3/22 부산 출장, 거래처 미팅", null)
+                .andExpect(jsonPath("$.data.status").value("READY")));
+        trip(org.cho, "3/21부터로 바꿔줘", id)
+                .andExpect(jsonPath("$.data.status").value("READY"))
+                .andExpect(jsonPath("$.data.draft.startDate").value("2030-03-21"))
+                .andExpect(jsonPath("$.data.draft.endDate").value("2030-03-22"))
+                .andExpect(jsonPath("$.data.preview.days").value(2));
+        // 새 시작일이 기존 종료일보다 늦으면 하루짜리로 덮지 않고 되묻는다
+        trip(org.cho, "3/23부터로 바꿔줘", id)
+                .andExpect(jsonPath("$.data.status").value("NEED_INFO"))
+                .andExpect(jsonPath("$.data.question").value("끝나는 날이 시작일보다 빠릅니다. 날짜를 다시 알려 주세요."));
+    }
+
+    @Test
     void 출장_휴가와_기간이_겹치면_INVALID() throws Exception {
         long annual = annualType();
         grant(org.cho, annual);

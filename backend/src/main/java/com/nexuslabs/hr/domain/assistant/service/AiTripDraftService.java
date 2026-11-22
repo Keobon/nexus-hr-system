@@ -145,9 +145,10 @@ public class AiTripDraftService {
         LocalDate end;
         if (newEnd != null) {
             end = newEnd;
-        } else if (newStart != null && !ex.missing().contains("endDate")) {
-            end = newStart;   // 시작일만 새로 말하면 하루짜리
+        } else if (newStart != null && cur.endDate() == null && !ex.missing().contains("endDate")) {
+            end = newStart;   // 종료일이 아직 없을 때 시작일만 말하면 하루짜리
         } else {
+            // 기존 종료일은 유지 — 새 시작일이 그보다 늦으면 아래에서 "끝나는 날이 시작일보다 빠릅니다"로 되묻는다
             end = cur.endDate();
         }
 

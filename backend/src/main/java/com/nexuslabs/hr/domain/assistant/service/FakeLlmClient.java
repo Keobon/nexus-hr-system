@@ -130,7 +130,8 @@ public class FakeLlmClient implements LlmClient {
         String message = prompt.message();
         List<LocalDate> dates = dates(message, prompt.today());
         String start = dates.isEmpty() ? null : dates.getFirst().toString();
-        String end = dates.size() < 2 ? start : dates.get(1).toString();
+        // 날짜가 하나면 종료일은 이번 문장에 없다(null) — 새 초안이면 서버가 하루짜리로, 고치는 중이면 기존 종료일을 유지한다
+        String end = dates.size() < 2 ? null : dates.get(1).toString();
 
         String destination = null;
         Matcher d = DESTINATION.matcher(message);
