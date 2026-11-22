@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
-import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -254,23 +253,12 @@ public class AiLeaveDraftService {
 
     /** YYYY-MM-DD 가 아니면 null(모름). */
     private static LocalDate date(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return LocalDate.parse(value.strip());
-        } catch (DateTimeException e) {
-            return null;
-        }
+        return DraftValues.date(value);
     }
 
     /** 제어 문자를 빼고 앞뒤 공백을 지우고 255자로 자른다. 비면 null. */
     private static String clean(String reason) {
-        String s = reason.replaceAll("\\p{Cntrl}", " ").strip();
-        if (s.isEmpty()) {
-            return null;
-        }
-        return s.length() > REASON_MAX ? s.substring(0, REASON_MAX) : s;
+        return DraftValues.clean(reason, REASON_MAX);
     }
 
     private record Context(Map<Long, String> types, LeaveExtractionPrompt.Current current, boolean expired) {

@@ -75,30 +75,53 @@ public class OvertimeService {
     @Transactional
     public OvertimeResponse create(LoginUser user, OvertimeCreateRequest request) {
         long cid = user.companyId();
-        access.requireActive(cid, user.employeeId());
         LocalDate workDate = request.workDate();
-        if (settled(cid, YearMonth.from(workDate))) {
-            throw new BusinessException(ErrorCode.PAY_MONTH_SETTLED);
+        OvertimeCheck check = check(cid, user.employeeId(), workDate, request.plannedStart(), request.plannedEnd());
+        if (!check.errors().isEmpty()) {
+            throw check.errors().getFirst();
         }
-        if (onLeaveOrTrip(cid, user.employeeId(), workDate)) {
-            throw new BusinessException(ErrorCode.ATT_ON_LEAVE_OR_TRIP, "그날은 휴가·출장일이라 연장근무를 신청할 수 없습니다");
-        }
-        if (hasActiveRequest(cid, user.employeeId(), workDate)) {
-            throw new BusinessException(ErrorCode.OVERTIME_DUPLICATE);
-        }
-
-        OffsetDateTime start = at(workDate, LocalTime.parse(request.plannedStart()));
-        OffsetDateTime end = at(workDate, LocalTime.parse(request.plannedEnd()));
-        if (!end.isAfter(start)) {
-            end = end.plusDays(1);
-        }
-        int minutes = (int) Duration.between(start, end).toMinutes();
         // 동시에 두 번 보내면 부분 유일 인덱스(ux_overtime_active)가 막고 OVERTIME_DUPLICATE 로 응답한다
         OvertimeRequest overtime = repository.save(new OvertimeRequest(em.getReference(Employee.class, user.employeeId()),
-                workDate, start, end, minutes, request.reason().trim()));
+                workDate, check.plannedStart(), check.plannedEnd(), check.minutes(), request.reason().trim()));
         approvalService.open(cid, ApprovalWorkType.OVERTIME, overtime.getId(), user.employeeId());
         repository.flush();
         return detail(cid, overtime.getId(), user.employeeId());
+    }
+
+    /**
+     * 신청 검사 한 벌 — 저장하지 않는다. {@link #create}와 AI 연장근무 초안 미리보기가 같이 쓴다.
+     * 신청을 막는 오류를 순서대로 모은다(재직 · 정산 마감월 · 그날 휴가·출장 · 같은 날 진행 중 신청). create 는 첫 오류를 던진다.
+     * 예정 시각은 "HH:mm"(형식 검사는 부르는 쪽). 종료가 시작보다 이르거나 같으면 다음 날 시각으로 본다.
+     */
+    @Transactional(readOnly = true)
+    public OvertimeCheck check(long companyId, long employeeId, LocalDate workDate, String plannedStart,
+                               String plannedEnd) {
+        List<BusinessException> errors = new ArrayList<>();
+        try {
+            access.requireActive(companyId, employeeId);
+        } catch (BusinessException e) {
+            errors.add(e);
+        }
+        if (settled(companyId, YearMonth.from(workDate))) {
+            errors.add(new BusinessException(ErrorCode.PAY_MONTH_SETTLED));
+        }
+        if (onLeaveOrTrip(companyId, employeeId, workDate)) {
+            errors.add(new BusinessException(ErrorCode.ATT_ON_LEAVE_OR_TRIP, "그날은 휴가·출장일이라 연장근무를 신청할 수 없습니다"));
+        }
+        if (hasActiveRequest(companyId, employeeId, workDate)) {
+            errors.add(new BusinessException(ErrorCode.OVERTIME_DUPLICATE));
+        }
+        OffsetDateTime start = at(workDate, LocalTime.parse(plannedStart));
+        OffsetDateTime end = at(workDate, LocalTime.parse(plannedEnd));
+        if (!end.isAfter(start)) {
+            end = end.plusDays(1);
+        }
+        return new OvertimeCheck(start, end, (int) Duration.between(start, end).toMinutes(), List.copyOf(errors));
+    }
+
+    /** {@link #check} 결과 — 예정 시작 · 종료(종료가 다음 날일 수 있다), 총 분, 신청을 막는 오류(순서대로). */
+    public record OvertimeCheck(OffsetDateTime plannedStart, OffsetDateTime plannedEnd, int minutes,
+                                List<BusinessException> errors) {
     }
 
     /** 신청자 · 그 건의 승인자 · ATTENDANCE_READ(범위 안)만 본다. */

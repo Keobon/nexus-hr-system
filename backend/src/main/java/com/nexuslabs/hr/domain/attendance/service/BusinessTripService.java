@@ -32,9 +32,11 @@ import java.sql.Date;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 출장 신청 · 결과 보고(F-ATT-07, BR-ATT-005). 승인은 승인 엔진이 하고, 확정(근태 생성) · 반려는
@@ -70,13 +72,16 @@ public class BusinessTripService {
     @Transactional
     public BusinessTripResponse create(LoginUser user, BusinessTripCreateRequest request) {
         long cid = user.companyId();
-        if (request.startDate().isAfter(request.endDate())) {
-            throw BusinessException.invalidFields(Map.of("endDate", "종료일은 시작일 이후여야 합니다"));
+        Optional<BusinessException> order = orderError(request.startDate(), request.endDate());
+        if (order.isPresent()) {
+            throw order.get();
         }
         jdbc.queryForList("SELECT id FROM employee WHERE id = ? AND company_id = ? FOR UPDATE",
                 Long.class, user.employeeId(), cid);
-        access.requireActive(cid, user.employeeId());
-        checkOverlap(cid, user.employeeId(), request.startDate(), request.endDate());
+        TripCheck check = check(cid, user.employeeId(), request.startDate(), request.endDate());
+        if (!check.errors().isEmpty()) {
+            throw check.errors().getFirst();
+        }
 
         BusinessTrip trip = repository.save(new BusinessTrip(em.getReference(Employee.class, user.employeeId()),
                 request.tripType(), request.destination().trim(), request.purpose().trim(), request.startDate(),
@@ -84,6 +89,31 @@ public class BusinessTripService {
         approvalService.open(cid, ApprovalWorkType.BUSINESS_TRIP, trip.getId(), user.employeeId());
         repository.flush();
         return detail(cid, trip.getId(), user.employeeId());
+    }
+
+    /**
+     * 신청 검사 한 벌 — 저장하지 않는다(직원 행도 잠그지 않는다). {@link #create}와 AI 출장 초안 미리보기가 같이 쓴다.
+     * 시작 > 종료면 그 오류만, 아니면 재직 · 기간 겹침(PERIOD_OVERLAP) 순서로 모은다. create 는 첫 오류를 던진다.
+     * days 는 출장 일수(시작 · 종료일 포함, 달력 날짜).
+     */
+    @Transactional(readOnly = true)
+    public TripCheck check(long companyId, long employeeId, LocalDate startDate, LocalDate endDate) {
+        Optional<BusinessException> order = orderError(startDate, endDate);
+        if (order.isPresent()) {
+            return new TripCheck(0, List.of(order.get()));
+        }
+        List<BusinessException> errors = new ArrayList<>();
+        try {
+            access.requireActive(companyId, employeeId);
+        } catch (BusinessException e) {
+            errors.add(e);
+        }
+        overlapError(companyId, employeeId, startDate, endDate).ifPresent(errors::add);
+        return new TripCheck((int) ChronoUnit.DAYS.between(startDate, endDate) + 1, List.copyOf(errors));
+    }
+
+    /** {@link #check} 결과 — 출장 일수, 신청을 막는 오류(순서대로). */
+    public record TripCheck(int days, List<BusinessException> errors) {
     }
 
     /** 신청자 · 그 건의 승인자 · ATTENDANCE_READ(범위 안)만 본다. */
@@ -216,8 +246,14 @@ public class BusinessTripService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
     }
 
+    private static Optional<BusinessException> orderError(LocalDate start, LocalDate end) {
+        return start.isAfter(end)
+                ? Optional.of(BusinessException.invalidFields(Map.of("endDate", "종료일은 시작일 이후여야 합니다")))
+                : Optional.empty();
+    }
+
     /** 휴가는 승인대기 · 승인완료 · 취소요청, 출장은 승인대기 · 승인완료를 겹침으로 본다(BR-ATT-005). */
-    private void checkOverlap(long companyId, long employeeId, LocalDate start, LocalDate end) {
+    private Optional<BusinessException> overlapError(long companyId, long employeeId, LocalDate start, LocalDate end) {
         List<Long> leave = jdbc.queryForList("""
                         SELECT id FROM leave_request
                         WHERE company_id = ? AND employee_id = ? AND status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
@@ -226,7 +262,7 @@ public class BusinessTripService {
                         """,
                 Long.class, companyId, employeeId, Date.valueOf(end), Date.valueOf(start));
         if (!leave.isEmpty()) {
-            throw overlap("LEAVE", leave.getFirst());
+            return Optional.of(overlap("LEAVE", leave.getFirst()));
         }
         List<Long> trip = jdbc.queryForList("""
                         SELECT id FROM business_trip
@@ -235,9 +271,7 @@ public class BusinessTripService {
                         ORDER BY start_date LIMIT 1
                         """,
                 Long.class, companyId, employeeId, Date.valueOf(end), Date.valueOf(start));
-        if (!trip.isEmpty()) {
-            throw overlap("BUSINESS_TRIP", trip.getFirst());
-        }
+        return trip.isEmpty() ? Optional.empty() : Optional.of(overlap("BUSINESS_TRIP", trip.getFirst()));
     }
 
     private static BusinessException overlap(String conflictType, long conflictId) {

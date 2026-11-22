@@ -638,6 +638,47 @@ CREATE TABLE ai_leave_draft (
 );
 CREATE INDEX ix_ai_leave_draft_employee ON ai_leave_draft (employee_id, created_at);
 
+-- AI 연장근무 결재 초안(2026-11-19). 휴가 초안과 같은 규칙 — 확인(confirm)해야 overtime_request 가 생긴다.
+CREATE TABLE ai_overtime_draft (
+  id                  BIGSERIAL PRIMARY KEY,
+  company_id          BIGINT NOT NULL REFERENCES company(id),
+  employee_id         BIGINT NOT NULL REFERENCES employee(id),
+  user_message        VARCHAR(500) NOT NULL,                     -- 마지막으로 보낸 문장
+  work_date           DATE,
+  planned_start       VARCHAR(5),                                -- "HH:mm"
+  planned_end         VARCHAR(5),                                -- "HH:mm", 시작보다 이르면 다음 날
+  reason              VARCHAR(255),
+  status              ai_draft_status NOT NULL DEFAULT 'DRAFT',
+  overtime_request_id BIGINT REFERENCES overtime_request(id),    -- 확인해서 만든 연장근무 신청
+  expires_at          TIMESTAMPTZ NOT NULL,                      -- 만들거나 고친 뒤 30분
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((status = 'CONFIRMED') = (overtime_request_id IS NOT NULL))
+);
+CREATE INDEX ix_ai_overtime_draft_employee ON ai_overtime_draft (employee_id, created_at);
+
+-- AI 출장 결재 초안(2026-11-19). 확인(confirm)해야 business_trip 이 생긴다. 예상 비용은 말했을 때만.
+CREATE TABLE ai_trip_draft (
+  id               BIGSERIAL PRIMARY KEY,
+  company_id       BIGINT NOT NULL REFERENCES company(id),
+  employee_id      BIGINT NOT NULL REFERENCES employee(id),
+  user_message     VARCHAR(500) NOT NULL,
+  trip_type        trip_type,
+  destination      VARCHAR(100),
+  purpose          VARCHAR(500),
+  start_date       DATE,
+  end_date         DATE,
+  estimated_cost   BIGINT CHECK (estimated_cost IS NULL OR estimated_cost >= 0),
+  status           ai_draft_status NOT NULL DEFAULT 'DRAFT',
+  business_trip_id BIGINT REFERENCES business_trip(id),          -- 확인해서 만든 출장 신청
+  expires_at       TIMESTAMPTZ NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (start_date IS NULL OR end_date IS NULL OR start_date <= end_date),
+  CHECK ((status = 'CONFIRMED') = (business_trip_id IS NOT NULL))
+);
+CREATE INDEX ix_ai_trip_draft_employee ON ai_trip_draft (employee_id, created_at);
+
 -- ---------------------------------------------------------------------
 -- 8. 승인
 -- ---------------------------------------------------------------------
