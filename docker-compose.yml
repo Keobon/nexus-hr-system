@@ -35,6 +35,7 @@ services:
       # 실제 Claude API: AI_CLIENT=anthropic 과 ANTHROPIC_API_KEY 를 환경변수로 주고 up (키는 파일에 적지 않는다)
       AI_CLIENT: ${AI_CLIENT:-fake}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-15}
     ports:
       - "127.0.0.1:8080:8080"
 

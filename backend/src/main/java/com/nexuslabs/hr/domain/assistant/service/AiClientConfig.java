@@ -27,7 +27,7 @@ public class AiClientConfig {
                                @Value("${ai.client:anthropic}") String client,
                                @Value("${ai.api-key:}") String apiKey,
                                @Value("${ai.model:claude-opus-5-5}") String model,
-                               @Value("${ai.timeout-seconds:5}") long timeoutSeconds,
+                               @Value("${ai.timeout-seconds:15}") long timeoutSeconds,
                                ObjectMapper objectMapper) {
         return choose(enabled, client, apiKey, model, Duration.ofSeconds(timeoutSeconds), objectMapper);
     }

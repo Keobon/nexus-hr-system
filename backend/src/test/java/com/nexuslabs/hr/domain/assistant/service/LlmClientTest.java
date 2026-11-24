@@ -107,6 +107,31 @@ class LlmClientTest {
     }
 
     @Test
+    void 가짜_클라이언트_반나절을_뜻하는_말이_없으면_종일이고_되묻지_않는다() {
+        // 실 API 프롬프트 규칙과 같게 — "연차"만 말하면 halfDay null(종일), missing 없음
+        assertThat(fake("11/27 병원 진료 때문에 연차"))
+                .extracting(LeaveExtraction::halfDay, LeaveExtraction::missing)
+                .containsExactly(null, List.of());
+        assertThat(fake("내일 오후만 쉴게요 연차").halfDay()).isEqualTo("PM");
+        assertThat(fake("내일 오전만 연차").halfDay()).isEqualTo("AM");
+        assertThat(fake("내일 반차").missing()).containsExactly("halfDay");
+    }
+
+    @Test
+    void 가짜_클라이언트_출장_목적지는_도시만_방문처는_목적으로() {
+        // "출장" 없이 지명 + 방문처 — 목적지는 도시, 나머지는 목적
+        assertThat(trip("11/30~12/1 부산 고객사 미팅"))
+                .extracting(TripExtraction::destination, TripExtraction::purpose, TripExtraction::tripType,
+                        TripExtraction::startDate, TripExtraction::endDate)
+                .containsExactly("부산", "고객사 미팅", "DOMESTIC", "2030-11-30", "2030-12-01");
+        // 목적지만 있으면 목적은 되묻는다(비용은 목적이 아니다)
+        assertThat(trip("부산 출장").purpose()).isNull();
+        assertThat(trip("3/11 부산 출장 50만 원"))
+                .extracting(TripExtraction::purpose, TripExtraction::estimatedCost)
+                .containsExactly(null, 500_000L);
+    }
+
+    @Test
     void 가짜_클라이언트_업무_분류() {
         FakeLlmClient fake = new FakeLlmClient();
         assertThat(fake.classify(TODAY, "오늘 잔업 좀 할게요")).isEqualTo(AiWorkType.OVERTIME);
