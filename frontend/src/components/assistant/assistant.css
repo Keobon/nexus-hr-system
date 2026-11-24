@@ -468,6 +468,23 @@
   font-style: normal;
 }
 
+/* 출장 카드 — 목적지 옆 국내 · 해외 작은 칩, 없는 값(예상 비용) 회색 — */
+.as-mini-chip {
+  margin-left: 0.375rem;
+  padding: 0.0625rem 0.4375rem;
+  border-radius: 999px;
+  background: #f6f2fb;
+  color: var(--as-accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  vertical-align: 0.0625rem;
+}
+
+.as-muted {
+  color: #b4aec6;
+  font-weight: 500;
+}
+
 /* 승인선 pill 칩 */
 .as-chips {
   display: flex;
