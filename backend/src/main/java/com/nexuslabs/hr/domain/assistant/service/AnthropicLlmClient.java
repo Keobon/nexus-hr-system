@@ -48,6 +48,7 @@ public class AnthropicLlmClient implements LlmClient {
             - leaveTypeName 은 위 휴가 종류 이름 중 하나를 글자 그대로 쓴다. 고를 수 없으면 null.
             - startDate · endDate 는 YYYY-MM-DD. 연도가 없으면 오늘 기준으로 가장 가까운 앞날로 본다. 하루면 endDate = startDate.
             - halfDay 는 오전 반차 AM, 오후 반차 PM, 종일이라고 분명히 말했으면 NONE, 말이 없으면 null.
+            - 반차 · 오전만 · 오후만처럼 반나절을 뜻하는 말이 없으면 halfDay 는 null(종일)이고, missing 에 넣지 않는다.
             - reason 은 직원이 말한 사유를 짧게(100자 이내). 말이 없으면 null.
             - "지금 초안"이 주어지면 이번 문장이 바꾸는 값만 채우고, 바꾸지 않는 값은 null 로 둔다.
             - 정할 수 없는 항목은 null 로 두고 그 이름(leaveTypeName · startDate · endDate · halfDay)을 missing 에 넣는다.
@@ -90,7 +91,9 @@ public class AnthropicLlmClient implements LlmClient {
             오늘: %s (%s), 시간대 Asia/Seoul
 
             규칙
-            - destination 은 출장지(도시 · 회사 등)를 짧게. purpose 는 출장 목적을 짧게(200자 이내). 말이 없으면 null.
+            - destination 은 도시 · 지역 이름만(해외는 도시, 모르면 국가). 방문처 · 회사명은 purpose 에 넣는다.
+              예) "부산 고객사 미팅" → destination 부산, purpose 고객사 미팅.
+            - purpose 는 출장 목적을 짧게(200자 이내). 말이 없으면 null.
             - startDate · endDate 는 YYYY-MM-DD. 연도가 없으면 오늘 기준으로 가장 가까운 앞날로 본다. 하루면 endDate = startDate.
             - tripType 은 국내 DOMESTIC, 해외 OVERSEAS. 목적지로 판단하고(국내 도시 → DOMESTIC, 해외 도시 · 국가 → OVERSEAS),
               애매하면 null 로 두고 missing 에 넣는다.
@@ -127,7 +130,7 @@ public class AnthropicLlmClient implements LlmClient {
         this.client = AnthropicOkHttpClient.builder()
                 .apiKey(apiKey)
                 .timeout(timeout)
-                .maxRetries(1)
+                .maxRetries(0) // 재시도하면 최악 대기가 타임아웃의 두 배 — 한 번만 기다리고 실패하면 AI_UNAVAILABLE
                 .build();
         this.model = model;
         this.objectMapper = objectMapper;
@@ -216,9 +219,13 @@ public class AnthropicLlmClient implements LlmClient {
                     .addUserMessage(user.get())
                     .build();
             Message response = client.messages().create(params);
+            // 토큰 수는 비용 실측 · 실험용 — 문장 · 응답 본문은 로그에 남기지 않는다
+            long inputTokens = response.usage().inputTokens();
+            long outputTokens = response.usage().outputTokens();
             if (response.stopReason().filter(StopReason.END_TURN::equals).isEmpty()) {
-                log.warn("ai.{} llm stop={} latencyMs={}", task,
-                        response.stopReason().map(Object::toString).orElse("none"), millisSince(started));
+                log.warn("ai.{} llm stop={} latencyMs={} inputTokens={} outputTokens={}", task,
+                        response.stopReason().map(Object::toString).orElse("none"), millisSince(started),
+                        inputTokens, outputTokens);
                 throw new BusinessException(ErrorCode.AI_UNAVAILABLE);
             }
             String json = response.content().stream()
@@ -226,7 +233,8 @@ public class AnthropicLlmClient implements LlmClient {
                     .map(TextBlock::text)
                     .collect(Collectors.joining());
             T value = objectMapper.readValue(json, type);
-            log.info("ai.{} llm ok latencyMs={}", task, millisSince(started));
+            log.info("ai.{} llm ok latencyMs={} inputTokens={} outputTokens={}", task, millisSince(started),
+                    inputTokens, outputTokens);
             return value;
         } catch (RateLimitException e) {
             throw failed(task, "rate_limited", started);

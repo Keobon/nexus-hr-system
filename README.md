@@ -52,6 +52,16 @@ docker compose down -v        # 끄기 + DB 초기화(다음 실행 때 데모 �
 - develop에 새 기능이 머지되면 `git pull` 후 다시 `docker compose up --build`
 - 백엔드에는 CORS 설정이 없으므로, 프론트 개발 서버(Vite)의 `server.proxy`로 `/api` 요청을 `http://localhost:8080`으로 넘겨서 호출합니다
 
+### 4. AI 비서(별이) — 가짜 AI / 실제 Claude
+`docker compose up`의 기본은 키 없이 도는 규칙 기반 가짜 AI(`AI_CLIENT=fake`)입니다. 실제 Claude API로 띄우려면 Windows 사용자 환경변수 `NEXUS_ANTHROPIC_API_KEY`에 키를 넣고 아래 스크립트를 씁니다(키는 스크립트가 도는 동안만 백엔드에 넘기고 파일 · 셸에 남기지 않습니다).
+```powershell
+.\scripts\up-real-ai.ps1    # 실제 Claude 모드(AI_CLIENT=anthropic)로 백엔드 다시 빌드 · 실행
+.\scripts\up-fake-ai.ps1    # 키 없이 가짜 AI 모드로 되돌리기
+# 스크립트 실행이 막히면: powershell -ExecutionPolicy Bypass -File .\scripts\up-real-ai.ps1
+```
+- 확인: `docker compose logs backend | Select-String "AI 비서"` — 실제 모드면 `AI 비서: Claude API(model=…)`, 가짜 모드면 `AI 비서: 규칙 기반 가짜 클라이언트(ai.client=fake)`가 보입니다.
+- `AI 비서 꺼짐 — ANTHROPIC_API_KEY 가 없습니다`가 보이면 키가 백엔드에 안 넘어간 것입니다(사용자 환경변수 이름 · 값을 확인).
+
 ---
 
 ## 🛠️ DB 접속 및 기초 데이터(Seed) 세팅 안내 (백엔드 팀 필수)

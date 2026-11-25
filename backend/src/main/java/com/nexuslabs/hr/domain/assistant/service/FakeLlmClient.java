@@ -19,7 +19,9 @@ import java.util.regex.Pattern;
  *   <li>사유 · 목적: "… 때문에" · "…(으)로 인해" 앞부분에서 날짜 · 시각 · 목적지를 뺀 것.</li>
  *   <li>분류: 연장 · 야근 · 잔업 → OVERTIME, 출장 → BUSINESS_TRIP, 휴가 · 연차 · 반차 · 병가 → LEAVE, 그 밖에 UNKNOWN.</li>
  *   <li>연장근무 시각: "19:00~22:00" 그대로, "7시부터 10시까지"처럼 오전 · 오후 표시가 없는 1–11시는 오후.</li>
- *   <li>출장: "부산 출장" · "부산으로 출장"의 앞 단어가 목적지, 아는 국내 · 해외 지명이면 출장 종류, "N만 원" · "N원"이 예상 비용.</li>
+ *   <li>출장: "부산 출장" · "부산으로 출장"의 앞 단어가 목적지("출장"이 없으면 문장 속 아는 지명), 아는 국내 · 해외 지명이면 출장 종류,
+ *       "N만 원" · "N원"이 예상 비용. 목적은 "… 때문에" · "목적은 …" · 쉼표 뒤, 없으면 지명을 뺀 나머지("부산 고객사 미팅" → 고객사 미팅).</li>
+ *   <li>반차: 반나절을 뜻하는 말(오전 · 오후 · 반차)이 없으면 halfDay 는 null(종일)이고 되묻지 않는다 — 실 API 프롬프트와 같은 규칙.</li>
  * </ul>
  */
 public class FakeLlmClient implements LlmClient {
@@ -141,6 +143,11 @@ public class FakeLlmClient implements LlmClient {
                 break;
             }
         }
+        // "부산 고객사 미팅"처럼 "출장" 없이 아는 지명만 있어도 목적지 — 방문처 · 회사명은 목적으로(실 API 프롬프트와 같은 규칙)
+        boolean placeOnly = destination == null && knownPlace(message) != null;
+        if (placeOnly) {
+            destination = knownPlace(message);
+        }
 
         List<String> missing = new ArrayList<>();
         String tripType = null;
@@ -152,7 +159,7 @@ public class FakeLlmClient implements LlmClient {
             missing.add("tripType");
         }
 
-        String purpose = purpose(message, destination);
+        String purpose = purpose(message, destination, placeOnly);
         return new TripExtraction(destination, purpose, start, end, tripType, cost(message), missing, null);
     }
 
@@ -208,14 +215,35 @@ public class FakeLlmClient implements LlmClient {
         return s.isEmpty() ? null : s;
     }
 
-    /** 출장 목적 — "… 때문에", "목적은 …", 쉼표 뒤 순서로. 날짜 · 목적지 · "출장"은 뺀다. */
-    private static String purpose(String message, String destination) {
+    /** 문장에 나오는 아는 국내 · 해외 지명 중 가장 앞에 있는 것. 없으면 null. */
+    private static String knownPlace(String message) {
+        String found = null;
+        int at = Integer.MAX_VALUE;
+        for (Set<String> places : List.of(DOMESTIC, OVERSEAS)) {
+            for (String place : places) {
+                int i = message.indexOf(place);
+                if (i >= 0 && (i < at || (i == at && place.length() > found.length()))) {
+                    found = place;
+                    at = i;
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * 출장 목적 — "… 때문에", "목적은 …", 쉼표 뒤 순서로. 셋 다 없고 "출장" 없이 지명으로 목적지를 찾았으면(placeOnly) 문장 나머지
+     * ("부산 고객사 미팅" → 고객사 미팅 — "부산 출장이에요" 같은 답은 목적으로 보지 않는다). 날짜 · 목적지 · "출장" · 비용은 뺀다.
+     */
+    private static String purpose(String message, String destination, boolean placeOnly) {
         String raw = null;
         Matcher m = REASON.matcher(message);
         if (m.find()) {
             raw = m.group(1);
         } else if ((m = PURPOSE_LABEL.matcher(message)).find() || (m = AFTER_COMMA.matcher(message)).find()) {
             raw = m.group(1);
+        } else if (placeOnly) {
+            raw = COST_WON.matcher(COST_MAN.matcher(message).replaceAll(" ")).replaceAll(" ");
         }
         if (raw == null) {
             return null;
