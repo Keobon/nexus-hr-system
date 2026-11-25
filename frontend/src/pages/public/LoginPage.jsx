@@ -21,6 +21,8 @@ const FEATURES = [
 ];
 
 // 개발 서버에서만 보이는 데모 계정(seed_demo.sql). 비밀번호는 모두 Passw0rd!
+// 잠시 숨김(2026-11-25) — 다시 보이게 하려면 true 로
+const SHOW_DEMO_ACCOUNTS = false;
 const DEMO_ACCOUNTS = [
   { value: 'taehyun.lim@nexuslabs.example', label: '임태현 — 신청자(직원)' },
   { value: 'seoyeon.yoon@nexuslabs.example', label: '윤서연 — 1단계 승인(팀장)' },
@@ -214,7 +216,7 @@ export default function LoginPage() {
             </ul>
           </div>
 
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && SHOW_DEMO_ACCOUNTS && (
             <Select
               className="login-dev"
               size="small"
