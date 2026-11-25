@@ -1,7 +1,8 @@
 /*
  * 로그인 · 회사 등록 화면 — Figma "Design" 파일
  *   Auth_Login(84:4630) · Auth_Login_Fail(84:4684) · first_page(199:5486) · second_page(199:5604)
- * 프레임 1440 × 1024 기준 값을 그대로 옮기고, 절대 위치는 flex · grid 로 바꿨다.
+ * 프레임 1440 × 1024 기준. 글자 · 칸 크기는 rem(Figma px ÷ 16)으로 두고, 패널 폭 · 여백 · 위치는 비율과 가운데 정렬로 —
+ * 어떤 화면 크기에서도 Figma 와 같은 비율로 보인다(로그인 왼쪽 : 오른쪽 ≈ 53 : 47, 회원가입 카드 폭 86%).
  */
 
 .auth-font {
@@ -50,29 +51,38 @@
   min-height: 100vh;
 }
 
-/* 왼쪽 소개 패널 47.5rem */
+/* 왼쪽 소개 패널 — Figma 760 / 1440 ≈ 53%. 로고는 위 왼쪽, 소개 묶음은 남은 높이의 가운데 */
 .login-intro {
   position: relative;
-  flex: 0 0 47.5rem;
-  min-height: 64rem;
+  display: flex;
+  flex: 0 0 53%;
+  flex-direction: column;
+  min-height: 100vh;
   background: #0f172a;
   box-sizing: border-box;
-  padding: 2.5625rem 0 5rem 1.3125rem;
+  padding: clamp(1.5rem, 4vh, 2.5625rem) 0 clamp(3.5rem, 8vh, 5rem);
 }
 
+.login-intro > .brand-logo {
+  margin-left: 2.75%; /* Figma 21 / 760 */
+}
+
+/* 저작권은 패널 아래 오른쪽 기준 */
 .login-intro .auth-copyright {
-  left: 40.1875rem;
+  right: 4%;
 }
 
+/* 소개 묶음 — Figma 배지 폭 633 / 760 ≈ 84%, 패널 가운데 */
 .login-hero {
-  margin-top: 17.1875rem; /* 로고 아래(117) → 배지(392) */
+  width: 84%;
+  margin: auto;
+  padding-top: 2rem;
 }
 
 .login-hero-badge {
   box-sizing: border-box;
-  width: 39.5625rem;
+  width: 100%;
   height: 1.75rem;
-  margin-left: 2.9375rem;
   padding-left: 0.8125rem;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 1.25rem;
@@ -84,7 +94,7 @@
 }
 
 .login-hero-title {
-  margin: 2rem 0 0 3.8125rem;
+  margin: 2rem 0 0 0.875rem;
   color: #fff;
   font-size: 2.1875rem;
   font-weight: 700;
@@ -97,19 +107,19 @@
 }
 
 .login-hero-desc {
-  width: 37.6875rem;
-  margin: 1.3125rem 0 0 3.875rem;
+  margin: 1.3125rem 0.875rem 0;
   color: #94a3b8;
   font-size: 0.8125rem;
   font-weight: 400;
   line-height: normal;
 }
 
+/* 기능 카드 2 × 2 — 소개 묶음 폭을 둘로(Figma 280 · 280, 사이 38) */
 .login-features {
   display: grid;
-  grid-template-columns: repeat(2, 17.5rem);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2.375rem;
-  margin: 2.8125rem 0 0 4.0625rem;
+  margin: 2.8125rem 1.125rem 0;
 }
 
 .login-feature {
@@ -154,18 +164,22 @@
   line-height: 0.9375rem;
 }
 
-/* 오른쪽 로그인 패널 */
+/* 오른쪽 로그인 패널 — 폼은 가로 · 세로 가운데 */
 .login-panel {
-  flex: 1;
+  display: flex;
+  flex: 1 1 47%;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
   background: #f8fafc;
   box-sizing: border-box;
-  padding: 15.625rem 2.5rem 3.75rem 3.875rem;
+  padding: 3rem 0;
 }
 
+/* 폼 폭 — Figma 540 / 680 ≈ 80%, 아주 넓은 화면에서는 최대 42rem */
 .login-form {
-  width: 33.75rem;
-  max-width: 100%;
+  width: 80%;
+  max-width: 42rem;
 }
 
 .login-badge {
@@ -419,26 +433,34 @@
 
 /* ───────────── 회사 등록(first_page · second_page) ───────────── */
 
+/* 어두운 배경이 화면 전체 높이를 채우고, 카드가 남은 높이를 채운다 */
 .signup-page {
   position: relative;
-  min-height: 64rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   box-sizing: border-box;
-  padding: 2.5625rem 1rem 4.3125rem 1.3125rem; /* 카드 아래(955) → 프레임 끝(1024) */
+  padding: clamp(1.5rem, 4vh, 2.5625rem) 0 clamp(3rem, 6.7vh, 4.3125rem); /* 카드 아래(955) → 프레임 끝(1024) */
   background: #0f172a;
 }
 
+.signup-page > .brand-logo {
+  margin-left: 1.3125rem;
+}
+
+/* 저작권은 화면 맨 아래 가운데 */
 .signup-page .auth-copyright {
-  left: 40.1875rem;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .signup-head {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  width: 77.625rem;
-  max-width: 100%;
+  width: 86%; /* Figma 1242 / 1440 — 카드와 같은 폭, 가운데 */
   height: 5rem;
-  margin: 3.4375rem 0 0 2.9375rem;
+  margin: clamp(1.5rem, 5vh, 3.4375rem) auto 0;
   padding-left: 1.125rem;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 1.25rem;
@@ -448,31 +470,27 @@
   font-weight: 700;
 }
 
+/* 카드 — 머리 띠와 같은 폭 · 가운데, 남은 높이를 채운다. 제목은 위, 입력 폼 · [확인]은 남은 칸의 가운데 */
 .signup-card {
   position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   box-sizing: border-box;
-  width: 77.625rem;
-  max-width: 100%;
-  margin: 1.8125rem 0 0 2.9375rem;
-  padding: 1.5rem 0 0;
+  width: 86%;
+  margin: 1.8125rem auto 0;
+  padding: 1.5rem 1rem 2.5rem;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 1.25rem;
   background: #1e293b;
 }
 
-.signup-card.is-company {
-  height: 42.125rem;
-}
-
-.signup-card.is-admin {
-  height: 40.0625rem;
-}
-
 .signup-step-title {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0;
-  margin: 0 0 0 31.6875rem;
+  margin: 0;
   color: #fff;
   font-size: 1.25rem;
   font-weight: 700;
@@ -488,11 +506,15 @@
 
 .signup-grid {
   display: grid;
-  grid-template-columns: 12.875rem 19.6875rem;
+  /* 넓은 화면은 Figma 그대로(이름 칸 왼쪽 · 입력 칸 오른쪽 끝), 좁으면 입력 칸이 줄어든다(휴대폰 가로 스크롤 방지) */
+  grid-template-columns: max-content minmax(0, 19.6875rem);
   justify-content: space-between;
+  column-gap: 1rem;
   row-gap: 3.25rem;
   width: 32.5625rem;
-  margin: 5rem 0 0 20.9375rem;
+  max-width: 100%;
+  margin: auto auto 0; /* 위 auto + [확인] 아래 auto → 폼 묶음이 카드 남은 칸의 가운데 */
+  padding-top: 2rem;
 }
 
 .signup-label {
@@ -512,7 +534,7 @@
 .signup-input {
   box-sizing: border-box;
   display: block;
-  width: 19.6875rem;
+  width: 100%;
   height: 1.5rem;
   padding: 0 0.5rem;
   border: none;
@@ -552,12 +574,9 @@
   cursor: pointer;
 }
 
-.signup-card.is-company .signup-submit {
-  margin: 4.0625rem 0 0 30.375rem;
-}
-
-.signup-card.is-admin .signup-submit {
-  margin: 5.8125rem 0 0 31.0625rem;
+.signup-card .signup-submit {
+  flex: none;
+  margin: 4.0625rem auto auto;
 }
 
 .signup-submit:disabled {
@@ -567,38 +586,9 @@
 
 .signup-alert {
   width: 32.5625rem;
-  margin: 1.5rem 0 0 20.9375rem;
+  max-width: 100%;
+  margin: 1.5rem auto 0;
   color: #f87171;
   font-size: 0.8125rem;
 }
 
-@media (max-width: 1340px) {
-  .signup-head,
-  .signup-card {
-    margin-left: 0;
-  }
-
-  .signup-card {
-    height: auto !important;
-    padding-bottom: 3rem;
-  }
-
-  .signup-step-title,
-  .signup-grid,
-  .signup-alert {
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .signup-step-title {
-    justify-content: center;
-  }
-
-  .signup-grid {
-    max-width: calc(100% - 2rem);
-  }
-
-  .signup-card .signup-submit {
-    margin: 3rem auto 0 !important;
-  }
-}
